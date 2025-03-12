@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using RealEstateInvestment.Data;
@@ -11,9 +12,11 @@ using RealEstateInvestment.Data;
 namespace RealEstateInvestment.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250312192335_AddProperties")]
+    partial class AddProperties
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -54,30 +57,18 @@ namespace RealEstateInvestment.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<DateTime>("ApplicationDeadline")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<int>("AvailableShares")
                         .HasColumnType("integer");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<DateTime>("LastPayoutDate")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<string>("Location")
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<decimal>("MonthlyRentalIncome")
-                        .HasColumnType("numeric");
-
                     b.Property<decimal>("Price")
                         .HasColumnType("numeric");
-
-                    b.Property<Guid?>("PriorityInvestorId")
-                        .HasColumnType("uuid");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -90,35 +81,9 @@ namespace RealEstateInvestment.Migrations
                     b.Property<int>("TotalShares")
                         .HasColumnType("integer");
 
-                    b.Property<decimal>("UpfrontPayment")
-                        .HasColumnType("numeric");
-
                     b.HasKey("Id");
 
                     b.ToTable("Properties");
-                });
-
-            modelBuilder.Entity("RealEstateInvestment.Models.RentalIncome", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<decimal>("Amount")
-                        .HasColumnType("numeric");
-
-                    b.Property<Guid>("InvestorId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("PayoutDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("PropertyId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("RentalIncomes");
                 });
 
             modelBuilder.Entity("RealEstateInvestment.Models.User", b =>

@@ -1,5 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using RealEstateInvestment.Models;
 
 namespace RealEstateInvestment.Data
@@ -9,8 +8,9 @@ namespace RealEstateInvestment.Data
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
         public DbSet<User> Users { get; set; }
-        public DbSet<Models.Property> Properties { get; set; }
+        public DbSet<Property> Properties { get; set; }
         public DbSet<Investment> Investments { get; set; }
+        public DbSet<RentalIncome> RentalIncomes { get; set; } 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

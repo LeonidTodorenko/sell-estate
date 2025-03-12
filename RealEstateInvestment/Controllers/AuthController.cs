@@ -2,9 +2,7 @@
 using RealEstateInvestment.Data;
 using RealEstateInvestment.Helpers;
 using RealEstateInvestment.Models;
-using System.Linq;
-using System.Threading.Tasks;
-
+ 
 namespace RealEstateInvestment.Controllers
 {
     [ApiController]

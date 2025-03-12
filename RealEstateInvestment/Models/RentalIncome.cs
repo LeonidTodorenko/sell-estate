@@ -2,23 +2,20 @@
 
 namespace RealEstateInvestment.Models
 {
-    public class Investment
+    public class RentalIncome
     {
         [Key]
         public Guid Id { get; set; } = Guid.NewGuid();
 
         [Required]
-        public Guid UserId { get; set; }
-
-        [Required]
         public Guid PropertyId { get; set; }
 
         [Required]
-        public int Shares { get; set; }
+        public Guid InvestorId { get; set; }
 
         [Required]
-        public decimal InvestedAmount { get; set; }
+        public decimal Amount { get; set; } // Сумма выплаты
 
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime PayoutDate { get; set; } = DateTime.UtcNow;
     }
 }

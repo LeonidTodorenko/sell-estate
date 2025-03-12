@@ -1,5 +1,4 @@
-﻿using System;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace RealEstateInvestment.Models
 {
@@ -15,13 +14,14 @@ namespace RealEstateInvestment.Models
         public string Email { get; set; }
 
         [Required]
+        public string PasswordHash { get; set; }
+
         public string Role { get; set; } = "investor"; // investor, admin
 
-        public string? FirebaseUid { get; set; }
+        public string KycStatus { get; set; } = "pending"; // pending, verified, rejected
+
+        public bool IsBlocked { get; set; } = false;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-        [Required]
-        public string PasswordHash { get; set; }
     }
 }
