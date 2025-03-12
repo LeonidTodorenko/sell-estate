@@ -1,0 +1,41 @@
+﻿# Visual Studio & JetBrains Rider
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build
+bin/
+obj/
+out/
+*.dll
+*.exe
+*.pdb
+*.cache
+*.log
+*.manifest
+*.pyc
+
+# User-specific
+*.log
+*.tlog
+*.lastcodeanalysissucceeded
+*.ide
+.idea/
+
+# NuGet
+*.nupkg
+packages/
+project.lock.json
+project.assets.json
+
+# Node.js dependencies
+node_modules/
+npm-debug.log
+yarn.lock
+.pnp/
+.pnp.js
+
+# React build
+/build
