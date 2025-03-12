@@ -23,5 +23,7 @@ namespace RealEstateInvestment.Models
         public bool IsBlocked { get; set; } = false;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        public decimal WalletBalance { get; set; } = 0;
     }
 }

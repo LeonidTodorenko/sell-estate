@@ -10,7 +10,9 @@ namespace RealEstateInvestment.Data
         public DbSet<User> Users { get; set; }
         public DbSet<Property> Properties { get; set; }
         public DbSet<Investment> Investments { get; set; }
-        public DbSet<RentalIncome> RentalIncomes { get; set; } 
+        public DbSet<RentalIncome> RentalIncomes { get; set; }
+        public DbSet<WithdrawalRequest> WithdrawalRequests { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
