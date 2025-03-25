@@ -52,6 +52,14 @@ const ProfileScreen = ({ navigation }: Props) => {
       <View style={styles.buttons}>
         <Button title="My Investments" onPress={() => navigation.navigate('Investments')} />
         <View style={{ height: 10 }} />
+        <Button        title="Withdraw Funds"        onPress={() => navigation.navigate('Withdraw')}      />
+        <View style={{ height: 10 }} />
+        <Button title="Investment History" onPress={() => navigation.navigate('MyInvestments')} />
+        <View style={{ height: 10 }} />
+        <Button title="My Properties" onPress={() => navigation.navigate('MyProperties')} />
+        <View style={{ height: 10 }} />
+        <Button title="Withdrawal History" onPress={() => navigation.navigate('MyWithdrawals')} />
+        <View style={{ height: 10 }} />
         <Button title="Logout" onPress={handleLogout} color="red" />
       </View>
     </View>

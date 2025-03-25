@@ -73,5 +73,27 @@ namespace RealEstateInvestment.Controllers
             await _context.SaveChangesAsync();
             return Ok(new { message = "Роль изменена" });
         }
+
+        [HttpGet("all")]
+        public async Task<IActionResult> GetAllUsers()
+        {
+            var users = await _context.Users
+                .OrderBy(u => u.FullName)
+                .ToListAsync();
+
+            return Ok(users);
+        }
+
+        [HttpPost("{id}/block")]
+        public async Task<IActionResult> ToggleBlockUser(Guid id)
+        {
+            var user = await _context.Users.FindAsync(id);
+            if (user == null) return NotFound();
+
+            user.IsBlocked = !user.IsBlocked;
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = user.IsBlocked ? "User blocked" : "User unblocked" });
+        }
     }
 }

@@ -67,5 +67,27 @@ namespace RealEstateInvestment.Controllers
 
             return Ok(new { message = "Вывод отклонён" });
         }
+
+        // ✅ История заявок инвестора
+        [HttpGet("user/{userId}")]
+        public async Task<IActionResult> GetUserWithdrawals(Guid userId)
+        {
+            var withdrawals = await _context.WithdrawalRequests
+                .Where(w => w.UserId == userId)
+                .OrderByDescending(w => w.CreatedAt)
+                .ToListAsync();
+
+            return Ok(withdrawals);
+        }
+
+        [HttpGet("all")]
+        public async Task<IActionResult> GetAllWithdrawals()
+        {
+            var all = await _context.WithdrawalRequests
+                .OrderByDescending(w => w.CreatedAt)
+                .ToListAsync();
+
+            return Ok(all);
+        }
     }
 }

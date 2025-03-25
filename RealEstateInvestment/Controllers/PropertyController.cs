@@ -48,5 +48,27 @@ namespace RealEstateInvestment.Controllers
             await _context.SaveChangesAsync();
             return Ok(new { message = "Статус обновлён" });
         }
+
+        // todo check
+        [HttpGet("my-properties/{userId}")]
+        public async Task<IActionResult> GetUserPropertyInvestments(Guid userId)
+        {
+            var result = await (
+                from inv in _context.Investments
+                join prop in _context.Properties on inv.PropertyId equals prop.Id
+                where inv.UserId == userId
+                group new { inv, prop } by new { inv.PropertyId, prop.Title } into g
+                select new
+                {
+                    PropertyId = g.Key.PropertyId,
+                    PropertyTitle = g.Key.Title,
+                    TotalShares = g.Sum(x => x.inv.Shares),
+                    TotalInvested = g.Sum(x => x.inv.InvestedAmount)
+                }
+            ).ToListAsync();
+
+            return Ok(result);
+        }
+
     }
 }

@@ -54,6 +54,9 @@ const LoginScreen = ({ navigation }: Props) => {
       <Text onPress={() => navigation.navigate('Register')} style={styles.link}>
         Don't have an account? Register
       </Text>
+     <Text onPress={() => navigation.navigate('AdminWithdrawals')} style={styles.adminLink}>
+      ➤ Enter Admin Panel
+    </Text>
     </View>
   );
 };
@@ -69,6 +72,12 @@ const styles = StyleSheet.create({
     borderRadius: 5,
   },
   link: { marginTop: 10, color: 'blue', textAlign: 'center' },
+  adminLink: {
+    marginTop: 20,
+    color: 'green',
+    textAlign: 'center',
+    fontWeight: 'bold',
+  },
 });
 
 export default LoginScreen;

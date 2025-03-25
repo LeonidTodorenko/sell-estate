@@ -83,7 +83,7 @@ namespace RealEstateInvestment.Controllers
             return Ok(new { message = "Инвестиции распределены" });
         }
 
-        // ✅ Получить инвестиции пользователя
+        // Get user investments
         [HttpGet("user/{userId}")]
         public async Task<IActionResult> GetUserInvestments(Guid userId)
         {
@@ -93,5 +93,64 @@ namespace RealEstateInvestment.Controllers
 
             return Ok(investments);
         }
+
+        [HttpGet("all")]
+        public async Task<IActionResult> GetAllInvestments()
+        {
+            var result = await (
+                from i in _context.Investments
+                join u in _context.Users on i.UserId equals u.Id
+                join p in _context.Properties on i.PropertyId equals p.Id
+                orderby i.CreatedAt descending
+                select new
+                {
+                    InvestmentId = i.Id,
+                    UserId = u.Id,
+                    UserName = u.FullName,
+                    PropertyName = p.Title,
+                    i.Shares,
+                    i.InvestedAmount,
+                    i.CreatedAt
+                }
+            ).ToListAsync();
+
+            return Ok(result);
+        }
+
+        [HttpGet("kyc/pending")]
+        public async Task<IActionResult> GetUsersWithPendingKyc()
+        {
+            var users = await _context.Users
+                .Where(u => u.KycStatus == "pending")
+                .OrderBy(u => u.CreatedAt)
+                .ToListAsync();
+
+            return Ok(users);
+        }
+
+        [HttpPost("{id}/kyc/verify")]
+        public async Task<IActionResult> VerifyKyc(Guid id)
+        {
+            var user = await _context.Users.FindAsync(id);
+            if (user == null) return NotFound();
+
+            user.KycStatus = "verified";
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "User KYC verified" });
+        }
+
+        [HttpPost("{id}/kyc/reject")]
+        public async Task<IActionResult> RejectKyc(Guid id)
+        {
+            var user = await _context.Users.FindAsync(id);
+            if (user == null) return NotFound();
+
+            user.KycStatus = "rejected";
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "User KYC rejected" });
+        }
+
     }
 }
