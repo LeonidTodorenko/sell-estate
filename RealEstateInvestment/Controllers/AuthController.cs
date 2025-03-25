@@ -20,31 +20,31 @@ namespace RealEstateInvestment.Controllers
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
             if (_context.Users.Any(u => u.Email == request.Email))
-                return BadRequest(new { message = "Email уже используется" });
+                return BadRequest(new { message = "Email is in use" });
 
             var user = new User
             {
                 Email = request.Email,
                 FullName = request.FullName,
-                PasswordHash = PasswordHasher.HashPassword(request.Password)
+                PasswordHash = request.Password //PasswordHasher.HashPassword(request.Password) // todo later hash or jwt
             };
 
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
-            return Ok(new { message = "Регистрация успешна" });
+            return Ok(new { message = "Registered!" });
         }
 
         [HttpPost("login")]
         public IActionResult Login([FromBody] LoginRequest request)
         {
             var user = _context.Users.FirstOrDefault(u => u.Email == request.Email);
-            if (user == null || !PasswordHasher.VerifyPassword(request.Password, user.PasswordHash))
-                return Unauthorized(new { message = "Неверный email или пароль" });
+            if (user == null || user.PasswordHash != request.Password)    // todo later hash or jwt
+                return Unauthorized(new { message = "Invalid email or password" });
 
             return Ok(new
             {
-                message = "Вход выполнен",
+                message = "Login successful",
                 userId = user.Id,
                 fullName = user.FullName,
                 email = user.Email
