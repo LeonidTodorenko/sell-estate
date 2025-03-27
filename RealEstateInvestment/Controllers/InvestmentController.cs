@@ -2,7 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateInvestment.Data;
 using RealEstateInvestment.Models;
- 
+
 namespace RealEstateInvestment.Controllers
 {
     [ApiController]
@@ -16,40 +16,40 @@ namespace RealEstateInvestment.Controllers
             _context = context;
         }
 
-        // ✅ Инвестор подаёт заявку на покупку долей
+        //   An investor submits an application to purchase shares
         [HttpPost("apply")]
         public async Task<IActionResult> ApplyForInvestment([FromBody] Investment investmentRequest)
         {
             var property = await _context.Properties.FindAsync(investmentRequest.PropertyId);
-            if (property == null) return NotFound(new { message = "Объект не найден" });
+            if (property == null) return NotFound(new { message = "Object not found" });
 
             if (DateTime.UtcNow > property.ApplicationDeadline)
-                return BadRequest(new { message = "Срок подачи заявок истёк" });
+                return BadRequest(new { message = "The application deadline has expired" });
 
             if (property.AvailableShares < investmentRequest.Shares)
-                return BadRequest(new { message = "Недостаточно свободных долей" });
+                return BadRequest(new { message = "Not enough free shares" });
 
-            // Если инвестор предлагает оплатить Upfront Payment, он получает приоритетное право
+            // If an investor offers to pay the Upfront Payment, they will receive priority
             if (investmentRequest.InvestedAmount >= property.UpfrontPayment)
             {
                 property.PriorityInvestorId = investmentRequest.UserId;
             }
 
-            // Сохраняем заявку
+            // Save the application
             _context.Investments.Add(investmentRequest);
             await _context.SaveChangesAsync();
-            return Ok(new { message = "Заявка подана" });
+            return Ok(new { message = "The application has been submitted" });
         }
 
-        // ✅ Завершаем процесс покупки долей (используется после истечения срока заявок)
+        // Completing the share purchase process (used after the bid period expires)
         [HttpPost("finalize/{propertyId}")]
         public async Task<IActionResult> FinalizeInvestment(Guid propertyId)
         {
             var property = await _context.Properties.FindAsync(propertyId);
-            if (property == null) return NotFound(new { message = "Объект не найден" });
+            if (property == null) return NotFound(new { message = "Object not found" });
 
             if (DateTime.UtcNow < property.ApplicationDeadline)
-                return BadRequest(new { message = "Срок подачи заявок ещё не истёк" });
+                return BadRequest(new { message = "The deadline for applications has not yet expired" });
 
             var priorityInvestor = await _context.Investments
                 .Where(i => i.PropertyId == propertyId && i.UserId == property.PriorityInvestorId)
@@ -57,15 +57,15 @@ namespace RealEstateInvestment.Controllers
 
             if (priorityInvestor != null)
             {
-                // Приоритетный инвестор выкупает все доступные доли
+                // The priority investor buys out all available shares
                 property.AvailableShares = 0;
             }
             else
             {
-                // Если никто не внёс Upfront Payment, доли распределяются по заявкам
+                // If no one has made an Upfront Payment, shares are distributed among applications
                 var investments = await _context.Investments
                     .Where(i => i.PropertyId == propertyId)
-                    .OrderByDescending(i => i.InvestedAmount) // Чем больше сумма, тем выше шанс получить доли
+                    .OrderByDescending(i => i.InvestedAmount) // The higher the amount, the higher the chance of getting shares
                     .ToListAsync();
 
                 foreach (var investment in investments)
@@ -80,7 +80,7 @@ namespace RealEstateInvestment.Controllers
 
             property.Status = "sold";
             await _context.SaveChangesAsync();
-            return Ok(new { message = "Инвестиции распределены" });
+            return Ok(new { message = "Investments distributed" });
         }
 
         // Get user investments

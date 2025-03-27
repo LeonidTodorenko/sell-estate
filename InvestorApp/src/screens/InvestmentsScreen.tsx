@@ -1,21 +1,35 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet } from 'react-native';
+import { View, Text, FlatList, StyleSheet, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import api from '../api';
 
 interface Investment {
   id: string;
-  property: string;
-  amount: string;
+  propertyId: string;
+  shares: number;
+  investedAmount: number;
+  createdAt: string;
 }
 
 const InvestmentsScreen = () => {
   const [investments, setInvestments] = useState<Investment[]>([]);
 
+  const loadInvestments = async () => {
+    try {
+      const stored = await AsyncStorage.getItem('user');
+      if (!stored) return Alert.alert('Error', 'No user found');
+
+      const user = JSON.parse(stored);
+      const response = await api.get(`/investments/user/${user.userId}`);
+      setInvestments(response.data);
+    } catch (err) {
+      console.error(err);
+      Alert.alert('Error', 'Failed to load investments');
+    }
+  };
+
   useEffect(() => {
-    // TODO: Replace with API call
-    setInvestments([
-      { id: '1', property: 'Dubai Marina Apartment', amount: '5000 USD' },
-      { id: '2', property: 'Palm Jumeirah Villa', amount: '10000 USD' },
-    ]);
+    loadInvestments();
   }, []);
 
   return (
@@ -26,8 +40,10 @@ const InvestmentsScreen = () => {
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <View style={styles.card}>
-            <Text>Property: {item.property}</Text>
-            <Text>Amount: {item.amount}</Text>
+            <Text>Property ID: {item.propertyId}</Text>
+            <Text>Shares: {item.shares}</Text>
+            <Text>Invested: {item.investedAmount} USD</Text>
+            <Text>Date: {new Date(item.createdAt).toLocaleDateString()}</Text>
           </View>
         )}
       />

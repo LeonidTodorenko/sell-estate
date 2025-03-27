@@ -37,15 +37,29 @@ namespace RealEstateInvestment.Controllers
 
         // ✅ Заблокировать пользователя
         [HttpPost("{id}/block")]
-        public async Task<IActionResult> BlockUser(Guid id)
+        public async Task<IActionResult> ToggleBlockUser(Guid id)
         {
             var user = await _context.Users.FindAsync(id);
-            if (user == null) return NotFound(new { message = "Пользователь не найден" });
+            if (user == null) return NotFound(new { message = "User not found" });
 
-            user.IsBlocked = true;
+            user.IsBlocked = !user.IsBlocked;
             await _context.SaveChangesAsync();
-            return Ok(new { message = "Пользователь заблокирован" });
+
+            return Ok(new { message = user.IsBlocked ? "User blocked" : "User unblocked" });
         }
+
+        // todo подумать
+        //[HttpPost("{id}/block")]
+        //public async Task<IActionResult> ToggleBlockUser(Guid id)
+        //{
+        //    var user = await _context.Users.FindAsync(id);
+        //    if (user == null) return NotFound();
+
+        //    user.IsBlocked = !user.IsBlocked;
+        //    await _context.SaveChangesAsync();
+
+        //    return Ok(new { message = user.IsBlocked ? "User blocked" : "User unblocked" });
+        //}
 
         // ✅ Разблокировать пользователя
         [HttpPost("{id}/unblock")]
@@ -84,16 +98,6 @@ namespace RealEstateInvestment.Controllers
             return Ok(users);
         }
 
-        [HttpPost("{id}/block")]
-        public async Task<IActionResult> ToggleBlockUser(Guid id)
-        {
-            var user = await _context.Users.FindAsync(id);
-            if (user == null) return NotFound();
-
-            user.IsBlocked = !user.IsBlocked;
-            await _context.SaveChangesAsync();
-
-            return Ok(new { message = user.IsBlocked ? "User blocked" : "User unblocked" });
-        }
+       
     }
 }

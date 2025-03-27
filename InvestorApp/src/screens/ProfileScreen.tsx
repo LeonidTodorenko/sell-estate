@@ -37,14 +37,14 @@ const ProfileScreen = ({ navigation }: Props) => {
   if (!user) {
     return (
       <View style={styles.container}>
-        <Text>Loading profile...</Text>
+        <Text>Loading account...</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Profile</Text>
+      <Text style={styles.title}>Account</Text>
       <Text>Full Name: {user.fullName}</Text>
       <Text>Email: {user.email}</Text>
       <Text>Wallet Balance: {user.walletBalance}</Text>
@@ -52,9 +52,9 @@ const ProfileScreen = ({ navigation }: Props) => {
       <View style={styles.buttons}>
         <Button title="My Investments" onPress={() => navigation.navigate('Investments')} />
         <View style={{ height: 10 }} />
-        <Button        title="Withdraw Funds"        onPress={() => navigation.navigate('Withdraw')}      />
+        <Button title="Withdraw Funds" onPress={() => navigation.navigate('Withdraw')}      />
         <View style={{ height: 10 }} />
-        <Button title="Investment History" onPress={() => navigation.navigate('MyInvestments')} />
+        <Button title="Stake History" onPress={() => navigation.navigate('MyInvestments')} />
         <View style={{ height: 10 }} />
         <Button title="My Properties" onPress={() => navigation.navigate('MyProperties')} />
         <View style={{ height: 10 }} />

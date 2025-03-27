@@ -51,6 +51,11 @@ const AdminWithdrawalsScreen = () => {
 
       <Button title="Process KYC" onPress={() => navigation.navigate('AdminKyc')} />
 
+      <Button title="📊 View Stats" onPress={() => navigation.navigate('AdminStats')} />
+
+      <Button title="🏠 Manage Properties" onPress={() => navigation.navigate('AdminProperties')} />
+
+
       <FlatList
         data={withdrawals}
         keyExtractor={(item) => item.id}

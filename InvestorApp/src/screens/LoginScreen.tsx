@@ -13,12 +13,12 @@ const LoginScreen = ({ navigation }: Props) => {
 
   const handleLogin = async () => {
     try {
-        Alert.alert('start!');
+     
       const response = await api.post('/auth/login', { email, password });
-      Alert.alert('start2!');
+     
       const user = response.data;
       await AsyncStorage.setItem('user', JSON.stringify(user));
-      Alert.alert('Login!');
+     
       navigation.navigate('Profile');
     } catch (error: any) {
         let message = 'Something went wrong';

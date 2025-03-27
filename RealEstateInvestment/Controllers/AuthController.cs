@@ -47,7 +47,8 @@ namespace RealEstateInvestment.Controllers
                 message = "Login successful",
                 userId = user.Id,
                 fullName = user.FullName,
-                email = user.Email
+                email = user.Email,
+                walletBalance = user.WalletBalance,
             });
         }
     }
