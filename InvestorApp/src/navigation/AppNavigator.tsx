@@ -20,6 +20,7 @@ import AdminKycScreen from '../screens/AdminKycScreen';
 import AdminStatsScreen from '../screens/AdminStatsScreen';
 import AdminPropertiesScreen from '../screens/AdminPropertiesScreen';
 import PropertyFormScreen from '../screens/PropertyFormScreen';
+import PropertyDetailScreen from '../screens/PropertyDetailScreen';
 
 export type RootStackParamList = {
   Login: undefined;
@@ -39,6 +40,7 @@ export type RootStackParamList = {
   AdminStats: undefined;
   AdminProperties: undefined;
   PropertyForm: { property?: any } | undefined;
+  PropertyDetail: { propertyId: string };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -64,6 +66,7 @@ export default function AppNavigator() {
         <Stack.Screen name="AdminStats" component={AdminStatsScreen} options={{ title: 'Admin Stats' }} />
         <Stack.Screen name="AdminProperties" component={AdminPropertiesScreen} options={{ title: 'Admin: Properties' }} />
         <Stack.Screen name="PropertyForm" component={PropertyFormScreen} options={{ title: 'Property Form' }} />
+        <Stack.Screen name="PropertyDetail" component={PropertyDetailScreen} options={{ title: 'Property details' }} />
 
       </Stack.Navigator>
     </NavigationContainer>

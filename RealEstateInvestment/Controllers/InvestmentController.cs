@@ -152,5 +152,28 @@ namespace RealEstateInvestment.Controllers
             return Ok(new { message = "User KYC rejected" });
         }
 
+        [HttpGet("with-details/{userId}")]
+        public async Task<IActionResult> GetUserInvestmentsWithDetails(Guid userId)
+        {
+            var result = await (
+                from i in _context.Investments
+                join p in _context.Properties on i.PropertyId equals p.Id
+                where i.UserId == userId
+                select new
+                {
+                    InvestmentId = i.Id,
+                    PropertyId = p.Id,
+                    PropertyTitle = p.Title,
+                    i.Shares,
+                    i.InvestedAmount,
+                    i.CreatedAt,
+                    Percent = Math.Round(i.InvestedAmount / p.Price * 100, 2)
+                }
+            ).ToListAsync();
+
+            return Ok(result);
+        }
+
+
     }
 }
