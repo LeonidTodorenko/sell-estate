@@ -1,0 +1,24 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+<!--
+    <application
+        android:name=".MainApplication"
+        android:label="InvestorApp"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:theme="@style/AppTheme"
+        tools:replace="android:label, android:name">
+        
+        ...
+        
+    </application>
+	
+	
+	-->
+	
+	<!-- dir InvestorApp\node_modules\react-native-maps\android\src\main -->
+</manifest>
