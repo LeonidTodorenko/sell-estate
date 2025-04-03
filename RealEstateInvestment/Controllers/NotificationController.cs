@@ -1,11 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RealEstateInvestment.Data;
-using RealEstateInvestment.Models;
-using System;
-using System.Linq;
-using System.Threading.Tasks;
-
+ 
 namespace RealEstateInvestment.Controllers
 {
     [ApiController]
@@ -19,7 +15,7 @@ namespace RealEstateInvestment.Controllers
             _context = context;
         }
 
-        // ✅ Получить уведомления пользователя
+        // Get user notifications
         [HttpGet("{userId}")]
         public async Task<IActionResult> GetNotifications(Guid userId)
         {
@@ -30,17 +26,17 @@ namespace RealEstateInvestment.Controllers
             return Ok(notifications);
         }
 
-        // ✅ Отметить уведомление как прочитанное
+        //Mark notification as read
         [HttpPost("{id}/read")]
         public async Task<IActionResult> MarkAsRead(Guid id)
         {
             var notification = await _context.Notifications.FindAsync(id);
-            if (notification == null) return NotFound(new { message = "Уведомление не найдено" });
+            if (notification == null) return NotFound(new { message = "Notification not found" });
 
             notification.IsRead = true;
             await _context.SaveChangesAsync();
 
-            return Ok(new { message = "Уведомление прочитано" });
+            return Ok(new { message = "Notification read" });
         }
     }
 }

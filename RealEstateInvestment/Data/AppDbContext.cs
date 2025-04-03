@@ -13,6 +13,7 @@ namespace RealEstateInvestment.Data
         public DbSet<RentalIncome> RentalIncomes { get; set; }
         public DbSet<WithdrawalRequest> WithdrawalRequests { get; set; }
         public DbSet<Notification> Notifications { get; set; }
+        public DbSet<KycDocument> KycDocuments { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

@@ -1,0 +1,19 @@
+﻿services:
+  - type: web
+    name: real-estate-backend
+    runtime: docker
+    plan: free
+    repo: https://github.com/LeonidTodorenko/sell-estate
+    branch: main
+    buildFilter:
+      paths:
+        - RealEstateInvestment/**
+    envVars:
+      - key: DB_CONNECTION_STRING
+        value: |
+          Host=dpg-cvndo963jp1c738hqong-a.frankfurt-postgres.render.com;
+          Database=realestate_wkn3;
+          Username=postgres1;
+          Password=sH00bbhwC82925C71yDiNIUSy1BmlFk5;
+          SSL Mode=Require;
+          Trust Server Certificate=true;

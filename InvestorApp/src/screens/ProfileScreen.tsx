@@ -3,6 +3,7 @@ import { View, Text, Button, StyleSheet, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import theme from '../constants/theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
 
@@ -60,15 +61,33 @@ const ProfileScreen = ({ navigation }: Props) => {
         <View style={{ height: 10 }} />
         <Button title="Withdrawal History" onPress={() => navigation.navigate('MyWithdrawals')} />
         <View style={{ height: 10 }} />
+        <Button title="Upload KYC" onPress={() => navigation.navigate('UploadKyc')} />
+        <View style={{ height: 10 }} />
         <Button title="Logout" onPress={handleLogout} color="red" />
       </View>
     </View>
   );
 };
-
+ 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', paddingHorizontal: 20 },
-  title: { fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 },
+  container: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+    paddingHorizontal: 20,
+    justifyContent: 'center',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: theme.colors.text,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  text: {
+    color: theme.colors.text,
+    fontSize: 16,
+    marginBottom: 10,
+  },
   buttons: { marginTop: 30 },
 });
 

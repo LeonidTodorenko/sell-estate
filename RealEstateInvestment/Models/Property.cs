@@ -24,7 +24,12 @@ namespace RealEstateInvestment.Models
         [Required]
         public string Status { get; set; } = "available"; // available, sold, rented
 
+        [Required]
+        public string ListingType { get; set; } = "sale";
+
         public string? ImageBase64 { get; set; }
+
+        public DateTime? ExpectedCompletionDate { get; set; }
 
         // 🔹 Payment Plan 
         public decimal UpfrontPayment { get; set; }  // Initial payment
@@ -35,6 +40,10 @@ namespace RealEstateInvestment.Models
 
         public decimal MonthlyRentalIncome { get; set; } = 0; // Income per month
         public DateTime LastPayoutDate { get; set; } = DateTime.UtcNow; // Last payment date
+         
+        // map
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
 
     }
 }

@@ -19,7 +19,11 @@ interface Property {
   totalShares: number;
   availableShares: number;
   status: string;
+  listingType: string;
   imageBase64?: string;
+  latitude: number;
+  longitude: number;
+  expectedCompletionDate: Date; //todo test
 }
  
 const AdminPropertiesScreen = () => {
@@ -93,6 +97,7 @@ const AdminPropertiesScreen = () => {
             <Text>📍 {item.location}</Text>
             <Text>💰 {item.price} USD</Text>
             <Text>📊 {item.availableShares}/{item.totalShares} Shares</Text>
+            <Text>Type: {item.listingType === 'sale' ? 'For Sale' : 'For Rent'}</Text>
             <Text>Status: {item.status}</Text>
              
             {item.imageBase64 && (
@@ -103,6 +108,16 @@ const AdminPropertiesScreen = () => {
                 />
               </View>
             )}
+
+            <Button
+              title="📍 View on Map"
+              onPress={() => navigation.navigate('PropertyMap', {
+                latitude: item.latitude,
+                longitude: item.longitude,
+                title: item.title
+              })}
+/>
+          <Text>🏗 Completion Date: {item.expectedCompletionDate?.split('T')[0]}</Text>
  
             <Button title="📷 Upload Image" onPress={() => uploadImage(item.id)} />
 

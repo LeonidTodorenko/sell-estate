@@ -21,6 +21,10 @@ import AdminStatsScreen from '../screens/AdminStatsScreen';
 import AdminPropertiesScreen from '../screens/AdminPropertiesScreen';
 import PropertyFormScreen from '../screens/PropertyFormScreen';
 import PropertyDetailScreen from '../screens/PropertyDetailScreen';
+import UploadKycScreen from '../screens/UploadKycScreen';
+import TopUpScreen from '../screens/TopUpScreen';
+import PropertyMapScreen from '../screens/PropertyMapScreen';
+
 
 export type RootStackParamList = {
   Login: undefined;
@@ -41,6 +45,9 @@ export type RootStackParamList = {
   AdminProperties: undefined;
   PropertyForm: { property?: any } | undefined;
   PropertyDetail: { propertyId: string };
+  UploadKyc: undefined;
+  TopUp: undefined;
+  PropertyMap: { latitude: number; longitude: number; title: string };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -67,6 +74,9 @@ export default function AppNavigator() {
         <Stack.Screen name="AdminProperties" component={AdminPropertiesScreen} options={{ title: 'Admin: Properties' }} />
         <Stack.Screen name="PropertyForm" component={PropertyFormScreen} options={{ title: 'Property Form' }} />
         <Stack.Screen name="PropertyDetail" component={PropertyDetailScreen} options={{ title: 'Property details' }} />
+        <Stack.Screen name="UploadKyc" component={UploadKycScreen} options={{ title: 'Upload KYC' }} />
+        <Stack.Screen name="TopUp" component={TopUpScreen} options={{ title: 'Top Up Balance' }} />
+        <Stack.Screen name="PropertyMap" component={PropertyMapScreen} options={{ title: 'Map' }} />
 
       </Stack.Navigator>
     </NavigationContainer>

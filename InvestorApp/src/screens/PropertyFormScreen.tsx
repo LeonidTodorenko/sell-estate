@@ -16,6 +16,15 @@ const PropertyFormScreen = ({ route, navigation }: Props) => {
   const [upfrontPayment, setUpfrontPayment] = useState(existing?.upfrontPayment?.toString() || '');
   const [deadline, setDeadline] = useState(existing?.applicationDeadline?.split('T')[0] || '');
 
+  const [listingType, setListingType] = useState(existing?.listingType || 'sale');
+
+  const [latitude, setLatitude] = useState(existing?.latitude?.toString() || '');
+  const [longitude, setLongitude] = useState(existing?.longitude?.toString() || '');
+
+  const [completionDate, setCompletionDate] = useState(
+    existing?.expectedCompletionDate?.split('T')[0] || ''
+  );
+ 
   const handleSubmit = async () => {
     if (!title || !location || !price || !totalShares) {
       Alert.alert('Validation', 'Please fill all required fields');
@@ -29,6 +38,10 @@ const PropertyFormScreen = ({ route, navigation }: Props) => {
       totalShares: parseInt(totalShares),
       upfrontPayment: parseFloat(upfrontPayment) || 0,
       applicationDeadline: new Date(deadline).toISOString(),
+      listingType,
+      latitude: parseFloat(latitude),
+      longitude: parseFloat(longitude),
+      expectedCompletionDate: new Date(completionDate).toISOString(),
     };
 
     try {
@@ -57,6 +70,35 @@ const PropertyFormScreen = ({ route, navigation }: Props) => {
       <TextInput style={styles.input} placeholder="Total Shares" keyboardType="numeric" value={totalShares} onChangeText={setTotalShares} />
       <TextInput style={styles.input} placeholder="Upfront Payment" keyboardType="numeric" value={upfrontPayment} onChangeText={setUpfrontPayment} />
       <TextInput style={styles.input} placeholder="Application Deadline (YYYY-MM-DD)" value={deadline} onChangeText={setDeadline} />
+      <Text>Listing Type:</Text>
+      <Button
+        title={listingType === 'sale' ? 'For Sale (Tap to switch)' : 'For Rent (Tap to switch)'}
+        onPress={() => setListingType(listingType === 'sale' ? 'rent' : 'sale')}
+      />
+
+      <TextInput
+        style={styles.input}
+        placeholder="Latitude"
+        keyboardType="numeric"
+        value={latitude}
+        onChangeText={setLatitude}
+      />
+
+      <TextInput
+        style={styles.input}
+        placeholder="Longitude"
+        keyboardType="numeric"
+        value={longitude}
+        onChangeText={setLongitude}
+      />
+
+      <TextInput
+        style={styles.input}
+        placeholder="Expected Completion Date (YYYY-MM-DD)"
+        value={completionDate}
+        onChangeText={setCompletionDate}
+      />
+
 
       <Button title={existing ? 'Update' : 'Create'} onPress={handleSubmit} />
     </ScrollView>

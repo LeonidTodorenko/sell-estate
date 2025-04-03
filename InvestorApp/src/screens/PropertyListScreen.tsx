@@ -11,6 +11,10 @@ interface Property {
   price: number;
   location: string;
   availableShares: number;
+  listingType: string;
+  latitude: number;
+  longitude: number;
+  title: string;
 }
 
 const PropertyListScreen = () => {
@@ -41,6 +45,17 @@ const PropertyListScreen = () => {
             <Text style={styles.name}>{item.name}</Text>
             <Text>Location: {item.location}</Text>
             <Text>Price: {item.price} USD</Text>
+            <Text>Type: {item.listingType === 'sale' ? 'For Sale' : 'For Rent'}</Text>
+
+            <Button
+              title="📍 View on Map"
+              onPress={() => navigation.navigate('PropertyMap', {
+                latitude: item.latitude,
+                longitude: item.longitude,
+                title: item.title
+              })}
+            />
+
             <Text>Available Shares: {item.availableShares}</Text>
             <Button
               title="Invest"

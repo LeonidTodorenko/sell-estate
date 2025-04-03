@@ -97,7 +97,26 @@ namespace RealEstateInvestment.Controllers
 
             return Ok(users);
         }
+        [HttpPost("wallet/topup")]
+        public async Task<IActionResult> TopUp([FromBody] TopUpRequest req)
+        {
+            var user = await _context.Users.FindAsync(req.UserId);
+            if (user == null) return NotFound();
 
-       
+            user.WalletBalance += req.Amount;
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Balance updated" });
+        }
+
+        // todo move
+        public class TopUpRequest
+        {
+            public Guid UserId { get; set; }
+            public decimal Amount { get; set; }
+        }
+
+
+
     }
 }

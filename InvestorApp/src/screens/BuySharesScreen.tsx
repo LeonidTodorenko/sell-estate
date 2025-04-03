@@ -1,64 +1,94 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
-import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
-import { RootStackParamList } from '../navigation/AppNavigator';
-import api from '../api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
+import api from '../api';
+import { RootStackParamList } from '../navigation/AppNavigator';
 
-type BuySharesScreenRouteProp = RouteProp<RootStackParamList, 'BuyShares'>;
+type BuyRouteProp = RouteProp<RootStackParamList, 'BuyShares'>;
 
 const BuySharesScreen = () => {
-  const route = useRoute<BuySharesScreenRouteProp>();
+  const route = useRoute<BuyRouteProp>();
   const navigation = useNavigation();
-  const { propertyId, propertyName } = route.params;
+  const propertyId = route.params.propertyId;
 
   const [amount, setAmount] = useState('');
+  const [sharePrice, setSharePrice] = useState<number | null>(null);
+
+  useEffect(() => {
+    const loadProperty = async () => {
+      try {
+        const res = await api.get(`/properties`);
+        const prop = res.data.find((p: any) => p.id === propertyId);
+        if (!prop) return Alert.alert('Error', 'Property not found');
+
+        const pricePerShare = prop.price / prop.totalShares;
+        setSharePrice(pricePerShare);
+      } catch (err) {
+        console.error(err);
+        Alert.alert('Error', 'Failed to load property');
+      }
+    };
+
+    loadProperty();
+  }, [propertyId]);
 
   const handleBuy = async () => {
-    try {
-      const stored = await AsyncStorage.getItem('user');
-      if (!stored) return Alert.alert('Session error', 'User not found');
+    const parsed = parseFloat(amount);
+    if (!parsed || parsed <= 0) return Alert.alert('Invalid', 'Enter valid amount');
 
-      const user = JSON.parse(stored);
-      const response = await api.post('/investment', {
+    if (sharePrice && parsed % sharePrice !== 0) {
+      return Alert.alert('Invalid amount', `Investment must be a multiple of ${sharePrice.toFixed(2)} USD`);
+    }
+
+    const shares = Math.round(parsed / sharePrice!);
+
+    const stored = await AsyncStorage.getItem('user');
+    if (!stored) return Alert.alert('Error', 'No user found');
+
+    const user = JSON.parse(stored);
+
+    try {
+      await api.post('/investment/apply', {
         userId: user.userId,
-        propertyId: propertyId,
-        amount: parseFloat(amount),
+        propertyId,
+        shares,
+        investedAmount: parsed,
       });
-      console.log(response);
-      // todo response
-      Alert.alert('Success', 'Investment successful' );
+
+      Alert.alert('Success', 'Investment submitted');
       navigation.goBack();
-    } catch (error) {
-      console.error(error);
+    } catch (err) {
+      console.error(err);
       Alert.alert('Error', 'Failed to invest');
     }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Invest in {propertyName}</Text>
+      <Text style={styles.title}>Buy Shares</Text>
+      {sharePrice && <Text>Price per share: {sharePrice.toFixed(2)} USD</Text>}
       <TextInput
         style={styles.input}
-        placeholder="Amount (USD)"
+        placeholder="Amount to invest"
         keyboardType="numeric"
         value={amount}
         onChangeText={setAmount}
       />
-      <Button title="Buy Shares" onPress={handleBuy} />
+      <Button title="Invest" onPress={handleBuy} />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', padding: 20 },
-  title: { fontSize: 20, marginBottom: 20, textAlign: 'center', fontWeight: 'bold' },
+  container: { flex: 1, padding: 20 },
+  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 16, textAlign: 'center' },
   input: {
     borderWidth: 1,
     borderColor: '#ccc',
-    borderRadius: 6,
     padding: 10,
-    marginBottom: 20,
+    marginVertical: 20,
+    borderRadius: 6,
   },
 });
 

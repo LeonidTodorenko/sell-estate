@@ -62,6 +62,9 @@ namespace RealEstateInvestment.Controllers
             }
             else
             {
+                //
+                // добавить внутреннюю биржу 
+                // переделать на дату подачи - если только один не перекрыл всю сумму (сумма для старта, сумма пеймент плана, у админа есть возможность повысить стоимость объекта но shares остаются прежними  у тех кто купил первыми, добавить дату сдачи дома ожидаемую, добавить возможность выставлять объект с определенным числом SHARES , допустим распредление раз в месяц происходит)
                 // If no one has made an Upfront Payment, shares are distributed among applications
                 var investments = await _context.Investments
                     .Where(i => i.PropertyId == propertyId)

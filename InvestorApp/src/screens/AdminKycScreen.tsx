@@ -1,53 +1,64 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Button, FlatList, StyleSheet, Alert } from 'react-native';
+import { View, Text, FlatList, Button, StyleSheet, Alert, Image } from 'react-native';
 import api from '../api';
 
-interface User {
+interface KycDoc {
   id: string;
-  fullName: string;
-  email: string;
-  kycStatus: string;
+  userId: string;
+  type: string;
+  base64File: string;
+  status: string;
+  uploadedAt: string;
 }
 
 const AdminKycScreen = () => {
-  const [users, setUsers] = useState<User[]>([]);
+  const [docs, setDocs] = useState<KycDoc[]>([]);
 
-  const loadKycUsers = async () => {
+  const load = async () => {
     try {
-      const res = await api.get('/users/kyc/pending');
-      setUsers(res.data);
+      const res = await api.get('/kyc/pending');
+      setDocs(res.data);
     } catch (err) {
-      Alert.alert('Error', 'Failed to load users');
+      console.error(err);
+      Alert.alert('Error', 'Failed to load KYC documents');
+    }
+  };
+
+  const handleAction = async (id: string, action: 'approve' | 'reject') => {
+    try {
+      await api.post(`/kyc/${id}/${action}`);
+      Alert.alert('Success', `Document ${action}d`);
+      load();
+    } catch (err) {
+      console.error(err);
+      Alert.alert('Error', 'Failed to update status');
     }
   };
 
   useEffect(() => {
-    loadKycUsers();
+    load();
   }, []);
-
-  const handleAction = async (userId: string, action: 'verify' | 'reject') => {
-    try {
-      await api.post(`/users/${userId}/kyc/${action}`);
-      loadKycUsers();
-    } catch (err) {
-      Alert.alert('Error', 'Failed to update KYC status');
-    }
-  };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>KYC Requests</Text>
+      <Text style={styles.title}>KYC Review</Text>
       <FlatList
-        data={users}
+        data={docs}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <View style={styles.card}>
-            <Text>Name: {item.fullName}</Text>
-            <Text>Email: {item.email}</Text>
-            <Text>Status: {item.kycStatus}</Text>
-
+            <Text>User ID: {item.userId}</Text>
+            <Text>Type: {item.type}</Text>
+            <Text>Status: {item.status}</Text>
+            <Text>Uploaded: {new Date(item.uploadedAt).toLocaleDateString()}</Text>
+            {item.base64File && (
+              <Image
+                source={{ uri: `data:image/jpeg;base64,${item.base64File}` }}
+                style={styles.image}
+              />
+            )}
             <View style={styles.buttonRow}>
-              <Button title="Verify" onPress={() => handleAction(item.id, 'verify')} />
+              <Button title="Approve" onPress={() => handleAction(item.id, 'approve')} />
               <Button title="Reject" color="red" onPress={() => handleAction(item.id, 'reject')} />
             </View>
           </View>
@@ -65,7 +76,13 @@ const styles = StyleSheet.create({
     borderColor: '#ccc',
     padding: 12,
     borderRadius: 6,
-    marginBottom: 10,
+    marginBottom: 12,
+  },
+  image: {
+    width: '100%',
+    height: 200,
+    resizeMode: 'contain',
+    marginTop: 10,
   },
   buttonRow: {
     flexDirection: 'row',
