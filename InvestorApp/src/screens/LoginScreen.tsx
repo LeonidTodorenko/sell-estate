@@ -31,7 +31,22 @@ const LoginScreen = ({ navigation }: Props) => {
       Alert.alert('Login failed', 'Invalid email or password' + message);
     }
   };
-
+/*
+  const testApi = async () => {
+    try {
+      const response = await api.get('/properties'); 
+      Alert.alert('Success', JSON.stringify(response.data).slice(0, 200));
+    } catch (error: any) {
+      let message = 'API call failed';
+      if (error.response && error.response.data) {
+        message = JSON.stringify(error.response.data);
+      } else if (error.message) {
+        message = error.message;
+      }
+      Alert.alert('API Error', message);
+    }
+  };
+*/
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Login</Text>
@@ -57,6 +72,7 @@ const LoginScreen = ({ navigation }: Props) => {
      <Text onPress={() => navigation.navigate('AdminWithdrawals')} style={styles.adminLink}>
       ➤ Enter Admin Panel
     </Text>
+     {/* <Button title="Test API" onPress={testApi} color="orange" /> */}
     </View>
   );
 };
