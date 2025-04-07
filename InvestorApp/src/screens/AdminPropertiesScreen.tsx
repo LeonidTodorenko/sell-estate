@@ -82,9 +82,15 @@ const AdminPropertiesScreen = () => {
       await api.post(`/investments/finalize/${id}`);
       Alert.alert('Success', 'Auction finalized');
       loadProperties();
-    } catch (err) {
-      console.error(err);
-      Alert.alert('Error', 'Failed to finalize auction');
+    } catch (error: any) {
+      let message = 'Failed to finalize auction ';
+      console.error(error);
+      if (error.response && error.response.data) {
+        message = JSON.stringify(error.response.data);
+      } else if (error.message) {
+        message = error.message;
+      }
+      Alert.alert('Error',  'Failed to finalize auction ' + message);
     }
   };
 
@@ -117,13 +123,35 @@ const AdminPropertiesScreen = () => {
               </View>
             )}
 
+            {/* <Button
+              title="📍 View on Map"
+              onPress={() => {
+                {
+                  
+               
+                  Alert.alert('Error', 'sd' +item.latitude + item.longitude);
+                }
+              }}
+            /> */}
+
             <Button
               title="📍 View on Map"
-              onPress={() => navigation.navigate('PropertyMap', {
-                latitude: item.latitude,
-                longitude: item.longitude,
-                title: item.title
-              })}
+              onPress={() => {
+                if (
+                  typeof item.latitude === 'number' &&
+                  typeof item.longitude === 'number' &&
+                  !isNaN(item.latitude) &&
+                  !isNaN(item.longitude)
+                ) {
+                  navigation.navigate('PropertyMap', {
+                    latitude: item.latitude,
+                    longitude: item.longitude,
+                    title: item.title,
+                  });
+                } else {
+                  Alert.alert('Error', 'latitude or longitude corrupted');
+                }
+              }}
             />
  
             <Text>

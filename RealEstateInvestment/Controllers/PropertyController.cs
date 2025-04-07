@@ -112,6 +112,8 @@ namespace RealEstateInvestment.Controllers
             existing.TotalShares = updated.TotalShares;
             existing.UpfrontPayment = updated.UpfrontPayment;
             existing.ApplicationDeadline = updated.ApplicationDeadline;
+            existing.Latitude = updated.Latitude;
+            existing.Longitude = updated.Longitude;
 
             await _context.SaveChangesAsync();
             return Ok(new { message = "Property updated" });
