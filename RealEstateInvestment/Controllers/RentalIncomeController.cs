@@ -16,22 +16,22 @@ namespace RealEstateInvestment.Controllers
             _context = context;
         }
 
-        // ✅ Выполнить выплаты инвесторам за аренду
+        // Make payments to investors for rent
         [HttpPost("payout/{propertyId}")]
         public async Task<IActionResult> ProcessRentalPayout(Guid propertyId)
         {
             var property = await _context.Properties.FindAsync(propertyId);
-            if (property == null) return NotFound(new { message = "Объект не найден" });
+            if (property == null) return NotFound(new { message = "Object not found" });
 
             if (DateTime.UtcNow.Subtract(property.LastPayoutDate).Days < 30)
-                return BadRequest(new { message = "Выплаты уже производились в этом месяце" });
+                return BadRequest(new { message = "Payments have already been made this month." });
 
             var investments = await _context.Investments
                 .Where(i => i.PropertyId == propertyId)
                 .ToListAsync();
 
             if (!investments.Any())
-                return BadRequest(new { message = "Нет инвесторов у данного объекта" });
+                return BadRequest(new { message = "There are no investors for this property" });
 
             decimal totalShares = investments.Sum(i => i.Shares);
             decimal totalIncome = property.MonthlyRentalIncome;
@@ -53,10 +53,10 @@ namespace RealEstateInvestment.Controllers
             property.LastPayoutDate = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
-            return Ok(new { message = "Выплаты инвесторам произведены" });
+            return Ok(new { message = "Payments to investors have been made" });
         }
 
-        // ✅ Получить историю выплат инвестора
+        // Get investor payment history
         [HttpGet("investor/{userId}")]
         public async Task<IActionResult> GetInvestorPayouts(Guid userId)
         {

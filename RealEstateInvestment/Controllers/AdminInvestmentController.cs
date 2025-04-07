@@ -1,11 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RealEstateInvestment.Data;
-using RealEstateInvestment.Models;
-using System;
-using System.Linq;
-using System.Threading.Tasks;
-
+ 
 namespace RealEstateInvestment.Controllers
 {
     [ApiController]
@@ -19,7 +15,7 @@ namespace RealEstateInvestment.Controllers
             _context = context;
         }
 
-        // ✅ Получить список всех инвестиций
+        // Get a list of all investments
         [HttpGet]
         public async Task<IActionResult> GetAllInvestments()
         {
@@ -27,28 +23,28 @@ namespace RealEstateInvestment.Controllers
             return Ok(investments);
         }
 
-        // ✅ Одобрить инвестицию
+        // Approve investment
         [HttpPost("{id}/approve")]
         public async Task<IActionResult> ApproveInvestment(Guid id)
         {
             var investment = await _context.Investments.FindAsync(id);
-            if (investment == null) return NotFound(new { message = "Инвестиция не найдена" });
+            if (investment == null) return NotFound(new { message = "Investment not found" });
 
             // Тут можно добавить логику подтверждения платежа
             await _context.SaveChangesAsync();
-            return Ok(new { message = "Инвестиция одобрена" });
+            return Ok(new { message = "Investment approved" });
         }
 
-        // ✅ Отклонить инвестицию
+        // Reject investment
         [HttpPost("{id}/reject")]
         public async Task<IActionResult> RejectInvestment(Guid id)
         {
             var investment = await _context.Investments.FindAsync(id);
-            if (investment == null) return NotFound(new { message = "Инвестиция не найдена" });
+            if (investment == null) return NotFound(new { message = "Investment not found" });
 
             _context.Investments.Remove(investment);
             await _context.SaveChangesAsync();
-            return Ok(new { message = "Инвестиция отклонена" });
+            return Ok(new { message = "Investment rejected" });
         }
     }
 }

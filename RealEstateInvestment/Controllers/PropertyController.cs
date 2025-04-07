@@ -2,7 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateInvestment.Data;
 using RealEstateInvestment.Models;
- 
+
 namespace RealEstateInvestment.Controllers
 {
     [ApiController]
@@ -34,7 +34,7 @@ namespace RealEstateInvestment.Controllers
         public async Task<IActionResult> CreateProperty([FromBody] Property property)
         {
             property.AvailableShares = property.TotalShares;
-           // property.ApplicationDeadline = DateTime.SpecifyKind(property.ApplicationDeadline, DateTimeKind.Utc);
+            // property.ApplicationDeadline = DateTime.SpecifyKind(property.ApplicationDeadline, DateTimeKind.Utc);
 
             try
             {
@@ -45,7 +45,7 @@ namespace RealEstateInvestment.Controllers
             {
                 return BadRequest(ex);
             }
-          
+
             return Ok(new { message = "Property added" });
         }
 

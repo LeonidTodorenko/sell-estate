@@ -12,7 +12,7 @@ namespace RealEstateInvestment.Controllers
         {
             return Ok(new
             {
-                message = "Оплата прошла успешно",
+                message = "Payment was successful",
                 transactionId = Guid.NewGuid()
             });
         }

@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, Button, StyleSheet, Alert } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/AppNavigator';
+// import { useNavigation } from '@react-navigation/native';
+// import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+// import { RootStackParamList } from '../navigation/AppNavigator';
 import api from '../api';
 
 interface Withdrawal {
@@ -15,7 +15,7 @@ interface Withdrawal {
 
 const AdminWithdrawalsScreen = () => {
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  //const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>(); 
 
   const loadData = async () => {
     try {

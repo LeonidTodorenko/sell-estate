@@ -15,7 +15,7 @@ namespace RealEstateInvestment.Controllers
             _context = context;
         }
 
-        // ✅ Получить список пользователей (только для админа)
+        // Get list of users (admin only)
         [HttpGet]
         public async Task<IActionResult> GetUsers()
         {
@@ -23,7 +23,7 @@ namespace RealEstateInvestment.Controllers
             return Ok(users);
         }
 
-        // ✅ Подтвердить KYC
+        // Confirm KYC
         [HttpPost("{id}/verify-kyc")]
         public async Task<IActionResult> VerifyKYC(Guid id)
         {
@@ -35,7 +35,7 @@ namespace RealEstateInvestment.Controllers
             return Ok(new { message = "KYC подтверждён" });
         }
 
-        // ✅ Заблокировать пользователя
+        // Block user
         [HttpPost("{id}/block")]
         public async Task<IActionResult> ToggleBlockUser(Guid id)
         {
@@ -61,7 +61,7 @@ namespace RealEstateInvestment.Controllers
         //    return Ok(new { message = user.IsBlocked ? "User blocked" : "User unblocked" });
         //}
 
-        // ✅ Разблокировать пользователя
+        // Unblock user
         [HttpPost("{id}/unblock")]
         public async Task<IActionResult> UnblockUser(Guid id)
         {
@@ -73,7 +73,7 @@ namespace RealEstateInvestment.Controllers
             return Ok(new { message = "Пользователь разблокирован" });
         }
 
-        // ✅ Изменить роль пользователя (инвестор / админ)
+        // Change user role (investor / admin)
         [HttpPost("{id}/change-role")]
         public async Task<IActionResult> ChangeUserRole(Guid id, [FromBody] string role)
         {
@@ -88,6 +88,7 @@ namespace RealEstateInvestment.Controllers
             return Ok(new { message = "Роль изменена" });
         }
 
+        // all users
         [HttpGet("all")]
         public async Task<IActionResult> GetAllUsers()
         {
@@ -97,6 +98,8 @@ namespace RealEstateInvestment.Controllers
 
             return Ok(users);
         }
+
+        // place some money to wallet
         [HttpPost("wallet/topup")]
         public async Task<IActionResult> TopUp([FromBody] TopUpRequest req)
         {

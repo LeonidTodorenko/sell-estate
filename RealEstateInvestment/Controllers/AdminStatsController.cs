@@ -1,11 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RealEstateInvestment.Data;
-using RealEstateInvestment.Models;
-using System;
-using System.Linq;
-using System.Threading.Tasks;
-
+ 
 namespace RealEstateInvestment.Controllers
 {
     [ApiController]

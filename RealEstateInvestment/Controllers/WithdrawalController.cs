@@ -2,10 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateInvestment.Data;
 using RealEstateInvestment.Models;
-using System;
-using System.Linq;
-using System.Threading.Tasks;
-
+ 
 namespace RealEstateInvestment.Controllers
 {
     [ApiController]
@@ -19,42 +16,42 @@ namespace RealEstateInvestment.Controllers
             _context = context;
         }
 
-        // ✅ Инвестор подаёт заявку на вывод средств
+        // The investor submits a request for withdrawal of funds
         [HttpPost("request")]
         public async Task<IActionResult> RequestWithdrawal([FromBody] WithdrawalRequest request)
         {
             var user = await _context.Users.FindAsync(request.UserId);
-            if (user == null) return NotFound(new { message = "Пользователь не найден" });
+            if (user == null) return NotFound(new { message = "User not found" });
 
             if (request.Amount <= 0 || request.Amount > user.WalletBalance)
-                return BadRequest(new { message = "Недостаточно средств" });
+                return BadRequest(new { message = "Insufficient funds" });
 
             user.WalletBalance -= request.Amount;
             _context.WithdrawalRequests.Add(request);
             await _context.SaveChangesAsync();
 
-            return Ok(new { message = "Заявка на вывод подана" });
+            return Ok(new { message = "Withdrawal request submitted" });
         }
 
-        // ✅ Администратор подтверждает вывод
+        // administrator confirms the conclusion
         [HttpPost("{id}/approve")]
         public async Task<IActionResult> ApproveWithdrawal(Guid id)
         {
             var request = await _context.WithdrawalRequests.FindAsync(id);
-            if (request == null) return NotFound(new { message = "Заявка не найдена" });
+            if (request == null) return NotFound(new { message = "Application not found" });
 
             request.Status = "approved";
             await _context.SaveChangesAsync();
 
-            return Ok(new { message = "Вывод одобрен" });
+            return Ok(new { message = "Conclusion approved" });
         }
 
-        // ✅ Администратор отклоняет вывод
+        //  administrator rejects the withdrawal.
         [HttpPost("{id}/reject")]
         public async Task<IActionResult> RejectWithdrawal(Guid id)
         {
             var request = await _context.WithdrawalRequests.FindAsync(id);
-            if (request == null) return NotFound(new { message = "Заявка не найдена" });
+            if (request == null) return NotFound(new { message = "Application not found" });
 
             var user = await _context.Users.FindAsync(request.UserId);
             if (user != null)
@@ -65,10 +62,10 @@ namespace RealEstateInvestment.Controllers
             request.Status = "rejected";
             await _context.SaveChangesAsync();
 
-            return Ok(new { message = "Вывод отклонён" });
+            return Ok(new { message = "Conclusion rejected" });
         }
 
-        // ✅ История заявок инвестора
+        // Investor application history
         [HttpGet("user/{userId}")]
         public async Task<IActionResult> GetUserWithdrawals(Guid userId)
         {
