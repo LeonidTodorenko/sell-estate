@@ -14,6 +14,7 @@ import MyInvestmentsScreen from '../screens/MyInvestmentsScreen';
 import MyPropertiesScreen from '../screens/MyPropertiesScreen';
 import MyWithdrawalsScreen from '../screens/MyWithdrawalsScreen';
 import AdminWithdrawalsScreen from '../screens/AdminWithdrawalsScreen';
+import AdminDashboardScreen from '../screens/AdminDashboardScreen';
 import AdminUsersScreen from '../screens/AdminUsersScreen';
 import AdminInvestmentsScreen from '../screens/AdminInvestmentsScreen';
 import AdminKycScreen from '../screens/AdminKycScreen';
@@ -38,6 +39,7 @@ export type RootStackParamList = {
   MyProperties: undefined;
   MyWithdrawals: undefined;
   AdminWithdrawals: undefined;
+  AdminDashboards: undefined;
   AdminUsers: undefined;
   AdminInvestments: undefined;
   AdminKyc: undefined;
@@ -67,6 +69,7 @@ export default function AppNavigator() {
         <Stack.Screen name="MyProperties" component={MyPropertiesScreen} options={{ title: 'My Properties' }} />
         <Stack.Screen name="MyWithdrawals" component={MyWithdrawalsScreen} options={{ title: 'My Withdrawals' }} />
         <Stack.Screen name="AdminWithdrawals" component={AdminWithdrawalsScreen} options={{ title: 'Withdrawal Admin' }} />
+        <Stack.Screen name="AdminDashboards" component={AdminDashboardScreen} options={{ title: 'Dashboard Admin' }} />
         <Stack.Screen name="AdminUsers" component={AdminUsersScreen} options={{ title: 'Admin: Users' }} />
         <Stack.Screen name="AdminInvestments" component={AdminInvestmentsScreen} options={{ title: 'Admin: Investments' }} />
         <Stack.Screen name="AdminKyc" component={AdminKycScreen} options={{ title: 'Admin: KYC' }} />

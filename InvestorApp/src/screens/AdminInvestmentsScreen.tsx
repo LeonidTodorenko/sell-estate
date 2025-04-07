@@ -17,7 +17,7 @@ const AdminInvestmentsScreen = () => {
 
   const loadData = async () => {
     try {
-      const res = await api.get('/investment/all');
+      const res = await api.get('/investments/all');
       setInvestments(res.data);
     } catch (err) {
       console.error(err);

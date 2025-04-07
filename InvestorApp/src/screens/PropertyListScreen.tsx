@@ -24,7 +24,7 @@ const PropertyListScreen = () => {
   useEffect(() => {
     const loadProperties = async () => {
       try {
-        const response = await api.get('/property');
+        const response = await api.get('/properties');
         setProperties(response.data);
       } catch (error) {
         console.error('Failed to load properties', error);

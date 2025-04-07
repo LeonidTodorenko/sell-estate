@@ -49,7 +49,7 @@ const BuySharesScreen = () => {
     const user = JSON.parse(stored);
 
     try {
-      await api.post('/investment/apply', {
+      await api.post('/investments/apply', {
         userId: user.userId,
         propertyId,
         shares,

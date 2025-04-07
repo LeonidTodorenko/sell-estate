@@ -45,7 +45,7 @@ const AdminWithdrawalsScreen = () => {
     <View style={styles.container}>
       <Text style={styles.title}>All Withdrawal Requests</Text>
  
-      <Button title="Manage Users" onPress={() => navigation.navigate('AdminUsers')} />
+      {/* <Button title="Manage Users" onPress={() => navigation.navigate('AdminUsers')} />
 
       <Button title="View All Investments" onPress={() => navigation.navigate('AdminInvestments')} />
 
@@ -53,7 +53,7 @@ const AdminWithdrawalsScreen = () => {
 
       <Button title="📊 View Stats" onPress={() => navigation.navigate('AdminStats')} />
 
-      <Button title="🏠 Manage Properties" onPress={() => navigation.navigate('AdminProperties')} />
+      <Button title="🏠 Manage Properties" onPress={() => navigation.navigate('AdminProperties')} /> */}
 
 
       <FlatList

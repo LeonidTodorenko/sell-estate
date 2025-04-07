@@ -28,6 +28,7 @@ interface Property {
  
 const AdminPropertiesScreen = () => {
   const [properties, setProperties] = useState<Property[]>([]);
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const loadProperties = async () => {
     try {
@@ -40,24 +41,23 @@ const AdminPropertiesScreen = () => {
 
   const uploadImage = async (propertyId: string) => {
     const result = await launchImageLibrary({ mediaType: 'photo', quality: 0.7 });
-  
-    if (result.didCancel || !result.assets || !result.assets.length) return;
-  
+    if (result.didCancel || !result.assets?.length) return; // todo check  if (result.didCancel || !result.assets || !result.assets.length) return;
+
     const asset = result.assets[0];
     const uri = asset.uri;
     const type = asset.type || 'image/jpeg';
-  
+
     try {
       const response = await fetch(uri!);
       const blob = await response.blob();
       const arrayBuffer = await blob.arrayBuffer();
       const base64 = Buffer.from(arrayBuffer).toString('base64');
       const base64Data = `data:${type};base64,${base64}`;
-  
+
       await api.post(`/properties/${propertyId}/upload-image`, {
         base64Image: base64Data,
       });
-  
+
       Alert.alert('Success', 'Image uploaded');
       loadProperties();
     } catch (err) {
@@ -65,7 +65,6 @@ const AdminPropertiesScreen = () => {
       Alert.alert('Error', 'Image upload failed');
     }
   };
-  
 
   const changeStatus = async (id: string, status: string) => {
     try {
@@ -78,11 +77,20 @@ const AdminPropertiesScreen = () => {
     }
   };
 
+  const handleFinalize = async (id: string) => {
+    try {
+      await api.post(`/investments/finalize/${id}`);
+      Alert.alert('Success', 'Auction finalized');
+      loadProperties();
+    } catch (err) {
+      console.error(err);
+      Alert.alert('Error', 'Failed to finalize auction');
+    }
+  };
+
   useEffect(() => {
     loadProperties();
   }, []);
-
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   return (
     <View style={styles.container}>
@@ -99,7 +107,7 @@ const AdminPropertiesScreen = () => {
             <Text>📊 {item.availableShares}/{item.totalShares} Shares</Text>
             <Text>Type: {item.listingType === 'sale' ? 'For Sale' : 'For Rent'}</Text>
             <Text>Status: {item.status}</Text>
-             
+
             {item.imageBase64 && (
               <View style={{ alignItems: 'center', marginVertical: 10 }}>
                 <Image
@@ -116,17 +124,23 @@ const AdminPropertiesScreen = () => {
                 longitude: item.longitude,
                 title: item.title
               })}
-/>
-          <Text>🏗 Completion Date: {item.expectedCompletionDate?.split('T')[0]}</Text>
+            />
  
+            <Text>
+              🏗 Completion Date:{' '}
+              {new Date(item.expectedCompletionDate).toLocaleDateString()}
+            </Text>
+
             <Button title="📷 Upload Image" onPress={() => uploadImage(item.id)} />
 
             <View style={styles.buttonRow}>
               <Button title="Set Rented" onPress={() => changeStatus(item.id, 'rented')} />
               <Button title="Set Sold" onPress={() => changeStatus(item.id, 'sold')} />
               <Button title="Set Available" onPress={() => changeStatus(item.id, 'available')} />
-              <Button  title="✏️ Edit"  onPress={() => navigation.navigate('PropertyForm', { property: item })}
-            />
+              <Button title="✏️ Edit" onPress={() => navigation.navigate('PropertyForm', { property: item })} />
+              {item.status === 'available' && (
+                <Button title="✅ Finalize Auction" onPress={() => handleFinalize(item.id)} color="green" />
+              )}
             </View>
           </View>
         )}

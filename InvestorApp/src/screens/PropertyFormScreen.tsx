@@ -57,6 +57,14 @@ const PropertyFormScreen = ({ route, navigation }: Props) => {
     } catch (err) {
       console.error(err);
       Alert.alert('Error', 'Failed to save property');
+
+      // if (error.response && error.response.data) {
+      //   message = JSON.stringify(error.response.data);
+      // } else if (error.message) {
+      //   message = error.message;
+      // }
+      // Alert.alert('API Error', message);
+
     }
   };
 

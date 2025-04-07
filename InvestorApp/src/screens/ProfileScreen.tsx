@@ -51,6 +51,8 @@ const ProfileScreen = ({ navigation }: Props) => {
       <Text>Wallet Balance: {user.walletBalance}</Text>
 
       <View style={styles.buttons}>
+        <Button title="Browse Properties" onPress={() => navigation.navigate('Properties')} />
+        <View style={{ height: 10 }} />
         <Button title="My Investments" onPress={() => navigation.navigate('Investments')} />
         <View style={{ height: 10 }} />
         <Button title="Withdraw Funds" onPress={() => navigation.navigate('Withdraw')}      />
@@ -63,6 +65,7 @@ const ProfileScreen = ({ navigation }: Props) => {
         <View style={{ height: 10 }} />
         <Button title="Upload KYC" onPress={() => navigation.navigate('UploadKyc')} />
         <View style={{ height: 10 }} />
+       
         <Button title="Logout" onPress={handleLogout} color="red" />
       </View>
     </View>

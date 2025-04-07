@@ -69,7 +69,10 @@ const LoginScreen = ({ navigation }: Props) => {
       <Text onPress={() => navigation.navigate('Register')} style={styles.link}>
         Don't have an account? Register
       </Text>
-     <Text onPress={() => navigation.navigate('AdminWithdrawals')} style={styles.adminLink}>
+     {/* <Text onPress={() => navigation.navigate('AdminWithdrawals')} style={styles.adminLink}>
+      ➤ Enter Admin Panel
+    </Text> */}
+    <Text onPress={() => navigation.navigate('AdminDashboards')} style={styles.adminLink}>
       ➤ Enter Admin Panel
     </Text>
      {/* <Button title="Test API" onPress={testApi} color="orange" /> */}
