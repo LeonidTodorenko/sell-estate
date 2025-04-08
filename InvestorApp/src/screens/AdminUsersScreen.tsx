@@ -1,4 +1,7 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/AppNavigator';
 import { View, Text, FlatList, Button, StyleSheet, Alert } from 'react-native';
 import api from '../api';
 
@@ -11,6 +14,7 @@ interface User {
 }
 
 const AdminUsersScreen = () => {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [users, setUsers] = useState<User[]>([]);
 
   const loadUsers = async () => {
@@ -48,6 +52,14 @@ const AdminUsersScreen = () => {
             <Text>Email: {item.email}</Text>
             <Text>Balance: {item.walletBalance} USD</Text>
             <Text>Status: {item.isBlocked ? 'Blocked' : 'Active'}</Text>
+            <Button
+              title="➕ Upload KYC"
+              onPress={() => navigation.navigate('AdminKycUpload', { userId: item.id })}
+            />
+            <Button
+              title="📄 View KYC"
+              onPress={() => navigation.navigate('UserKycView', { userId: item.id })}
+            />
             <Button
               title={item.isBlocked ? 'Unblock' : 'Block'}
               onPress={() => toggleBlock(item.id)}

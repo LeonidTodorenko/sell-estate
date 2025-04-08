@@ -4,6 +4,8 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import { ImageBackground } from 'react-native';
+import loginBackground from '../assets/images/login.jpg';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
@@ -48,8 +50,13 @@ const LoginScreen = ({ navigation }: Props) => {
   };
 */
   return (
+    <ImageBackground
+    source={loginBackground}
+    resizeMode="cover"
+    style={styles.background}
+  >
     <View style={styles.container}>
-      <Text style={styles.title}>Login</Text>
+      <Text style={styles.title}>Login to real-estate app</Text>
       <TextInput
         style={styles.input}
         placeholder="Email"
@@ -77,6 +84,7 @@ const LoginScreen = ({ navigation }: Props) => {
     </Text>
      {/* <Button title="Test API" onPress={testApi} color="orange" /> */}
     </View>
+    </ImageBackground>
   );
 };
 
@@ -96,6 +104,17 @@ const styles = StyleSheet.create({
     color: 'green',
     textAlign: 'center',
     fontWeight: 'bold',
+  },
+  background: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  overlay: {
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    padding: 20,
+    borderRadius: 12,
+    width: '90%',
   },
 });
 

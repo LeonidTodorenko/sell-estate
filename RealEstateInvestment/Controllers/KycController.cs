@@ -57,6 +57,41 @@ namespace RealEstateInvestment.Controllers
             await _context.SaveChangesAsync();
             return Ok(new { message = "Rejected" });
         }
-    }
 
+        // Admin Upload docs for user
+        //[HttpPost("admin-upload")]
+        //public async Task<IActionResult> AdminUpload([FromBody] KycDocument doc)
+        //{
+        //    _context.KycDocuments.Add(doc);
+        //    await _context.SaveChangesAsync();
+        //    return Ok(new { message = "Document uploaded by admin" });
+        //}
+
+        // Admin Upload docs for user
+        [HttpPost("admin-upload")]
+        public async Task<IActionResult> AdminUpload([FromBody] KycDocument doc)
+        {
+            if (doc == null || doc.UserId == Guid.Empty || string.IsNullOrEmpty(doc.Base64File))
+                return BadRequest(new { message = "Invalid data" });
+
+            _context.KycDocuments.Add(doc);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Upload successful" });
+        }
+
+        [HttpPost("{id}/delete")]
+        public async Task<IActionResult> Delete(Guid id)
+        {
+            var doc = await _context.KycDocuments.FindAsync(id);
+            if (doc == null) return NotFound();
+
+            _context.KycDocuments.Remove(doc);
+            await _context.SaveChangesAsync();
+            return Ok(new { message = "Deleted" });
+        }
+
+
+
+    }
 }

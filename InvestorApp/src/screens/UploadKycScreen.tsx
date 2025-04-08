@@ -1,12 +1,22 @@
-import React, { useState } from 'react';
-import { View, Text, Button, StyleSheet, Image, Alert, TextInput } from 'react-native';
+// Updated UploadKycScreen.tsx
+import React, { useEffect, useState } from 'react';
+import { View, Text, Button, StyleSheet, Image, Alert, TextInput, FlatList } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
 
+interface KycDoc {
+  id: string;
+  type: string;
+  base64File: string;
+  status: string;
+  uploadedAt: string;
+}
+
 const UploadKycScreen = () => {
   const [base64, setBase64] = useState<string | null>(null);
   const [type, setType] = useState<string>('passport');
+  const [docs, setDocs] = useState<KycDoc[]>([]);
 
   const selectFile = () => {
     launchImageLibrary({ mediaType: 'photo', includeBase64: true }, (res) => {
@@ -31,17 +41,37 @@ const UploadKycScreen = () => {
 
       Alert.alert('Success', 'Document uploaded');
       setBase64(null);
+      fetchDocs();
     } catch (err) {
       console.error(err);
       Alert.alert('Error', 'Failed to upload');
     }
   };
 
+  const fetchDocs = async () => {
+    try {
+      const stored = await AsyncStorage.getItem('user');
+      if (!stored) return;
+
+      const user = JSON.parse(stored);
+      const res = await api.get(`/kyc/user/${user.userId}`);
+      setDocs(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    fetchDocs();
+  }, []);
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Upload KYC Document</Text>
+
       <Text>Type:</Text>
       <TextInput value={type} onChangeText={setType} style={styles.input} />
+
       <Button title="Select File" onPress={selectFile} />
       {base64 && (
         <Image
@@ -50,6 +80,23 @@ const UploadKycScreen = () => {
         />
       )}
       <Button title="Upload" onPress={upload} disabled={!base64} />
+
+      <Text style={styles.subheading}>My Documents:</Text>
+      <FlatList
+        data={docs}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <View style={styles.card}>
+            <Text>Type: {item.type}</Text>
+            <Text>Status: {item.status}</Text>
+            <Text>Uploaded: {new Date(item.uploadedAt).toLocaleDateString()}</Text>
+            <Image
+              source={{ uri: `data:image/jpeg;base64,${item.base64File}` }}
+              style={styles.image}
+            />
+          </View>
+        )}
+      />
     </View>
   );
 };
@@ -70,6 +117,20 @@ const styles = StyleSheet.create({
     resizeMode: 'contain',
     marginVertical: 10,
     alignSelf: 'center',
+  },
+  subheading: { fontSize: 18, fontWeight: '600', marginTop: 20 },
+  card: {
+    marginVertical: 10,
+    padding: 10,
+    borderColor: '#ccc',
+    borderWidth: 1,
+    borderRadius: 6,
+  },
+  image: {
+    width: '100%',
+    height: 120,
+    resizeMode: 'contain',
+    marginTop: 8,
   },
 });
 

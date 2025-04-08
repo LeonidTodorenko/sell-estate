@@ -35,6 +35,25 @@ const AdminKycScreen = () => {
     }
   };
 
+  const handleDelete = (id: string) => {
+    Alert.alert('Delete Document', 'Are you sure you want to delete this document?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await api.post(`/kyc/${id}/delete`);
+            Alert.alert('Deleted');
+            load();
+          } catch (err) {
+            Alert.alert('Error', 'Failed to delete document');
+          }
+        },
+      },
+    ]);
+  };
+
   useEffect(() => {
     load();
   }, []);
@@ -60,6 +79,7 @@ const AdminKycScreen = () => {
             <View style={styles.buttonRow}>
               <Button title="Approve" onPress={() => handleAction(item.id, 'approve')} />
               <Button title="Reject" color="red" onPress={() => handleAction(item.id, 'reject')} />
+              <Button title="🗑 Delete" color="gray" onPress={() => handleDelete(item.id)} />
             </View>
           </View>
         )}
@@ -85,8 +105,8 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   buttonRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: 'column',
+    gap: 6,
     marginTop: 10,
   },
 });

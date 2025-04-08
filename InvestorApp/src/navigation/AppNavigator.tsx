@@ -25,6 +25,8 @@ import PropertyDetailScreen from '../screens/PropertyDetailScreen';
 import UploadKycScreen from '../screens/UploadKycScreen';
 import TopUpScreen from '../screens/TopUpScreen';
 import PropertyMapScreen from '../screens/PropertyMapScreen';
+import UserKycViewScreen from '../screens/UserKycViewScreen';
+import AdminKycUploadScreen from '../screens/AdminKycUploadScreen';
 
 
 export type RootStackParamList = {
@@ -50,6 +52,8 @@ export type RootStackParamList = {
   UploadKyc: undefined;
   TopUp: undefined;
   PropertyMap: { latitude: number; longitude: number; title: string };
+  UserKycView: { userId: string };
+  AdminKycUpload: { userId: string };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -80,6 +84,8 @@ export default function AppNavigator() {
         <Stack.Screen name="UploadKyc" component={UploadKycScreen} options={{ title: 'Upload KYC' }} />
         <Stack.Screen name="TopUp" component={TopUpScreen} options={{ title: 'Top Up Balance' }} />
         <Stack.Screen name="PropertyMap" component={PropertyMapScreen} options={{ title: 'Map' }} />
+        <Stack.Screen name="UserKycView" component={UserKycViewScreen} options={{ title: 'User Kyc' }} />
+        <Stack.Screen name="AdminKycUpload" component={AdminKycUploadScreen} />
 
       </Stack.Navigator>
     </NavigationContainer>
