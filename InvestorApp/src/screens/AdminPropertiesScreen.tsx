@@ -49,28 +49,53 @@ const AdminPropertiesScreen = () => {
         .map((p: Property) => p.priorityInvestorId);
 
       const uniqueIds = [...new Set(userIds)];
-      const usersRes = await Promise.all(
-        uniqueIds.map((id) => api.get(`/users/${id}`))
-      );
-
       const map: UserMap = {};
-      usersRes.forEach((res) => {
-        const user = res.data;
-        map[user.id] = user.fullName;
-      });
+
+      if (uniqueIds.length > 0) {
+        const usersRes = await Promise.all(
+          uniqueIds.map((id) => api.get(`/users/${id}`))
+        );
+      
+        usersRes.forEach((res) => {
+          const user = res.data;
+          map[user.id] = user.fullName;
+        });
+      }
+      
+      // const usersRes = await Promise.all(
+      //   uniqueIds.map((id) => api.get(`/users/${id}`))
+      // );
+
+      // const map: UserMap = {};
+      // usersRes.forEach((res) => {
+      //   const user = res.data;
+      //   map[user.id] = user.fullName;
+      // });
 
       setUserMap(map);
-      
-    }  catch (error: any) {
-              let message = 'Failed to load properties ';
-              console.error(error);
-              if (error.response && error.response.data) {
-                message = JSON.stringify(error.response.data);
-              } else if (error.message) {
-                message = error.message;
-              }
-              Alert.alert('Error', 'Failed to load properties ' + message);
-            }
+
+    } catch (error: any) {
+      console.error('Axios Error:', error);
+    
+      let details = '';
+    
+      if (error.response) {
+        details += `Status: ${error.response.status}\n`;
+        details += `Status Text: ${error.response.statusText}\n`;
+        if (error.response.data) {
+          details += `Server Response: ${JSON.stringify(error.response.data)}\n`;
+        }
+      } else if (error.request) {
+        details += 'Request made but no response received\n';
+        details += JSON.stringify(error.request);
+      } else {
+        details += `Error Message: ${error.message}\n`;
+      }
+    
+      details += `\nRequest Config:\n${JSON.stringify(error.config, null, 2)}`;
+    
+      Alert.alert('Request Failed', details.slice(0, 1000));  
+    }
   };
 
   const uploadImage = async (propertyId: string) => {
@@ -146,12 +171,14 @@ const AdminPropertiesScreen = () => {
           <Text>🗓 Deadline: {new Date(item.applicationDeadline).toLocaleDateString()}</Text>
           <Text>📈 Monthly Rent: {item.monthlyRentalIncome}</Text>
           <Text>📤 Last Payout: {new Date(item.lastPayoutDate).toLocaleDateString()}</Text>
-          {item.priorityInvestorId && (
+          {item.priorityInvestorId && typeof item.priorityInvestorId === 'string' &&  (
             <Text>⭐ Priority Investor: {userMap[item.priorityInvestorId] || item.priorityInvestorId}</Text>
           )}
           <Text>Type: {item.listingType === 'sale' ? 'For Sale' : 'For Rent'}</Text>
           <Text>Status: {item.status}</Text>
-
+          <Text>
+            🏗 Completion Date: {new Date(item.expectedCompletionDate).toLocaleDateString()}
+          </Text>
           {item.imageBase64 && (
             <View style={{ alignItems: 'center', marginVertical: 10 }}>
               <Image
@@ -161,6 +188,7 @@ const AdminPropertiesScreen = () => {
             </View>
           )}
 
+ <View style={styles.buttonRow}>
           <Button
             title="📍 View on Map"
             onPress={() => {
@@ -181,13 +209,10 @@ const AdminPropertiesScreen = () => {
             }}
           />
 
-          <Text>
-            🏗 Completion Date: {new Date(item.expectedCompletionDate).toLocaleDateString()}
-          </Text>
+      
 
           <Button title="📷 Upload Image" onPress={() => uploadImage(item.id)} />
-
-          <View style={styles.buttonRow}>
+ 
             <Button title="Set Rented" onPress={() => changeStatus(item.id, 'rented')} />
             <Button title="Set Sold" onPress={() => changeStatus(item.id, 'sold')} />
             <Button title="Set Available" onPress={() => changeStatus(item.id, 'available')} />

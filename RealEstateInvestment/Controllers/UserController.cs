@@ -119,6 +119,16 @@ namespace RealEstateInvestment.Controllers
             public decimal Amount { get; set; }
         }
 
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetUserById(Guid id)
+        {
+            var user = await _context.Users.FindAsync(id);
+            if (user == null)
+                return NotFound(new { message = "User not found" });
+
+            return Ok(user);
+        }
+
 
 
     }
