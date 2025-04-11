@@ -10,6 +10,7 @@ namespace RealEstateInvestment.Controllers
     public class InvestmentController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private static readonly SemaphoreSlim _investmentLock = new(1, 1);
 
         public InvestmentController(AppDbContext context)
         {
@@ -20,25 +21,51 @@ namespace RealEstateInvestment.Controllers
         [HttpPost("apply")]
         public async Task<IActionResult> ApplyForInvestment([FromBody] Investment investmentRequest)
         {
-            var property = await _context.Properties.FindAsync(investmentRequest.PropertyId);
-            if (property == null) return NotFound(new { message = "Object not found" });
-
-            if (DateTime.UtcNow > property.ApplicationDeadline)
-                return BadRequest(new { message = "The application deadline has expired" });
-
-            if (property.AvailableShares < investmentRequest.Shares)
-                return BadRequest(new { message = "Not enough free shares" });
-
-            // If an investor offers to pay the Upfront Payment, they will receive priority
-            if (investmentRequest.InvestedAmount >= property.UpfrontPayment)
+            await _investmentLock.WaitAsync();
+            try
             {
-                property.PriorityInvestorId = investmentRequest.UserId;
+                var property = await _context.Properties.FindAsync(investmentRequest.PropertyId);
+                if (property == null) return NotFound(new { message = "Object not found" });
+
+                if (DateTime.UtcNow > property.ApplicationDeadline)
+                    return BadRequest(new { message = "The application deadline has expired" });
+
+                var user = await _context.Users.FindAsync(investmentRequest.UserId);
+                if (user == null)
+                    return NotFound(new { message = "User not found" });
+
+                if (user.WalletBalance < investmentRequest.InvestedAmount)
+                    return BadRequest(new { message = "Insufficient funds" });
+
+                if (property.AvailableShares < investmentRequest.Shares)
+                    return BadRequest(new { message = "Not enough free shares" });
+
+                // spending money
+                user.WalletBalance -= investmentRequest.InvestedAmount;
+
+                // shares
+                property.AvailableShares -= investmentRequest.Shares;
+
+                // If an investor offers to pay the Upfront Payment, they will receive priority
+                if (investmentRequest.InvestedAmount >= property.UpfrontPayment)
+                {
+                    property.PriorityInvestorId = investmentRequest.UserId;
+                }
+
+                // Save the application
+                _context.Investments.Add(investmentRequest);
+                await _context.SaveChangesAsync();
+                return Ok(new { message = "The application has been submitted" });
+            }
+            finally
+            {
+                _investmentLock.Release();
             }
 
-            // Save the application
-            _context.Investments.Add(investmentRequest);
-            await _context.SaveChangesAsync();
-            return Ok(new { message = "The application has been submitted" });
+            // todo
+            //Сделать статус Investment.Status = pending / confirmed и использовать это при финализации.
+            //Добавить логику возврата денег при FinalizeInvestment, если заявка не попала в распределение.
+            //В будущем: уведомления, e - mail, журнал транзакций.
         }
 
         // Completing the share purchase process (used after the bid period expires)
@@ -176,6 +203,41 @@ namespace RealEstateInvestment.Controllers
 
             return Ok(result);
         }
+
+        [HttpDelete("{investmentId}")]
+        public async Task<IActionResult> DeleteInvestment(Guid investmentId)
+        {
+            var investment = await _context.Investments.FindAsync(investmentId);
+            if (investment == null)
+                return NotFound(new { message = "Investment not found" });
+
+            var user = await _context.Users.FindAsync(investment.UserId);
+            var property = await _context.Properties.FindAsync(investment.PropertyId);
+
+            if (user == null || property == null)
+                return BadRequest(new { message = "Related user or property not found" });
+
+            if (property.Status == "sold")
+                return BadRequest(new { message = "Cannot cancel investment. Property is already sold." });
+
+            if (DateTime.UtcNow > property.ApplicationDeadline)
+                return BadRequest(new { message = "Cannot cancel investment after the application deadline." });
+
+
+            // Refund to the user
+            user.WalletBalance += investment.InvestedAmount;
+
+            // Returning shares back to the property
+            property.AvailableShares += investment.Shares;
+
+            _context.Investments.Remove(investment);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Investment cancelled and funds returned" });
+
+            // todo Защиту от удаления после дедлайна или финализации - убрать это и на ui
+        }
+
 
 
     }

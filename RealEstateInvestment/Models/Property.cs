@@ -22,7 +22,7 @@ namespace RealEstateInvestment.Models
         public int AvailableShares { get; set; }
 
         [Required]
-        public string Status { get; set; } = "available"; // available, sold, rented
+        public string Status { get; set; } = "pending"; // pending, available, sold, rented
 
         [Required]
         public string ListingType { get; set; } = "sale";

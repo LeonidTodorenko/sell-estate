@@ -1,5 +1,5 @@
-import React, {  useState } from 'react';
-import {  Text, TextInput, Button, StyleSheet, ScrollView, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { Text, TextInput, Button, StyleSheet, ScrollView, Alert } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import api from '../api';
@@ -13,8 +13,11 @@ const PropertyFormScreen = ({ route, navigation }: Props) => {
   const [location, setLocation] = useState(existing?.location || '');
   const [price, setPrice] = useState(existing?.price?.toString() || '');
   const [totalShares, setTotalShares] = useState(existing?.totalShares?.toString() || '');
+  const [availableShares, setAvailableShares] = useState(existing?.availableShares?.toString() || '');
   const [upfrontPayment, setUpfrontPayment] = useState(existing?.upfrontPayment?.toString() || '');
   const [deadline, setDeadline] = useState(existing?.applicationDeadline?.split('T')[0] || '');
+  const [monthlyRentalIncome, setMonthlyRentalIncome] = useState(existing?.monthlyRentalIncome?.toString() || '');
+  const [lastPayoutDate, setLastPayoutDate] = useState(existing?.lastPayoutDate?.split('T')[0] || '');
 
   const [listingType, setListingType] = useState(existing?.listingType || 'sale');
 
@@ -24,7 +27,7 @@ const PropertyFormScreen = ({ route, navigation }: Props) => {
   const [completionDate, setCompletionDate] = useState(
     existing?.expectedCompletionDate?.split('T')[0] || ''
   );
- 
+
   const handleSubmit = async () => {
     if (!title || !location || !price || !totalShares) {
       Alert.alert('Validation', 'Please fill all required fields');
@@ -36,12 +39,15 @@ const PropertyFormScreen = ({ route, navigation }: Props) => {
       location,
       price: parseFloat(price),
       totalShares: parseInt(totalShares),
+      availableShares: parseInt(availableShares),
       upfrontPayment: parseFloat(upfrontPayment) || 0,
       applicationDeadline: new Date(deadline).toISOString(),
       listingType,
       latitude: parseFloat(latitude),
       longitude: parseFloat(longitude),
       expectedCompletionDate: new Date(completionDate).toISOString(),
+      monthlyRentalIncome: parseFloat(monthlyRentalIncome) || 0,
+      lastPayoutDate: new Date(lastPayoutDate).toISOString(),
     };
 
     try {
@@ -54,18 +60,17 @@ const PropertyFormScreen = ({ route, navigation }: Props) => {
         Alert.alert('Success', 'Property created');
         navigation.goBack();
       }
-    } catch (err) {
-      console.error(err);
-      Alert.alert('Error', 'Failed to save property');
-
-      // if (error.response && error.response.data) {
-      //   message = JSON.stringify(error.response.data);
-      // } else if (error.message) {
-      //   message = error.message;
-      // }
-      // Alert.alert('API Error', message);
-
-    }
+    } 
+    catch (error: any) {
+          let message = 'Failed to save property ';
+          console.error(error);
+          if (error.response && error.response.data) {
+            message = JSON.stringify(error.response.data);
+          } else if (error.message) {
+            message = error.message;
+          }
+          Alert.alert('Error', 'Failed to save property ' + message);
+        }
   };
 
   return (
@@ -76,6 +81,7 @@ const PropertyFormScreen = ({ route, navigation }: Props) => {
       <TextInput style={styles.input} placeholder="Location" value={location} onChangeText={setLocation} />
       <TextInput style={styles.input} placeholder="Price" keyboardType="numeric" value={price} onChangeText={setPrice} />
       <TextInput style={styles.input} placeholder="Total Shares" keyboardType="numeric" value={totalShares} onChangeText={setTotalShares} />
+      <TextInput style={styles.input} placeholder="Available Shares" keyboardType="numeric" value={availableShares} onChangeText={setAvailableShares} />
       <TextInput style={styles.input} placeholder="Upfront Payment" keyboardType="numeric" value={upfrontPayment} onChangeText={setUpfrontPayment} />
       <TextInput style={styles.input} placeholder="Application Deadline (YYYY-MM-DD)" value={deadline} onChangeText={setDeadline} />
       <Text>Listing Type:</Text>
@@ -84,29 +90,12 @@ const PropertyFormScreen = ({ route, navigation }: Props) => {
         onPress={() => setListingType(listingType === 'sale' ? 'rent' : 'sale')}
       />
 
-      <TextInput
-        style={styles.input}
-        placeholder="Latitude"
-        keyboardType="numeric"
-        value={latitude}
-        onChangeText={setLatitude}
-      />
+      <TextInput style={styles.input} placeholder="Latitude" keyboardType="numeric" value={latitude} onChangeText={setLatitude} />
+      <TextInput style={styles.input} placeholder="Longitude" keyboardType="numeric" value={longitude} onChangeText={setLongitude} />
+      <TextInput style={styles.input} placeholder="Expected Completion Date (YYYY-MM-DD)" value={completionDate} onChangeText={setCompletionDate} />
 
-      <TextInput
-        style={styles.input}
-        placeholder="Longitude"
-        keyboardType="numeric"
-        value={longitude}
-        onChangeText={setLongitude}
-      />
-
-      <TextInput
-        style={styles.input}
-        placeholder="Expected Completion Date (YYYY-MM-DD)"
-        value={completionDate}
-        onChangeText={setCompletionDate}
-      />
-
+      <TextInput style={styles.input} placeholder="Monthly Rental Income" keyboardType="numeric" value={monthlyRentalIncome} onChangeText={setMonthlyRentalIncome} />
+      <TextInput style={styles.input} placeholder="Last Payout Date (YYYY-MM-DD)" value={lastPayoutDate} onChangeText={setLastPayoutDate} />
 
       <Button title={existing ? 'Update' : 'Create'} onPress={handleSubmit} />
     </ScrollView>

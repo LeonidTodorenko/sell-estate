@@ -7,7 +7,6 @@ import { RootStackParamList } from '../navigation/AppNavigator';
 
 interface Property {
   id: string;
-  name: string;
   price: number;
   location: string;
   availableShares: number;
@@ -42,7 +41,7 @@ const PropertyListScreen = () => {
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <View style={styles.card}>
-            <Text style={styles.name}>{item.name}</Text>
+            <Text style={styles.name}>{item.title}</Text>
             <Text>Location: {item.location}</Text>
             <Text>Price: {item.price} USD</Text>
             <Text>Type: {item.listingType === 'sale' ? 'For Sale' : 'For Rent'}</Text>
@@ -62,7 +61,7 @@ const PropertyListScreen = () => {
               onPress={() =>
                 navigation.navigate('BuyShares', {
                   propertyId: item.id,
-                  propertyName: item.name,
+                  propertyName: item.title,
                 })
               }
             />

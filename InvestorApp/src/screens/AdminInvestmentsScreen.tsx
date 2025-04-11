@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, Alert } from 'react-native';
+import { View, Text, FlatList, StyleSheet, Alert, Button } from 'react-native';
 import api from '../api';
 
 interface Investment {
@@ -25,6 +25,26 @@ const AdminInvestmentsScreen = () => {
     }
   };
 
+  const handleDelete = (investmentId: string) => {
+    Alert.alert('Cancel Investment', 'Are you sure you want to cancel this investment?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await api.delete(`/investments/${investmentId}`);
+            Alert.alert('Success', 'Investment cancelled');
+            loadData();
+          } catch (err) {
+            console.error(err);
+            Alert.alert('Error', 'Failed to cancel investment');
+          }
+        },
+      },
+    ]);
+  };
+
   useEffect(() => {
     loadData();
   }, []);
@@ -42,6 +62,7 @@ const AdminInvestmentsScreen = () => {
             <Text>Shares: {item.shares}</Text>
             <Text>Invested: {item.investedAmount} USD</Text>
             <Text>Date: {new Date(item.createdAt).toLocaleDateString()}</Text>
+            <Button title="Cancel" color="red" onPress={() => handleDelete(item.investmentId)} />
           </View>
         )}
       />

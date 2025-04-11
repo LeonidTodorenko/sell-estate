@@ -82,6 +82,25 @@ const LoginScreen = ({ navigation }: Props) => {
     <Text onPress={() => navigation.navigate('AdminDashboards')} style={styles.adminLink}>
       ➤ Enter Admin Panel
     </Text>
+
+    <Text onPress={async () => {
+      try {
+        
+        const response = await api.post('/auth/login', {
+          email: 'user@example.com',
+          password: 'securepassword',
+        });
+        
+        await AsyncStorage.setItem('user', JSON.stringify(response.data));
+        navigation.navigate('Profile');
+        
+      } catch (err) {
+        Alert.alert('Error', 'Failed to log in as user@example.com');
+      }
+    }} style={styles.userLink}>
+      ➤ Login as Test User
+    </Text>
+
      {/* <Button title="Test API" onPress={testApi} color="orange" /> */}
     </View>
     </ImageBackground>
@@ -115,6 +134,12 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 12,
     width: '90%',
+  },
+  userLink: {
+    marginTop: 10,
+    color: 'purple',
+    textAlign: 'center',
+    fontWeight: 'bold',
   },
 });
 

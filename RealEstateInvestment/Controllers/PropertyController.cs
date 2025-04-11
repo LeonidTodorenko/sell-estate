@@ -53,7 +53,7 @@ namespace RealEstateInvestment.Controllers
         [HttpPost("{id}/change-status")]
         public async Task<IActionResult> ChangePropertyStatus(Guid id, [FromBody] string status)
         {
-            if (status != "available" && status != "sold" && status != "rented")
+            if (status != "pending" && status != "available" && status != "sold" && status != "rented") // todo add enum
                 return BadRequest(new { message = "Wrong state" });
 
             var property = await _context.Properties.FindAsync(id);
