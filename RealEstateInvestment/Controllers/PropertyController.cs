@@ -120,5 +120,23 @@ namespace RealEstateInvestment.Controllers
         }
 
 
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteProperty(Guid id)
+        {
+            var property = await _context.Properties.FindAsync(id);
+            if (property == null) return NotFound(new { message = "Property not found" });
+
+            bool hasInvestments = await _context.Investments.AnyAsync(i => i.PropertyId == id);
+            if (hasInvestments)
+                return BadRequest(new { message = "Cannot delete property with active investments. Please delete them first." });
+
+
+            _context.Properties.Remove(property);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Property deleted" });
+        }
+
+
     }
 }

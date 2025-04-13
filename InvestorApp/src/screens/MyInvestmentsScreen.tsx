@@ -42,7 +42,7 @@ const MyInvestmentsScreen = () => {
             <Text>Property ID: {item.propertyId}</Text>
             <Text>Shares: {item.shares}</Text>
             <Text>Invested: {item.investedAmount} USD</Text>
-            <Text>Date: {new Date(item.createdAt).toLocaleDateString()}</Text>
+            {/* <Text>Date: {new Date(item.createdAt).toLocaleDateString()}</Text> todo заменить на дату сдачи */}
           </View>
         )}
         ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 20 }}>No investments yet.</Text>}

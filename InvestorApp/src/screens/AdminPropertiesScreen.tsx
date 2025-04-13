@@ -217,6 +217,30 @@ const AdminPropertiesScreen = () => {
             <Button title="Set Sold" onPress={() => changeStatus(item.id, 'sold')} />
             <Button title="Set Available" onPress={() => changeStatus(item.id, 'available')} />
             <Button title="✏️ Edit" onPress={() => navigation.navigate('PropertyForm', { property: item })} />
+            <Button
+              title="🗑 Delete"
+              color="red"
+              onPress={() =>
+                Alert.alert('Confirm Deletion', 'Are you sure you want to delete this property?', [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: async () => {
+                      try {
+                        await api.delete(`/properties/${item.id}`);
+                        Alert.alert('Deleted', 'Property has been removed');
+                        loadProperties();
+                      } catch (err) {
+                        Alert.alert('Error', 'Failed to delete property');
+                        console.error(err);
+                      }
+                    },
+                  },
+                ])
+              }
+            />
+
             {item.status === 'available' && (
               <Button title="✅ Finalize Auction" onPress={() => handleFinalize(item.id)} color="green" />
             )}

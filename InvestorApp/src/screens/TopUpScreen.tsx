@@ -18,7 +18,7 @@ const TopUpScreen = () => {
     const user = JSON.parse(stored);
 
     try {
-      await api.post('/wallet/topup', {
+      await api.post('/users/wallet/topup', {
         userId: user.userId,
         amount: parsed,
       });

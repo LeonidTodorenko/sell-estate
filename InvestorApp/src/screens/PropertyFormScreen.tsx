@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Text, TextInput, Button, StyleSheet, ScrollView, Alert } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { KeyboardAvoidingView, Platform } from 'react-native';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import api from '../api';
 
@@ -60,8 +61,7 @@ const PropertyFormScreen = ({ route, navigation }: Props) => {
         Alert.alert('Success', 'Property created');
         navigation.goBack();
       }
-    } 
-    catch (error: any) {
+    }     catch (error: any) {
           let message = 'Failed to save property ';
           console.error(error);
           if (error.response && error.response.data) {
@@ -74,7 +74,11 @@ const PropertyFormScreen = ({ route, navigation }: Props) => {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <KeyboardAvoidingView
+  style={{ flex: 1 }}
+  behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+> 
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
       <Text style={styles.title}>{existing ? 'Edit' : 'Add'} Property</Text>
 
       <TextInput style={styles.input} placeholder="Title" value={title} onChangeText={setTitle} />
@@ -99,6 +103,7 @@ const PropertyFormScreen = ({ route, navigation }: Props) => {
 
       <Button title={existing ? 'Update' : 'Create'} onPress={handleSubmit} />
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 

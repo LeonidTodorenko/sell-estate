@@ -63,7 +63,11 @@ const ProfileScreen = ({ navigation }: Props) => {
         <View style={{ height: 10 }} />
         <Button title="Withdrawal History" onPress={() => navigation.navigate('MyWithdrawals')} />
         <View style={{ height: 10 }} />
+        
         <Button title="Upload KYC" onPress={() => navigation.navigate('UploadKyc')} />
+        <View style={{ height: 10 }} />
+
+        <Button title="Top Up Balance" onPress={() => navigation.navigate('TopUp')} />
         <View style={{ height: 10 }} />
        
         <Button title="Logout" onPress={handleLogout} color="red" />

@@ -51,7 +51,7 @@ const InvestmentsScreen = () => {
             <Text>💰 Invested: {item.investedAmount.toFixed(2)} USD</Text>
             <Text>📊 Shares: {item.shares}</Text>
             <Text>📈 Ownership: {item.percent}%</Text>
-            <Text>📅 Date: {new Date(item.createdAt).toLocaleDateString()}</Text>
+            {/* <Text>📅 Date: {new Date(item.createdAt).toLocaleDateString()}</Text>  todo заменить на дату сдачи */}
             <Text
               style={styles.link}
               onPress={() => navigation.navigate('PropertyDetail', { propertyId: item.propertyId })}

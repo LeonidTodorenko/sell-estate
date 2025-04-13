@@ -16,7 +16,7 @@ interface Property {
   status: string;
   imageBase64?: string;
   monthlyRentalIncome?: number;
-  createdAt?: string;
+  expectedCompletionDate?: string;
 }
 
 const PropertyDetailScreen = ({ route }: Props) => {
@@ -55,7 +55,7 @@ const PropertyDetailScreen = ({ route }: Props) => {
       <Text>📊 Shares: {property.availableShares} / {property.totalShares}</Text>
       <Text>Status: {property.status}</Text>
       <Text>💸 Monthly Income: {property.monthlyRentalIncome} USD</Text>
-      <Text>📅 Listed on: {new Date(property.createdAt!).toLocaleDateString()}</Text>
+      <Text>📅 Expected completion date: {new Date(property.expectedCompletionDate!).toLocaleDateString()}</Text>
     </ScrollView>
   );
 };
