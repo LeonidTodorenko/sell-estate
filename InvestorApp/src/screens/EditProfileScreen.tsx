@@ -50,32 +50,38 @@ const EditProfileScreen = () => {
   };
 
   const handlePickAvatar = async () => {
-    const result = await launchImageLibrary({ mediaType: 'photo', quality: 0.7 });
+    const result = await launchImageLibrary({
+      mediaType: 'photo',
+      quality: 0.7,
+      includeBase64: true,
+    });
+  
     if (result.didCancel || !result.assets?.length) return;
   
     const asset = result.assets[0];
-    const uri = asset.uri;
     const type = asset.type || 'image/jpeg';
   
-    try {
-      const response = await fetch(uri!);
-      const blob = await response.blob();
-      const arrayBuffer = await blob.arrayBuffer();
-      const base64 = Buffer.from(arrayBuffer).toString('base64');
-      const base64Data = `data:${type};base64,${base64}`;
-      setAvatarBase64(base64Data);
+    if (!asset.base64) {
+      Alert.alert('Error', 'Failed to extract image data');
+      return;
+    }
   
-      if (!user) return;
-      await api.post(`/users/${user.id}/upload-avatar`, {
-        base64Image: base64Data,
-      });
+    const base64Data = `data:${type};base64,${asset.base64}`;
+    setAvatarBase64(base64Data);
   
-      Alert.alert('Success', 'Avatar updated');
-    } catch (err) {
-      console.error(err);
-      Alert.alert('Error', 'Failed to upload avatar');
+    if (user) {
+      try {
+        await api.post(`/users/${user.id}/upload-avatar`, {
+          base64Image: base64Data,
+        });
+        Alert.alert('Success', 'Avatar uploaded');
+      } catch (err) {
+        console.error(err);
+        Alert.alert('Error', 'Failed to upload avatar');
+      }
     }
   };
+  
   
 
   return (
