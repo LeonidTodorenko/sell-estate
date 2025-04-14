@@ -1,6 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using FirebaseAdmin.Auth.Hash;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RealEstateInvestment.Data;
+using RealEstateInvestment.Models;
 
 namespace RealEstateInvestment.Controllers
 {
@@ -129,6 +131,112 @@ namespace RealEstateInvestment.Controllers
             return Ok(user);
         }
 
+
+        // todo move
+        public class UpdateProfileRequest
+        {
+            public string FullName { get; set; }
+            public string? PhoneNumber { get; set; }
+            public string? Address { get; set; }
+            public string? Email { get; set; }
+            //public string? AvatarBase64 { get; set; }
+        }
+
+        [HttpPost("{id}/update-profile")]
+        public async Task<IActionResult> UpdateProfile(Guid id, [FromBody] UpdateProfileRequest req)
+        {
+            var user = await _context.Users.FindAsync(id);
+            if (user == null) return NotFound(new { message = "User not found" });
+
+            user.FullName = req.FullName;
+            user.PhoneNumber = req.PhoneNumber;
+            if (!string.IsNullOrWhiteSpace(req.Email))
+            {
+                user.Email = req.Email;
+            }
+            user.Address = req.Address;
+            //if (!string.IsNullOrWhiteSpace(req.AvatarBase64)) {
+            //    user.AvatarBase64 = req.AvatarBase64;
+            //}
+            await _context.SaveChangesAsync();
+            return Ok(new { message = "Profile updated" });
+        }
+
+        // todo move
+        public class ChangePasswordRequest
+        {
+            public string CurrentPassword { get; set; }
+            public string NewPassword { get; set; }
+        }
+
+        [HttpPost("{id}/change-password")]
+        public async Task<IActionResult> ChangePassword(Guid id, [FromBody] ChangePasswordRequest req)
+        {
+            var user = await _context.Users.FindAsync(id);
+            if (user == null) return NotFound(new { message = "User not found" });
+
+            if (user.PasswordHash != req.CurrentPassword) // todo check hash
+                return BadRequest(new { message = "Invalid current password" });
+
+            user.PasswordHash = req.NewPassword; // todo add hash
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Password changed" });
+        }
+
+        [HttpPost("{id}/upload-avatar")]
+        public async Task<IActionResult> UploadAvatar(Guid id, [FromBody] AvatarRequest request)
+        {
+            var user = await _context.Users.FindAsync(id);
+            if (user == null) return NotFound();
+
+            if (string.IsNullOrEmpty(request.Base64Image))
+                return BadRequest(new { message = "No image provided" });
+
+            user.AvatarBase64 = request.Base64Image;
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Avatar updated" });
+        }
+
+        // todo move
+        public class AvatarRequest
+        {
+            public string Base64Image { get; set; }
+        }
+
+        [HttpPost("register")]
+        public async Task<IActionResult> Register([FromBody] RegisterRequest req)
+        {
+            if (string.IsNullOrWhiteSpace(req.Email) || string.IsNullOrWhiteSpace(req.Password))
+                return BadRequest(new { message = "Email and password are required" });
+
+            var existing = await _context.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == req.Email.ToLower());
+            if (existing != null)
+                return BadRequest(new { message = "Email already in use" });
+
+            var user = new User
+            {
+                FullName = req.FullName,
+                Email = req.Email,
+                PasswordHash = req.Password, // TODO: hash password
+                SecretWord = req.SecretWord
+            };
+
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "User registered successfully" });
+        }
+
+        // todo move
+        public class RegisterRequest
+        {
+            public string FullName { get; set; }
+            public string Email { get; set; }
+            public string Password { get; set; }
+            public string SecretWord { get; set; }
+        }
 
 
     }

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Button, StyleSheet, Alert } from 'react-native';
+import { View, Text, Button, StyleSheet, Alert,Image } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
@@ -11,6 +11,7 @@ interface User {
   fullName: string;
   email: string;
   walletBalance: string;
+  avatarBase64: string | null;
 }
 
 const ProfileScreen = ({ navigation }: Props) => {
@@ -46,11 +47,22 @@ const ProfileScreen = ({ navigation }: Props) => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Account</Text>
+      {user.avatarBase64 ? (
+        <Image
+          source={{ uri: user.avatarBase64 }}
+          style={{ width: 120, height: 120, borderRadius: 60, alignSelf: 'center', marginBottom: 20 }}
+        />
+      ):(
+        <Text>No avatar</Text>
+      )}
+ 
       <Text>Full Name: {user.fullName}</Text>
       <Text>Email: {user.email}</Text>
       <Text>Wallet Balance: {user.walletBalance}</Text>
 
       <View style={styles.buttons}>
+        <Button title="Edit Profile" onPress={() => navigation.navigate('EditProfile')} />
+        <View style={{ height: 10 }} />
         <Button title="Browse Properties" onPress={() => navigation.navigate('Properties')} />
         <View style={{ height: 10 }} />
         <Button title="My Investments" onPress={() => navigation.navigate('Investments')} />
@@ -68,6 +80,9 @@ const ProfileScreen = ({ navigation }: Props) => {
         <View style={{ height: 10 }} />
 
         <Button title="Top Up Balance" onPress={() => navigation.navigate('TopUp')} />
+        <View style={{ height: 10 }} />
+
+        <Button title="Change Password" onPress={() => navigation.navigate('ChangePassword')} />
         <View style={{ height: 10 }} />
        
         <Button title="Logout" onPress={handleLogout} color="red" />
