@@ -48,6 +48,7 @@ namespace RealEstateInvestment.Controllers
                 userId = user.Id,
                 fullName = user.FullName,
                 email = user.Email,
+                avatarBase64 = user.AvatarBase64,
                 walletBalance = user.WalletBalance,
             });
         }
