@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RealEstateInvestment.Data;
 using RealEstateInvestment.Models;
+using System.ComponentModel.DataAnnotations;
 
 namespace RealEstateInvestment.Controllers
 {
@@ -206,7 +207,7 @@ namespace RealEstateInvestment.Controllers
         }
 
         [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] RegisterRequest req)
+        public async Task<IActionResult> Register([FromBody] ProfileRegisterRequest req)
         {
             if (string.IsNullOrWhiteSpace(req.Email) || string.IsNullOrWhiteSpace(req.Password))
                 return BadRequest(new { message = "Email and password are required" });
@@ -230,11 +231,20 @@ namespace RealEstateInvestment.Controllers
         }
 
         // todo move
-        public class RegisterRequest
+        public class ProfileRegisterRequest
         {
+
+            [Required]
             public string FullName { get; set; }
+
+            [Required]
+            [EmailAddress]
             public string Email { get; set; }
+
+            [Required]
             public string Password { get; set; }
+
+            [Required]
             public string SecretWord { get; set; }
         }
 
