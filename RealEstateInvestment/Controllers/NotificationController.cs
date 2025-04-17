@@ -1,7 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RealEstateInvestment.Data;
- 
+using RealEstateInvestment.Models;
+
 namespace RealEstateInvestment.Controllers
 {
     [ApiController]
@@ -34,6 +35,12 @@ namespace RealEstateInvestment.Controllers
             if (notification == null) return NotFound(new { message = "Notification not found" });
 
             notification.IsRead = true;
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add admin guid later,
+                Action = "MarkAsRead",
+                Details = "Mark As Read id: " + id.ToString()
+            });
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Notification read" });

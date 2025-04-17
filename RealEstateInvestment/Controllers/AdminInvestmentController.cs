@@ -1,7 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RealEstateInvestment.Data;
- 
+using RealEstateInvestment.Models;
+
 namespace RealEstateInvestment.Controllers
 {
     [ApiController]
@@ -30,7 +31,13 @@ namespace RealEstateInvestment.Controllers
             var investment = await _context.Investments.FindAsync(id);
             if (investment == null) return NotFound(new { message = "Investment not found" });
 
-            // Тут можно добавить логику подтверждения платежа
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add admin guid later,
+                Action = "ApproveInvestment",
+                Details = "Approve Investment id: " + id.ToString()
+            });
+            
             await _context.SaveChangesAsync();
             return Ok(new { message = "Investment approved" });
         }
@@ -43,6 +50,12 @@ namespace RealEstateInvestment.Controllers
             if (investment == null) return NotFound(new { message = "Investment not found" });
 
             _context.Investments.Remove(investment);
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add admin guid later,
+                Action = "RejectInvestment",
+                Details = "Reject Investment id: " + id.ToString()
+            });
             await _context.SaveChangesAsync();
             return Ok(new { message = "Investment rejected" });
         }

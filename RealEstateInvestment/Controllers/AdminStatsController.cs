@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RealEstateInvestment.Data;
- 
+
 namespace RealEstateInvestment.Controllers
 {
     [ApiController]
@@ -35,6 +35,47 @@ namespace RealEstateInvestment.Controllers
                 pendingKyc
             });
         }
+
+        [HttpGet("logs")]
+        public async Task<IActionResult> GetLogs([FromQuery] string? action, [FromQuery] string? userName, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+        {
+            var query = from log in _context.ActionLogs
+                        join u in _context.Users on log.UserId equals u.Id into lj
+                        from userInfo in lj.DefaultIfEmpty()
+                        select new
+                        {
+                            log.Id,
+                            log.UserId,
+                            UserName = userInfo.FullName,
+                            log.Action,
+                            log.Details,
+                            log.Timestamp
+                        };
+
+            if (!string.IsNullOrWhiteSpace(action))
+                query = query.Where(l => l.Action.ToLower().Contains(action.ToLower()));
+
+            if (!string.IsNullOrWhiteSpace(userName))
+                query = query.Where(l => l.UserName != null && l.UserName.ToLower().Contains(userName.ToLower()));
+
+            var total = await query.CountAsync();
+
+            var items = await query
+                .OrderByDescending(l => l.Timestamp)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return Ok(new
+            {
+                total,
+                page,
+                pageSize,
+                items
+            });
+        }
+
+
     }
 
 }

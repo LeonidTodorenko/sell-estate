@@ -2,6 +2,8 @@ import React from 'react';
 import AppNavigator from './src/navigation/AppNavigator';
 import { SafeAreaView, StatusBar, StyleSheet } from 'react-native';
 import theme from './src/constants/theme';
+import { LoadingProvider } from './src/contexts/LoadingContext';
+
 
 //export default function App(): React.JSX.Element {
 //  return <AppNavigator />;
@@ -9,10 +11,12 @@ import theme from './src/constants/theme';
 
 export default function App() {
   return (
+    <LoadingProvider>
     <SafeAreaView style={styles.container}>
       <StatusBar backgroundColor={theme.colors.background} barStyle="dark-content" />
       <AppNavigator />
     </SafeAreaView>
+    </LoadingProvider>
   );
 }
 

@@ -14,6 +14,7 @@ namespace RealEstateInvestment.Data
         public DbSet<WithdrawalRequest> WithdrawalRequests { get; set; }
         public DbSet<Notification> Notifications { get; set; }
         public DbSet<KycDocument> KycDocuments { get; set; }
+        public DbSet<ActionLog> ActionLogs { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

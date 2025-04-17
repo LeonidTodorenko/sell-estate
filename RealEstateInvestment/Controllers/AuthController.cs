@@ -30,6 +30,12 @@ namespace RealEstateInvestment.Controllers
             };
 
             _context.Users.Add(user);
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add admin guid later
+                Action = "Register",
+                Details = "User Register Email: " + request.Email
+            });
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Registered!" });
@@ -41,7 +47,12 @@ namespace RealEstateInvestment.Controllers
             var user = _context.Users.FirstOrDefault(u => u.Email == request.Email);
             if (user == null || user.PasswordHash != request.Password)    // todo later hash or jwt
                 return Unauthorized(new { message = "Invalid email or password" });
-
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = user.Id,
+                Action = "Login",
+                Details = "User Login  " 
+            });
             return Ok(new
             {
                 message = "Login successful",

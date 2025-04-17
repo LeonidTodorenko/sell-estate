@@ -6,22 +6,25 @@ import api from '../api';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { ImageBackground } from 'react-native';
 import loginBackground from '../assets/images/login.jpg';
+import { useLoading } from '../contexts/LoadingContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
 const LoginScreen = ({ navigation }: Props) => {
+  const { setLoading } = useLoading();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   const handleLogin = async () => {
     try {
-     
+      setLoading(true);
       const response = await api.post('/auth/login', { email, password });
      
       const user = response.data;
       await AsyncStorage.setItem('user', JSON.stringify(user));
      
       navigation.navigate('Profile');
+      setLoading(false);
     } catch (error: any) {
         let message = 'Something went wrong';
         if (error.response && error.response.data && error.response.data.message) {
@@ -31,6 +34,7 @@ const LoginScreen = ({ navigation }: Props) => {
           }
         
       Alert.alert('Login failed', 'Invalid email or password' + message);
+      setLoading(false);
     }
   };
 /*

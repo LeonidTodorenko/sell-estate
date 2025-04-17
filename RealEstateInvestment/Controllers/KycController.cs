@@ -16,6 +16,12 @@ namespace RealEstateInvestment.Controllers
         public async Task<IActionResult> Upload([FromBody] KycDocument doc)
         {
             _context.KycDocuments.Add(doc);
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = doc.UserId,
+                Action = "Upload KycDocument",
+                Details = "KycDocument uploaded userid: " + doc.UserId.ToString()
+            });
             await _context.SaveChangesAsync();
             return Ok(new { message = "Document uploaded" });
         }
@@ -44,6 +50,12 @@ namespace RealEstateInvestment.Controllers
             var doc = await _context.KycDocuments.FindAsync(id);
             if (doc == null) return NotFound();
             doc.Status = "approved";
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add admin guid later,
+                Action = "Approve KycDocument",
+                Details = "KycDocument Approved id: " + id.ToString()
+            });
             await _context.SaveChangesAsync();
             return Ok(new { message = "Approved" });
         }
@@ -54,6 +66,12 @@ namespace RealEstateInvestment.Controllers
             var doc = await _context.KycDocuments.FindAsync(id);
             if (doc == null) return NotFound();
             doc.Status = "rejected";
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add admin guid later,
+                Action = "Reject KycDocument",
+                Details = "KycDocument Reject id: " + id.ToString()
+            });
             await _context.SaveChangesAsync();
             return Ok(new { message = "Rejected" });
         }
@@ -75,6 +93,12 @@ namespace RealEstateInvestment.Controllers
                 return BadRequest(new { message = "Invalid data" });
 
             _context.KycDocuments.Add(doc);
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add admin guid later,
+                Action = "AdminUpload KycDocument",
+                Details = "KycDocument AdminUpload id: " + doc.UserId.ToString()
+            });
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Upload successful" });
@@ -87,6 +111,12 @@ namespace RealEstateInvestment.Controllers
             if (doc == null) return NotFound();
 
             _context.KycDocuments.Remove(doc);
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add admin guid later,
+                Action = "Delete KycDocument",
+                Details = "KycDocument Delete id: " + id.ToString()
+            });
             await _context.SaveChangesAsync();
             return Ok(new { message = "Deleted" });
         }

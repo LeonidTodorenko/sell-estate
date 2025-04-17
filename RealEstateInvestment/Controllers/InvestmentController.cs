@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using RealEstateInvestment.Data;
 using RealEstateInvestment.Models;
 
@@ -54,6 +55,12 @@ namespace RealEstateInvestment.Controllers
 
                 // Save the application
                 _context.Investments.Add(investmentRequest);
+                _context.ActionLogs.Add(new ActionLog
+                {
+                    UserId = investmentRequest.UserId, 
+                    Action = "ApplyForInvestment KycDocument",
+                    Details = "Apply For Investment Shares: " + investmentRequest.Shares + "; InvestedAmount: " + investmentRequest.InvestedAmount + "; PropertyId: " + investmentRequest.PropertyId
+                });
                 await _context.SaveChangesAsync();
                 return Ok(new { message = "The application has been submitted" });
             }
@@ -109,6 +116,12 @@ namespace RealEstateInvestment.Controllers
             }
 
             property.Status = "sold";
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add admin guid later
+                Action = "FinalizeInvestment",
+                Details = "Finalize Investment propertyId: " + propertyId.ToString()
+            });
             await _context.SaveChangesAsync();
             return Ok(new { message = "Investments distributed" });
         }
@@ -165,6 +178,12 @@ namespace RealEstateInvestment.Controllers
             if (user == null) return NotFound();
 
             user.KycStatus = "verified";
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add admin guid later
+                Action = "VerifyKyc",
+                Details = "Verify Kyc id: " + id.ToString()
+            });
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "User KYC verified" });
@@ -177,11 +196,41 @@ namespace RealEstateInvestment.Controllers
             if (user == null) return NotFound();
 
             user.KycStatus = "rejected";
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add admin guid later
+                Action = "RejectKyc",
+                Details = "Reject Kyc id: " + id.ToString()
+            });
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "User KYC rejected" });
         }
 
+        // суммирование инвестиций
+        [HttpGet("with-aggregated/{userId}")]
+        public async Task<IActionResult> GetUserAggregatedInvestments(Guid userId)
+        {
+            var result = await (
+                from i in _context.Investments
+                join p in _context.Properties on i.PropertyId equals p.Id
+                where i.UserId == userId
+                group new { i, p } by new { i.PropertyId, p.Title, p.Price } into g
+                select new
+                {
+                    PropertyId = g.Key.PropertyId,
+                    PropertyTitle = g.Key.Title,
+                    TotalShares = g.Sum(x => x.i.Shares),
+                    TotalInvested = g.Sum(x => x.i.InvestedAmount),
+                    FirstInvestmentDate = g.Min(x => x.i.CreatedAt),
+                    OwnershipPercent = Math.Round(g.Sum(x => x.i.InvestedAmount) / g.Key.Price * 100, 2)
+                }
+            ).ToListAsync();
+
+            return Ok(result);
+        }
+
+        // вывод без суммирования инвестиций
         [HttpGet("with-details/{userId}")]
         public async Task<IActionResult> GetUserInvestmentsWithDetails(Guid userId)
         {
@@ -231,6 +280,12 @@ namespace RealEstateInvestment.Controllers
             property.AvailableShares += investment.Shares;
 
             _context.Investments.Remove(investment);
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add admin guid later
+                Action = "DeleteInvestment",
+                Details = "Delete Investment investmentId: " + investmentId.ToString()
+            });
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Investment cancelled and funds returned" });

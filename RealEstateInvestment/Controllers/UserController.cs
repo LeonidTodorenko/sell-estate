@@ -34,6 +34,14 @@ namespace RealEstateInvestment.Controllers
             if (user == null) return NotFound(new { message = "Пользователь не найден" });
 
             user.KycStatus = "verified";
+
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = id,
+                Action = "VerifyKYC",
+                Details = "User KYC verified"
+            });
+
             await _context.SaveChangesAsync();
             return Ok(new { message = "KYC подтверждён" });
         }
@@ -46,6 +54,13 @@ namespace RealEstateInvestment.Controllers
             if (user == null) return NotFound(new { message = "User not found" });
 
             user.IsBlocked = !user.IsBlocked;
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = id,
+                Action = user.IsBlocked ? "BlockUser" : "UnblockUser",
+                Details = user.IsBlocked ? "User blocked" : "User unblocked"
+            });
+
             await _context.SaveChangesAsync();
 
             return Ok(new { message = user.IsBlocked ? "User blocked" : "User unblocked" });
@@ -72,6 +87,12 @@ namespace RealEstateInvestment.Controllers
             if (user == null) return NotFound(new { message = "Пользователь не найден" });
 
             user.IsBlocked = false;
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = id,
+                Action = "UnblockUser",
+                Details = "User manually unblocked"
+            });
             await _context.SaveChangesAsync();
             return Ok(new { message = "Пользователь разблокирован" });
         }
@@ -87,6 +108,13 @@ namespace RealEstateInvestment.Controllers
             if (user == null) return NotFound(new { message = "Пользователь не найден" });
 
             user.Role = role;
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = id,
+                Action = "ChangeRole",
+                Details = $"Role changed to {role}"
+            });
+
             await _context.SaveChangesAsync();
             return Ok(new { message = "Роль изменена" });
         }
@@ -108,8 +136,16 @@ namespace RealEstateInvestment.Controllers
         {
             var user = await _context.Users.FindAsync(req.UserId);
             if (user == null) return NotFound();
-
+             
             user.WalletBalance += req.Amount;
+
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = req.UserId,
+                Action = "TopUp",
+                Details = $"Wallet topped up on {req.Amount} USD"
+            });
+
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Balance updated" });
@@ -147,22 +183,36 @@ namespace RealEstateInvestment.Controllers
         public async Task<IActionResult> UpdateProfile(Guid id, [FromBody] UpdateProfileRequest req)
         {
             var user = await _context.Users.FindAsync(id);
-            if (user == null) return NotFound(new { message = "User not found" });
+            if (user == null)
+                return NotFound(new { message = "User not found" });
+
+            if (!string.IsNullOrWhiteSpace(req.Email) && !req.Email.Equals(user.Email, StringComparison.OrdinalIgnoreCase))
+            {
+                var emailExists = await _context.Users
+                    .AnyAsync(u => u.Email.ToLower() == req.Email.ToLower() && u.Id != id);
+                if (emailExists)
+                {
+                    return BadRequest(new { message = "Email already in use by another user" });
+                }
+
+                user.Email = req.Email;
+            }
 
             user.FullName = req.FullName;
             user.PhoneNumber = req.PhoneNumber;
-            if (!string.IsNullOrWhiteSpace(req.Email))
-            {
-                user.Email = req.Email;
-            }
             user.Address = req.Address;
-            //if (!string.IsNullOrWhiteSpace(req.AvatarBase64)) {
-            //    user.AvatarBase64 = req.AvatarBase64;
-            //}
+
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = id,
+                Action = "UpdateProfile",
+                Details = $"Profile updated: {req.FullName}; {req.PhoneNumber}; {req.Email}; {req.Address}"
+            });
+
             await _context.SaveChangesAsync();
             return Ok(new { message = "Profile updated" });
         }
-
+         
         // todo move
         public class ChangePasswordRequest
         {
@@ -180,6 +230,12 @@ namespace RealEstateInvestment.Controllers
                 return BadRequest(new { message = "Invalid current password" });
 
             user.PasswordHash = req.NewPassword; // todo add hash
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = id,
+                Action = "ChangePassword",
+                Details = "Password changed"
+            });
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Password changed" });
@@ -195,6 +251,12 @@ namespace RealEstateInvestment.Controllers
                 return BadRequest(new { message = "No image provided" });
 
             user.AvatarBase64 = request.Base64Image;
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = id,
+                Action = "UploadAvatar",
+                Details = "Avatar uploaded"
+            });
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Avatar updated" });
@@ -225,6 +287,13 @@ namespace RealEstateInvestment.Controllers
             };
 
             _context.Users.Add(user);
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = user.Id,
+                Action = "Register",
+                Details = "New user registered"
+            });
+
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "User registered successfully" });

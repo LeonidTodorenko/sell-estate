@@ -3,11 +3,13 @@ import { View, Text, TextInput, Button, StyleSheet, Alert, ScrollView, Image } f
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
 import { launchImageLibrary } from 'react-native-image-picker';
-import { Buffer } from 'buffer';
+import { useLoading } from '../contexts/LoadingContext';
+//import { Buffer } from 'buffer';
 
 global.Buffer = global.Buffer || require('buffer').Buffer;
 
 const EditProfileScreen = () => {
+    const { setLoading } = useLoading();
   const [user, setUser] = useState<any>(null);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -16,7 +18,9 @@ const EditProfileScreen = () => {
   const [avatarBase64, setAvatarBase64] = useState('');
 
   useEffect(() => {
+    
     const loadUser = async () => {
+      setLoading(true);
       const stored = await AsyncStorage.getItem('user');
       if (!stored) return;
       const parsed = JSON.parse(stored);
@@ -28,6 +32,7 @@ const EditProfileScreen = () => {
       setPhoneNumber(data.phoneNumber || '');
       setAddress(data.address || '');
       setAvatarBase64(data.avatarBase64 || '');
+      setLoading(false);
     };
     loadUser();
   }, []);

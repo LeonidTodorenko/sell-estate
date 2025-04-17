@@ -34,6 +34,9 @@ const AdminDashboardScreen = () => {
       <View style={styles.buttonWrapper}>
         <Button title="🏠 Manage Properties" onPress={() => navigation.navigate('AdminProperties')} />
       </View>
+      <View style={styles.buttonWrapper}>
+        <Button title="🏠 Admin Logs" onPress={() => navigation.navigate('AdminLogs')} />
+      </View>
     </ScrollView>
   );
 };

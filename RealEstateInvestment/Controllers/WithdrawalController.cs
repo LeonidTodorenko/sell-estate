@@ -28,6 +28,12 @@ namespace RealEstateInvestment.Controllers
 
             user.WalletBalance -= request.Amount;
             _context.WithdrawalRequests.Add(request);
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = user.Id,
+                Action = "RequestWithdrawal",
+                Details = "New request withdrawal amount: " + request.Amount
+            });
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Withdrawal request submitted" });
@@ -41,6 +47,12 @@ namespace RealEstateInvestment.Controllers
             if (request == null) return NotFound(new { message = "Application not found" });
 
             request.Status = "approved";
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add admin guid later
+                Action = "ApproveWithdrawal",
+                Details = "Request approved on id:" + id.ToString()
+            });
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Conclusion approved" });
@@ -60,6 +72,12 @@ namespace RealEstateInvestment.Controllers
             }
 
             request.Status = "rejected";
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add admin guid later
+                Action = "RejectWithdrawal",
+                Details = "Request rejected on id:" + id.ToString()
+            });
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Conclusion rejected" });

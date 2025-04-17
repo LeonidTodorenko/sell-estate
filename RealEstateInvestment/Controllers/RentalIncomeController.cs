@@ -47,10 +47,18 @@ namespace RealEstateInvestment.Controllers
                     Amount = investorIncome
                 };
 
+                _context.ActionLogs.Add(new ActionLog
+                {
+                    UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add admin guid later
+                    Action = "ProcessRentalPayout",
+                    Details = "Process Rental Payout on id:" + propertyId.ToString() + " Investor: " + investment.UserId.ToString()
+                });
+
                 _context.RentalIncomes.Add(rentalIncome);
             }
 
             property.LastPayoutDate = DateTime.UtcNow;
+         
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Payments to investors have been made" });

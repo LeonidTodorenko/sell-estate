@@ -39,6 +39,12 @@ namespace RealEstateInvestment.Controllers
             try
             {
                 _context.Properties.Add(property);
+                 _context.ActionLogs.Add(new ActionLog
+                {
+                    UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add admin guid later
+                    Action = "CreateProperty",
+                    Details = "Property created: " + property.Title
+                 });
                 await _context.SaveChangesAsync();
             }
             catch (Exception ex)
@@ -60,6 +66,12 @@ namespace RealEstateInvestment.Controllers
             if (property == null) return NotFound(new { message = "Property not found" });
 
             property.Status = status;
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add admin guid later
+                Action = "ChangePropertyStatus",
+                Details = "Property changed: " + status + " Id:" + id.ToString()
+            });
             await _context.SaveChangesAsync();
             return Ok(new { message = "Status updated" });
         }
@@ -95,6 +107,12 @@ namespace RealEstateInvestment.Controllers
                 return BadRequest(new { message = "No image provided" });
 
             property.ImageBase64 = request.Base64Image;
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add admin guid later
+                Action = "UploadBase64",
+                Details = "Image loaded, property id: " + id.ToString()
+            });
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Image stored in database" });
@@ -114,7 +132,12 @@ namespace RealEstateInvestment.Controllers
             existing.ApplicationDeadline = updated.ApplicationDeadline;
             existing.Latitude = updated.Latitude;
             existing.Longitude = updated.Longitude;
-
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add admin guid later
+                Action = "UpdateProperty",
+                Details = "Update Property id: " + id.ToString()
+            });
             await _context.SaveChangesAsync();
             return Ok(new { message = "Property updated" });
         }
@@ -132,6 +155,12 @@ namespace RealEstateInvestment.Controllers
 
 
             _context.Properties.Remove(property);
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add admin guid later
+                Action = "DeleteProperty",
+                Details = "Delete Property id: " + id.ToString()
+            });
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Property deleted" });
