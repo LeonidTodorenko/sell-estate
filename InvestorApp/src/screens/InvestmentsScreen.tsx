@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState,useCallback  } from 'react';
 import { View, Text, FlatList, StyleSheet, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
@@ -26,29 +26,30 @@ interface Investment {
 }
   
 const InvestmentsScreen = () => {
-     const { setLoading } = useLoading();
+  const { setLoading } = useLoading();
   const [investments, setInvestments] = useState<Investment[]>([]);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const loadInvestments = async () => {
+
+  const loadInvestments = useCallback(async () => {
     try {
       setLoading(true);
       const stored = await AsyncStorage.getItem('user');
       if (!stored) return Alert.alert('Error', 'No user found');
-  
+
       const user = JSON.parse(stored);
       const response = await api.get(`/investments/with-aggregated/${user.userId}`);
       setInvestments(response.data);
-      setLoading(false);
     } catch (err) {
-      setLoading(false);
       console.error(err);
       Alert.alert('Error', 'Failed to load investments');
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [setLoading]);
    
   useEffect(() => {
     loadInvestments();
-  }, []);
+  }, [loadInvestments]);
 
   return (
     <View style={styles.container}>

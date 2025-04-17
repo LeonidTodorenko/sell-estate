@@ -21,6 +21,7 @@ const EditProfileScreen = () => {
     
     const loadUser = async () => {
       setLoading(true);
+      try {
       const stored = await AsyncStorage.getItem('user');
       if (!stored) return;
       const parsed = JSON.parse(stored);
@@ -32,10 +33,15 @@ const EditProfileScreen = () => {
       setPhoneNumber(data.phoneNumber || '');
       setAddress(data.address || '');
       setAvatarBase64(data.avatarBase64 || '');
+    } catch (err) {
+      console.error(err);
+      Alert.alert('Error', 'Failed to load profile');
+    } finally {
       setLoading(false);
+    }
     };
     loadUser();
-  }, []);
+  }, [setLoading]);
 
   const handleUpdate = async () => {
     if (!user) return;

@@ -57,7 +57,7 @@ namespace RealEstateInvestment.Controllers
                 _context.Investments.Add(investmentRequest);
                 _context.ActionLogs.Add(new ActionLog
                 {
-                    UserId = investmentRequest.UserId, 
+                    UserId = investmentRequest.UserId,
                     Action = "ApplyForInvestment KycDocument",
                     Details = "Apply For Investment Shares: " + investmentRequest.Shares + "; InvestedAmount: " + investmentRequest.InvestedAmount + "; PropertyId: " + investmentRequest.PropertyId
                 });
@@ -207,7 +207,7 @@ namespace RealEstateInvestment.Controllers
             return Ok(new { message = "User KYC rejected" });
         }
 
-        // суммирование инвестиций
+        // summing up investments
         [HttpGet("with-aggregated/{userId}")]
         public async Task<IActionResult> GetUserAggregatedInvestments(Guid userId)
         {
@@ -230,7 +230,7 @@ namespace RealEstateInvestment.Controllers
             return Ok(result);
         }
 
-        // вывод без суммирования инвестиций
+        //   without summing up investments
         [HttpGet("with-details/{userId}")]
         public async Task<IActionResult> GetUserInvestmentsWithDetails(Guid userId)
         {
