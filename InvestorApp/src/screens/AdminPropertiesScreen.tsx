@@ -1,14 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Button, Alert, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Button, Alert, ScrollView, Image, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import PaymentPlansSection from '../components/PaymentPlansSection';
 import api from '../api';
-import { Image } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
-import { Buffer } from 'buffer';
+import Carousel from 'react-native-reanimated-carousel';
+import Modal from 'react-native-modal';
 
 global.Buffer = global.Buffer || require('buffer').Buffer;
+
+//const screenWidth = Dimensions.get('window').width;
+
+interface PropertyImage {
+  id: string;
+  base64Data: string;
+}
 
 interface Property {
   id: string;
@@ -19,7 +27,6 @@ interface Property {
   availableShares: number;
   status: string;
   listingType: string;
-  imageBase64?: string;
   latitude: number;
   longitude: number;
   expectedCompletionDate: Date;
@@ -28,7 +35,7 @@ interface Property {
   priorityInvestorId?: string;
   monthlyRentalIncome: number;
   lastPayoutDate: string;
-  
+  images: PropertyImage[];
 }
 
 interface UserMap {
@@ -38,48 +45,37 @@ interface UserMap {
 const AdminPropertiesScreen = () => {
   const [properties, setProperties] = useState<Property[]>([]);
   const [userMap, setUserMap] = useState<UserMap>({});
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalImage, setModalImage] = useState<string | null>(null);
+  const [imageIndex, setImageIndex] = useState(0);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const loadProperties = async () => {
     try {
-      const res = await api.get('/properties');
-      setProperties(res.data);
+      const userResponses = await api.get('/properties');
+      const propertiesWithImages = await Promise.all(userResponses.data.map(async (p: Property) => {
+        const imgRes = await api.get(`/properties/${p.id}/images`);
+        return { ...p, images: imgRes.data };
+      }));
+      setProperties(propertiesWithImages);
 
-      const userIds = res.data
-        .filter((p: Property) => p.priorityInvestorId)
-        .map((p: Property) => p.priorityInvestorId);
-
+      const userIds = userResponses.data.filter((p: Property) => p.priorityInvestorId).map((p: Property) => p.priorityInvestorId);
       const uniqueIds = [...new Set(userIds)];
       const map: UserMap = {};
 
       if (uniqueIds.length > 0) {
-        const usersRes = await Promise.all(
-          uniqueIds.map((id) => api.get(`/users/${id}`))
-        );
-      
+        const usersRes = await Promise.all(uniqueIds.map((id) => api.get(`/users/${id}`)));
         usersRes.forEach((res) => {
           const user = res.data;
           map[user.id] = user.fullName;
         });
       }
-      
-      // const usersRes = await Promise.all(
-      //   uniqueIds.map((id) => api.get(`/users/${id}`))
-      // );
-
-      // const map: UserMap = {};
-      // usersRes.forEach((res) => {
-      //   const user = res.data;
-      //   map[user.id] = user.fullName;
-      // });
 
       setUserMap(map);
 
     } catch (error: any) {
       console.error('Axios Error:', error);
-    
       let details = '';
-    
       if (error.response) {
         details += `Status: ${error.response.status}\n`;
         details += `Status Text: ${error.response.statusText}\n`;
@@ -92,37 +88,38 @@ const AdminPropertiesScreen = () => {
       } else {
         details += `Error Message: ${error.message}\n`;
       }
-    
       details += `\nRequest Config:\n${JSON.stringify(error.config, null, 2)}`;
-    
-      Alert.alert('Request Failed', details.slice(0, 1000));  
+      Alert.alert('Request Failed', details.slice(0, 1000));
     }
   };
 
   const uploadImage = async (propertyId: string) => {
-    const result = await launchImageLibrary({ mediaType: 'photo', quality: 0.7 });
-    if (result.didCancel || !result.assets?.length) return; // todo check  if (result.didCancel || !result.assets || !result.assets.length) return;
+    const result = await launchImageLibrary({ mediaType: 'photo', quality: 0.7, includeBase64: true });
+    if (result.didCancel || !result.assets?.length) { return; }
 
     const asset = result.assets[0];
-    const uri = asset.uri;
     const type = asset.type || 'image/jpeg';
 
+    if (!asset.base64) { return; }
+    const base64Data = `data:${type};base64,${asset.base64}`;
+
     try {
-      const response = await fetch(uri!);
-      const blob = await response.blob();
-      const arrayBuffer = await blob.arrayBuffer();
-      const base64 = Buffer.from(arrayBuffer).toString('base64');
-      const base64Data = `data:${type};base64,${base64}`;
-
-      await api.post(`/properties/${propertyId}/upload-image`, {
-        base64Image: base64Data,
-      });
-
+      await api.post(`/properties/${propertyId}/images`, { base64Image: base64Data });
       Alert.alert('Success', 'Image uploaded');
       loadProperties();
     } catch (err) {
       console.error(err);
       Alert.alert('Error', 'Image upload failed');
+    }
+  };
+
+  const deleteImage = async (imageId: string) => {
+    try {
+      await api.delete(`/properties/images/${imageId}`);
+      Alert.alert('Deleted', 'Image removed');
+      loadProperties();
+    } catch (err) {
+      Alert.alert('Error', 'Failed to delete image');
     }
   };
 
@@ -172,33 +169,36 @@ const AdminPropertiesScreen = () => {
           <Text>🗓 Deadline: {new Date(item.applicationDeadline).toLocaleDateString()}</Text>
           <Text>📈 Monthly Rent: {item.monthlyRentalIncome}</Text>
           <Text>📤 Last Payout: {new Date(item.lastPayoutDate).toLocaleDateString()}</Text>
-          {item.priorityInvestorId && typeof item.priorityInvestorId === 'string' &&  (
+          {item.priorityInvestorId && (
             <Text>⭐ Priority Investor: {userMap[item.priorityInvestorId] || item.priorityInvestorId}</Text>
           )}
           <Text>Type: {item.listingType === 'sale' ? 'For Sale' : 'For Rent'}</Text>
           <Text>Status: {item.status}</Text>
-          <Text>
-            🏗 Completion Date: {new Date(item.expectedCompletionDate).toLocaleDateString()}
-          </Text>
-          {item.imageBase64 && (
-            <View style={{ alignItems: 'center', marginVertical: 10 }}>
-              <Image
-                source={{ uri: item.imageBase64 }}
-                style={{ width: 200, height: 120, borderRadius: 6 }}
+          <Text>🏗 Completion Date: {new Date(item.expectedCompletionDate).toLocaleDateString()}</Text>
+
+          {item.images && item.images.length > 0 && (
+            <View style={styles.carouselContainer}>
+              <Carousel
+                width={200}
+                height={120}
+                data={item.images}
+                scrollAnimationDuration={500}
+                renderItem={({ item: image }) => (
+                  <TouchableOpacity onPress={() => { setModalImage(image.base64Data); setModalVisible(true); }}>
+                    <Image source={{ uri: image.base64Data }} style={styles.carouselContainerImage} />
+                  </TouchableOpacity>
+                )}
+                onSnapToItem={(index) => setImageIndex(index)}
               />
+              <Text style={styles.carouselContainerText}>{imageIndex + 1}/{item.images.length}</Text>
             </View>
           )}
 
- <View style={styles.buttonRow}>
-          <Button
-            title="📍 View on Map"
-            onPress={() => {
-              if (
-                typeof item.latitude === 'number' &&
-                typeof item.longitude === 'number' &&
-                !isNaN(item.latitude) &&
-                !isNaN(item.longitude)
-              ) {
+          <PaymentPlansSection propertyId={item.id} />
+
+          <View style={styles.buttonRow}>
+            <Button title="📍 View on Map" onPress={() => {
+              if (typeof item.latitude === 'number' && typeof item.longitude === 'number' && !isNaN(item.latitude) && !isNaN(item.longitude)) {
                 navigation.navigate('PropertyMap', {
                   latitude: item.latitude,
                   longitude: item.longitude,
@@ -207,40 +207,34 @@ const AdminPropertiesScreen = () => {
               } else {
                 Alert.alert('Error', 'latitude or longitude corrupted');
               }
-            }}
-          />
+            }} />
 
-      
+            <Button title="📷 Upload More" onPress={() => uploadImage(item.id)} />
 
-          <Button title="📷 Upload Image" onPress={() => uploadImage(item.id)} />
- 
+            {item.images && item.images.length > 0 && (
+              <Button title="🗑 Delete Image" color="red" onPress={() => deleteImage(item.images[imageIndex].id)} />
+            )}
+
             <Button title="Set Rented" onPress={() => changeStatus(item.id, 'rented')} />
             <Button title="Set Sold" onPress={() => changeStatus(item.id, 'sold')} />
             <Button title="Set Available" onPress={() => changeStatus(item.id, 'available')} />
             <Button title="✏️ Edit" onPress={() => navigation.navigate('PropertyForm', { property: item })} />
-            <Button
-              title="🗑 Delete"
-              color="red"
-              onPress={() =>
-                Alert.alert('Confirm Deletion', 'Are you sure you want to delete this property?', [
-                  { text: 'Cancel', style: 'cancel' },
-                  {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: async () => {
-                      try {
-                        await api.delete(`/properties/${item.id}`);
-                        Alert.alert('Deleted', 'Property has been removed');
-                        loadProperties();
-                      } catch (err) {
-                        Alert.alert('Error', 'Failed to delete property');
-                        console.error(err);
-                      }
-                    },
+            <Button title="🗑 Delete" color="red" onPress={() => {
+              Alert.alert('Confirm Deletion', 'Are you sure you want to delete this property?', [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Delete', style: 'destructive', onPress: async () => {
+                    try {
+                      await api.delete(`/properties/${item.id}`);
+                      Alert.alert('Deleted', 'Property has been removed');
+                      loadProperties();
+                    } catch (err) {
+                      Alert.alert('Error', 'Failed to delete property');
+                    }
                   },
-                ])
-              }
-            />
+                },
+              ]);
+            }} />
 
             {item.status === 'available' && (
               <Button title="✅ Finalize Auction" onPress={() => handleFinalize(item.id)} color="green" />
@@ -248,6 +242,14 @@ const AdminPropertiesScreen = () => {
           </View>
         </View>
       ))}
+
+      <Modal isVisible={modalVisible} onBackdropPress={() => setModalVisible(false)}>
+        <View style={styles.modalView}>
+          {modalImage && (
+            <Image source={{ uri: modalImage }} style={styles.modalImage} />
+          )}
+        </View>
+      </Modal>
     </ScrollView>
   );
 };
@@ -262,10 +264,31 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     marginBottom: 10,
   },
+  modalView: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalImage: {
+    width: '100%',
+    height: 300,
+    resizeMode: 'contain',
+  },
   buttonRow: {
     marginTop: 10,
     flexDirection: 'column',
     gap: 5,
+  },
+  carouselContainer: {
+    alignItems: 'center',
+    marginVertical: 10,
+  },
+  carouselContainerImage: {
+    width: 200,
+    height: 120,
+    borderRadius: 6,
+  },
+  carouselContainerText: {
+    marginTop: 4,
   },
 });
 

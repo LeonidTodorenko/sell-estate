@@ -30,7 +30,7 @@ import AdminKycUploadScreen from '../screens/AdminKycUploadScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
 import ChangePasswordScreen from '../screens/ChangePasswordScreen';
 import AdminLogsScreen from '../screens/AdminLogsScreen';
-
+// import PaymentPlansSection from '../components/PaymentPlansSection';
 
 export type RootStackParamList = {
   Login: undefined;
@@ -60,10 +60,11 @@ export type RootStackParamList = {
   EditProfile: undefined;
   ChangePassword: undefined;
   AdminLogs: undefined;
+  // PaymentPlans: { propertyId: string };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
- 
+
 export default function AppNavigator() {
   return (
     <NavigationContainer>
@@ -95,7 +96,7 @@ export default function AppNavigator() {
         <Stack.Screen name="EditProfile" component={EditProfileScreen} />
         <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
         <Stack.Screen name="AdminLogs" component={AdminLogsScreen} />
-
+        {/* <Stack.Screen name="PaymentPlans" component={PaymentPlansSection} /> */}
       </Stack.Navigator>
     </NavigationContainer>
   );

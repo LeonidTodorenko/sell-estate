@@ -31,7 +31,7 @@ namespace RealEstateInvestment.Models
 
         public DateTime? ExpectedCompletionDate { get; set; }
 
-        // 🔹 Payment Plan 
+        //  Payment Plan 
         public decimal UpfrontPayment { get; set; }  // Initial payment
         public DateTime ApplicationDeadline { get; set; } // Application deadline
         public Guid? PriorityInvestorId { get; set; } // The investor has the right to redeem
@@ -44,6 +44,8 @@ namespace RealEstateInvestment.Models
         // map
         public double Latitude { get; set; }
         public double Longitude { get; set; }
+
+        public ICollection<PaymentPlan>? PaymentPlans { get; set; }
 
     }
 }

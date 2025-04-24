@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateInvestment.Data;
 using RealEstateInvestment.Models;
+using RealEstateInvestment.Services;
 
 namespace RealEstateInvestment.Controllers
 {
@@ -45,5 +46,12 @@ namespace RealEstateInvestment.Controllers
 
             return Ok(new { message = "Notification read" });
         }
+
+        //[HttpGet("test-email")]
+        //public async Task<IActionResult> TestEmail([FromServices] EmailService emailService)
+        //{
+        //    await emailService.SendEmailAsync("your@email.com", "Тест письма", "<b>Письмо отправлено успешно</b>");
+        //    return Ok("Done");
+        //}
     }
 }

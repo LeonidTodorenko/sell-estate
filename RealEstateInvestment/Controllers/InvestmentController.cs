@@ -96,6 +96,22 @@ namespace RealEstateInvestment.Controllers
             }
             else
             {
+                // todo check - Property cannot be finalized until at least 40% of the payment plan is paid
+                var paymentPlans = await _context.PaymentPlans
+                    .Where(p => p.PropertyId == propertyId)
+                    .ToListAsync();
+                if (paymentPlans.Count > 0)
+                {
+                    var totalDue = paymentPlans.Sum(p => p.Total);
+                    var totalPaid = paymentPlans.Sum(p => p.Paid);
+                    var paidPercentage = totalDue > 0 ? (totalPaid / totalDue) * 100 : 0;
+
+                    if (paidPercentage < 40)
+                    {
+                        return BadRequest(new { message = "Property cannot be finalized until at least 40% of the payment plan is paid" });
+                    }
+                }
+
                 //
                 // добавить внутреннюю биржу 
                 // переделать на дату подачи - если только один не перекрыл всю сумму (сумма для старта, сумма пеймент плана, у админа есть возможность повысить стоимость объекта но shares остаются прежними  у тех кто купил первыми, добавить дату сдачи дома ожидаемую, добавить возможность выставлять объект с определенным числом SHARES , допустим распредление раз в месяц происходит)
@@ -125,6 +141,61 @@ namespace RealEstateInvestment.Controllers
             await _context.SaveChangesAsync();
             return Ok(new { message = "Investments distributed" });
         }
+
+        [HttpPost("validate-payments/{propertyId}")]
+        public async Task<IActionResult> ValidateInitialPayment(Guid propertyId)
+        {
+            var property = await _context.Properties.FindAsync(propertyId);
+            if (property == null) return NotFound(new { message = "Property not found" });
+
+            var firstPayment = await _context.PaymentPlans
+                .Where(p => p.PropertyId == propertyId)
+                .OrderBy(p => p.DueDate)
+                .FirstOrDefaultAsync();
+
+            if (firstPayment == null)
+                return BadRequest(new { message = "No payment plan found" });
+
+            if (DateTime.UtcNow < firstPayment.DueDate)
+                return BadRequest(new { message = "It's too early to validate payments" });
+
+            var totalInvested = await _context.Investments
+                .Where(i => i.PropertyId == propertyId)
+                .SumAsync(i => i.InvestedAmount);
+
+            if (totalInvested < firstPayment.Total)
+            {
+                // Отзываем все заявки
+                var investments = await _context.Investments
+                    .Where(i => i.PropertyId == propertyId)
+                    .ToListAsync();
+
+                foreach (var inv in investments)
+                {
+                    var user = await _context.Users.FindAsync(inv.UserId);
+                    if (user != null)
+                    {
+                        user.WalletBalance += inv.InvestedAmount;
+                        property.AvailableShares += inv.Shares;
+
+                        _context.ActionLogs.Add(new ActionLog
+                        {
+                            UserId = inv.UserId,
+                            Action = "InvestmentRevoked",
+                            Details = $"Investment {inv.Id} was revoked due to unpaid first milestone"
+                        });
+                    }
+                }
+
+                _context.Investments.RemoveRange(investments);
+                await _context.SaveChangesAsync();
+
+                return Ok(new { message = "Investments revoked: not enough funds for first milestone" });
+            }
+
+            return Ok(new { message = "First milestone is covered, no action needed" });
+        }
+
 
         // Get user investments
         [HttpGet("user/{userId}")]

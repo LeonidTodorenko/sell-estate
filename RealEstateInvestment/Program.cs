@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateInvestment.Data;
+using RealEstateInvestment.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,6 +22,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddTransient<EmailService>();
 
 var app = builder.Build();
 

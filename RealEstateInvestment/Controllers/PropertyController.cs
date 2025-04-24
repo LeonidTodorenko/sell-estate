@@ -166,6 +166,44 @@ namespace RealEstateInvestment.Controllers
             return Ok(new { message = "Property deleted" });
         }
 
+        [HttpGet("{propertyId}/images")]
+        public async Task<IActionResult> GetPropertyImages(Guid propertyId)
+        {
+            var images = await _context.PropertyImages
+                .Where(i => i.PropertyId == propertyId)
+                .OrderByDescending(i => i.CreatedAt)
+                .ToListAsync();
+
+            return Ok(images);
+        }
+
+        [HttpPost("{propertyId}/images")]
+        public async Task<IActionResult> UploadImage(Guid propertyId, [FromBody] UploadImageRequest request)
+        {
+            if (string.IsNullOrEmpty(request.Base64Image))
+                return BadRequest(new { message = "No image provided" });
+
+            _context.PropertyImages.Add(new PropertyImage
+            {
+                PropertyId = propertyId,
+                Base64Data = request.Base64Image
+            });
+
+            await _context.SaveChangesAsync();
+            return Ok(new { message = "Image uploaded" });
+        }
+
+        [HttpDelete("images/{imageId}")]
+        public async Task<IActionResult> DeleteImage(Guid imageId)
+        {
+            var img = await _context.PropertyImages.FindAsync(imageId);
+            if (img == null) return NotFound();
+
+            _context.PropertyImages.Remove(img);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Deleted" });
+        }
 
     }
 }

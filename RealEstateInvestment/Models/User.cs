@@ -34,5 +34,7 @@ namespace RealEstateInvestment.Models
         public string? Address { get; set; }
 
         public string? AvatarBase64 { get; set; }
+
+        public bool IsEmailConfirmed { get; set; } = false;
     }
 }

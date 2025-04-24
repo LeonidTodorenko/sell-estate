@@ -4,20 +4,29 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateInvestment.Data;
 using RealEstateInvestment.Models;
 using System.ComponentModel.DataAnnotations;
+using RealEstateInvestment.Services;
+using Newtonsoft.Json;
 
 namespace RealEstateInvestment.Controllers
-{
+{ 
     [ApiController]
     [Route("api/users")]
     public class UserController : ControllerBase
     {
-        private readonly AppDbContext _context;
 
-        public UserController(AppDbContext context)
+     
+        private readonly AppDbContext _context;
+        private readonly EmailService _emailService;
+        private readonly IConfiguration _config;
+         
+
+        public UserController(AppDbContext context, EmailService emailService, IConfiguration config)
         {
             _context = context;
+            _emailService = emailService;
+            _config = config;
         }
-
+        
         // Get list of users (admin only)
         [HttpGet]
         public async Task<IActionResult> GetUsers()
@@ -278,6 +287,10 @@ namespace RealEstateInvestment.Controllers
             if (existing != null)
                 return BadRequest(new { message = "Email already in use" });
 
+            if (!await VerifyCaptcha(req.CaptchaToken)) {
+                return BadRequest(new { message = "Captcha verification failed. Please try again. " });
+            }
+
             var user = new User
             {
                 FullName = req.FullName,
@@ -294,9 +307,42 @@ namespace RealEstateInvestment.Controllers
                 Details = "New user registered"
             });
 
+
+            var token = Guid.NewGuid().ToString();
+
+            _context.EmailConfirmationTokens.Add(new EmailConfirmationToken
+            {
+                UserId = user.Id,
+                Token = token,
+                CreatedAt = DateTime.UtcNow,
+                ExpiresAt = DateTime.UtcNow.AddHours(24)
+            });
+             
+            var confirmUrl = $"https://sell-estate.onrender.com/api/user/confirm-email?token={token}"; // todo set to add conf- frontend-URL  
+
+            await _emailService.SendEmailAsync(user.Email, "Confirm your email",
+                $"<h2>Welcome!</h2><p>Please confirm your email: <a href='{confirmUrl}'>Confirm Email</a></p>");
+
+            await _emailService.SendToAdminAsync(
+                "New user registered",
+                $"A new user has registered: <strong>{user.FullName}</strong> ({user.Email})"
+            );
+
+
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "User registered successfully" });
+        }
+
+        private async Task<bool> VerifyCaptcha(string token)
+        {
+            var client = new HttpClient();
+            var secret = "6LdAIiMrAAAAAJGSNacdrQmj0hZlkdpLAN_B2rxJ"; // todo mobe to config  _config["Recaptcha:SecretKey"];
+            var response = await client.PostAsync(
+                $"https://www.google.com/recaptcha/api/siteverify?secret={secret}&response={token}", null);
+            var json = await response.Content.ReadAsStringAsync();
+            dynamic result = JsonConvert.DeserializeObject(json);
+            return result.success == true && result.score >= 0.5;
         }
 
         // todo move
@@ -310,12 +356,44 @@ namespace RealEstateInvestment.Controllers
             [EmailAddress]
             public string Email { get; set; }
 
-            [Required]
+            [Required, MinLength(6)]
             public string Password { get; set; }
 
             [Required]
             public string SecretWord { get; set; }
+
+            [Required]
+            public string CaptchaToken { get; set; }
         }
+
+        [HttpGet("confirm-email")]
+        public async Task<IActionResult> ConfirmEmail([FromQuery] string token)
+        {
+            var tokenEntry = await _context.EmailConfirmationTokens
+                .FirstOrDefaultAsync(t => t.Token == token && t.ExpiresAt > DateTime.UtcNow);
+
+            if (tokenEntry == null)
+                return BadRequest(new { message = "Invalid or expired token" });
+
+            var user = await _context.Users.FindAsync(tokenEntry.UserId);
+            if (user == null)
+                return NotFound();
+
+            user.IsEmailConfirmed = true;
+
+            _context.EmailConfirmationTokens.Remove(tokenEntry); //delete token after use
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = user.Id,
+                Action = "ConfirmEmail",
+                Details = "User confirmed email"
+            });
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Email confirmed!" });
+        }
+
 
 
     }

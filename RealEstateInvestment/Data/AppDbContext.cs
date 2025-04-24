@@ -15,6 +15,9 @@ namespace RealEstateInvestment.Data
         public DbSet<Notification> Notifications { get; set; }
         public DbSet<KycDocument> KycDocuments { get; set; }
         public DbSet<ActionLog> ActionLogs { get; set; }
+        public DbSet<EmailConfirmationToken> EmailConfirmationTokens { get; set; }
+        public DbSet<PropertyImage> PropertyImages { get; set; }
+        public DbSet<PaymentPlan> PaymentPlans { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

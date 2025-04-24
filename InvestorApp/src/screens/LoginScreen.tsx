@@ -77,9 +77,11 @@ const LoginScreen = ({ navigation }: Props) => {
         onChangeText={setPassword}
       />
       <Button title="Login" onPress={handleLogin} />
-      <Text onPress={() => navigation.navigate('Register')} style={styles.link}>
+      <View style={{ height: 10 }} />
+      <Button title="Don't have an account? Register"  onPress={() => navigation.navigate('Register')}   />
+      {/* <Text onPress={() => navigation.navigate('Register')} style={styles.link}>
         Don't have an account? Register
-      </Text>
+      </Text> */}
      {/* <Text onPress={() => navigation.navigate('AdminWithdrawals')} style={styles.adminLink}>
       ➤ Enter Admin Panel
     </Text> */}

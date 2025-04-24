@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using RealEstateInvestment.Data;
@@ -11,9 +12,11 @@ using RealEstateInvestment.Data;
 namespace RealEstateInvestment.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250422143432_AddPropertyImages")]
+    partial class AddPropertyImages
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -148,54 +151,6 @@ namespace RealEstateInvestment.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Notifications");
-                });
-
-            modelBuilder.Entity("RealEstateInvestment.Models.PaymentPlan", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<decimal>("AmountDue")
-                        .HasColumnType("numeric");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("DueDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("EventDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("InstallmentCode")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Milestone")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<decimal>("Paid")
-                        .HasColumnType("numeric");
-
-                    b.Property<decimal>("Percentage")
-                        .HasColumnType("numeric");
-
-                    b.Property<Guid>("PropertyId")
-                        .HasColumnType("uuid");
-
-                    b.Property<decimal>("Total")
-                        .HasColumnType("numeric");
-
-                    b.Property<decimal>("VAT")
-                        .HasColumnType("numeric");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PropertyId");
-
-                    b.ToTable("PaymentPlans");
                 });
 
             modelBuilder.Entity("RealEstateInvestment.Models.Property", b =>
@@ -389,20 +344,6 @@ namespace RealEstateInvestment.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("WithdrawalRequests");
-                });
-
-            modelBuilder.Entity("RealEstateInvestment.Models.PaymentPlan", b =>
-                {
-                    b.HasOne("RealEstateInvestment.Models.Property", null)
-                        .WithMany("PaymentPlans")
-                        .HasForeignKey("PropertyId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("RealEstateInvestment.Models.Property", b =>
-                {
-                    b.Navigation("PaymentPlans");
                 });
 #pragma warning restore 612, 618
         }
