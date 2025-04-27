@@ -84,7 +84,13 @@ const ProfileScreen = ({ navigation }: Props) => {
 
         <Button title="Change Password" onPress={() => navigation.navigate('ChangePassword')} />
         <View style={{ height: 10 }} />
-       
+
+        <Button
+          title="🔐 Test Password Reset - dunno will remove"
+          onPress={() => navigation.navigate('ResetPassword')} // , { token: 'demo-reset-token-123' }
+        />
+           <View style={{ height: 10 }} />
+
         <Button title="Logout" onPress={handleLogout} color="red" />
       </View>
     </View>

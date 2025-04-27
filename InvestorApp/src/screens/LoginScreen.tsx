@@ -79,6 +79,9 @@ const LoginScreen = ({ navigation }: Props) => {
       <Button title="Login" onPress={handleLogin} />
       <View style={{ height: 10 }} />
       <Button title="Don't have an account? Register"  onPress={() => navigation.navigate('Register')}   />
+      <View style={{ height: 10 }} />
+      <Button title="Forgot Password?"   onPress={() => navigation.navigate('ForgotPassword')}  />
+     
       {/* <Text onPress={() => navigation.navigate('Register')} style={styles.link}>
         Don't have an account? Register
       </Text> */}
@@ -126,7 +129,7 @@ const styles = StyleSheet.create({
   link: { marginTop: 10, color: 'blue', textAlign: 'center' },
   adminLink: {
     marginTop: 20,
-    color: 'green',
+    color: 'white',
     textAlign: 'center',
     fontWeight: 'bold',
   },
@@ -143,7 +146,7 @@ const styles = StyleSheet.create({
   },
   userLink: {
     marginTop: 10,
-    color: 'purple',
+    color: 'red',
     textAlign: 'center',
     fontWeight: 'bold',
   },

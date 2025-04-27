@@ -5,8 +5,8 @@ import { View, StyleSheet } from 'react-native';
 interface CaptchaProps {
   onVerify: (token: string) => void;
 }
-
-const SITE_KEY = '6LdAIiMrAAAAAMUoNWZdDRoBiXp1vI8rS-ACYwI2';
+// todo разобраться с доменом для капчи гугла
+const SITE_KEY = 'пока убрал';
 const Captcha = ({ onVerify }: CaptchaProps) => {
   const html = `
     <!DOCTYPE html>

@@ -205,5 +205,26 @@ namespace RealEstateInvestment.Controllers
             return Ok(new { message = "Deleted" });
         }
 
+        [HttpPost("{id}/change-listing-type")]
+        public async Task<IActionResult> ChangeListingType(Guid id, [FromBody] string listingType)
+        {
+            if (listingType != "sale" && listingType != "rent")
+                return BadRequest(new { message = "Invalid listing type" });
+
+            var property = await _context.Properties.FindAsync(id);
+            if (property == null) return NotFound(new { message = "Property not found" });
+
+            property.ListingType = listingType;
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo fix
+                Action = "ChangeListingType",
+                Details = $"Changed listing type to {listingType} for property {id}"
+            });
+
+            await _context.SaveChangesAsync();
+            return Ok(new { message = "Listing type updated" });
+        }
+
     }
 }

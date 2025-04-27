@@ -34,8 +34,33 @@ namespace RealEstateInvestment.Controllers
                 return BadRequest();
 
             plan.PropertyId = propertyId;
+
+            if (plan.DueDate.Kind == DateTimeKind.Unspecified)
+            {
+                plan.DueDate = DateTime.SpecifyKind(plan.DueDate, DateTimeKind.Utc);
+            }
+            if (plan.EventDate.HasValue && plan.EventDate.Value.Kind == DateTimeKind.Unspecified)
+            {
+                plan.EventDate = DateTime.SpecifyKind(plan.EventDate.Value, DateTimeKind.Utc);
+            }
+
             _context.PaymentPlans.Add(plan);
-            await _context.SaveChangesAsync();
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                _context.ActionLogs.Add(new ActionLog
+                {
+                    UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add some guid later
+                    Action = "CreatePaymentPlan error",
+                    Details = ex.Message,
+                });
+                await _context.SaveChangesAsync();
+                return BadRequest(ex);
+            }
+
 
             return Ok(new { message = "Payment plan added." });
         }

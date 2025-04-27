@@ -49,6 +49,8 @@ const PaymentPlansSection = ({ propertyId }: { propertyId: string }) => {
     const plan = {
       ...newPlan,
       total: (newPlan.amountDue || 0) + (newPlan.vat || 0),
+      dueDate: new Date(newPlan.dueDate || '').toISOString(),
+      eventDate: newPlan.eventDate ? new Date(newPlan.eventDate).toISOString() : undefined,
     };
 
     try {
@@ -91,7 +93,26 @@ const PaymentPlansSection = ({ propertyId }: { propertyId: string }) => {
         <ScrollView style={styles.modalContent}>
           <Text style={styles.title}>Add Payment Plan</Text>
           <TextInput placeholder="Milestone" style={styles.input} onChangeText={(text) => setNewPlan(p => ({ ...p, milestone: text }))} />
-          <TextInput placeholder="Due Date (YYYY-MM-DD)" style={styles.input} onChangeText={(text) => setNewPlan(p => ({ ...p, dueDate: text }))} />
+          <TextInput
+              placeholder="Due Date (YYYY-MM-DD)"
+              style={styles.input}
+              keyboardType="numeric"
+              value={newPlan.dueDate || ''}
+              onChangeText={(text) => {
+                const numbersOnly = text.replace(/\D/g, ''); //numbers
+                let formatted = numbersOnly;
+
+                if (numbersOnly.length > 4) {
+                  formatted = numbersOnly.slice(0, 4) + '-' + numbersOnly.slice(4);
+                }
+                if (numbersOnly.length > 6) {
+                  formatted = numbersOnly.slice(0, 4) + '-' + numbersOnly.slice(4, 6) + '-' + numbersOnly.slice(6, 8);
+                }
+
+                setNewPlan(p => ({ ...p, dueDate: formatted }));
+              }}
+            />
+
           <TextInput placeholder="Installment Code" style={styles.input} onChangeText={(text) => setNewPlan(p => ({ ...p, installmentCode: text }))} />
           <TextInput placeholder="Percentage" style={styles.input} keyboardType="numeric" onChangeText={(text) => setNewPlan(p => ({ ...p, percentage: parseNumber(text) }))} />
           <TextInput placeholder="Amount Due" style={styles.input} keyboardType="numeric" onChangeText={(text) => setNewPlan(p => ({ ...p, amountDue: parseNumber(text) }))} />

@@ -3,10 +3,11 @@ import { View, Text, StyleSheet, Button, Alert, ScrollView, Image, TouchableOpac
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
-import PaymentPlansSection from '../components/PaymentPlansSection';
+//import PaymentPlanScreen from '../components/PaymentPlanScreen';
 import api from '../api';
 import { launchImageLibrary } from 'react-native-image-picker';
-import Carousel from 'react-native-reanimated-carousel';
+//import Carousel from 'react-native-reanimated-carousel';
+import Swiper from 'react-native-swiper';
 import Modal from 'react-native-modal';
 
 global.Buffer = global.Buffer || require('buffer').Buffer;
@@ -133,7 +134,16 @@ const AdminPropertiesScreen = () => {
       Alert.alert('Error', 'Failed to change status');
     }
   };
-
+  const changeListingType = async (id: string, newType: string) => {
+    try {
+      await api.post(`/properties/${id}/change-listing-type`, `"${newType}"`, {
+        headers: { 'Content-Type': 'application/json' },
+      });
+      await loadProperties();
+    } catch (err) {
+      Alert.alert('Error', 'Failed to change listing type');
+    }
+  };
   const handleFinalize = async (id: string) => {
     try {
       await api.post(`/investments/finalize/${id}`);
@@ -176,7 +186,7 @@ const AdminPropertiesScreen = () => {
           <Text>Status: {item.status}</Text>
           <Text>🏗 Completion Date: {new Date(item.expectedCompletionDate).toLocaleDateString()}</Text>
 
-          {item.images && item.images.length > 0 && (
+          {/* {item.images && item.images.length > 0 && (
             <View style={styles.carouselContainer}>
               <Carousel
                 width={200}
@@ -192,9 +202,37 @@ const AdminPropertiesScreen = () => {
               />
               <Text style={styles.carouselContainerText}>{imageIndex + 1}/{item.images.length}</Text>
             </View>
-          )}
+          )} */}
+ 
+        {item.images && item.images.length > 0 && (
+          <View style={styles.carouselContainer}>
+            <Swiper
+              style={styles.swiper}
+              height={180}
+              showsPagination={true}
+              loop={false}
+              onIndexChanged={(index) => setImageIndex(index)}
+            >
+              {item.images.map((image) => (
+                <TouchableOpacity
+                  key={image.id}
+                  onPress={() => {
+                    setModalImage(image.base64Data);
+                    setModalVisible(true);
+                  }}
+                >
+                  <Image source={{ uri: image.base64Data }} style={styles.carouselContainerImage} />
+                </TouchableOpacity>
+              ))}
+            </Swiper>
+            <Text style={styles.carouselContainerText}>
+              {imageIndex + 1}/{item.images.length}
+            </Text>
+          </View>
+        )}
 
-          <PaymentPlansSection propertyId={item.id} />
+          {/* <PaymentPlansSection propertyId={item.id} /> */}
+          <Button title="📄 View Payment Plan" onPress={() => navigation.navigate('PaymentPlan', { propertyId: item.id })} />
 
           <View style={styles.buttonRow}>
             <Button title="📍 View on Map" onPress={() => {
@@ -209,13 +247,17 @@ const AdminPropertiesScreen = () => {
               }
             }} />
 
-            <Button title="📷 Upload More" onPress={() => uploadImage(item.id)} />
+            <Button title="📷 Upload Image" onPress={() => uploadImage(item.id)} />
 
             {item.images && item.images.length > 0 && (
               <Button title="🗑 Delete Image" color="red" onPress={() => deleteImage(item.images[imageIndex].id)} />
             )}
 
-            <Button title="Set Rented" onPress={() => changeStatus(item.id, 'rented')} />
+            <Button
+              title={item.listingType === 'sale' ? 'Set For Rent' : 'Set For Sale'}
+              onPress={() => changeListingType(item.id, item.listingType === 'sale' ? 'rent' : 'sale')}
+            />
+           
             <Button title="Set Sold" onPress={() => changeStatus(item.id, 'sold')} />
             <Button title="Set Available" onPress={() => changeStatus(item.id, 'available')} />
             <Button title="✏️ Edit" onPress={() => navigation.navigate('PropertyForm', { property: item })} />
@@ -264,6 +306,9 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     marginBottom: 10,
   },
+  swiper: {
+    height: 180,
+  },
   modalView: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -283,8 +328,8 @@ const styles = StyleSheet.create({
     marginVertical: 10,
   },
   carouselContainerImage: {
-    width: 200,
-    height: 120,
+    width: 320,
+    height: 180,
     borderRadius: 6,
   },
   carouselContainerText: {

@@ -30,7 +30,9 @@ import AdminKycUploadScreen from '../screens/AdminKycUploadScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
 import ChangePasswordScreen from '../screens/ChangePasswordScreen';
 import AdminLogsScreen from '../screens/AdminLogsScreen';
-// import PaymentPlansSection from '../components/PaymentPlansSection';
+import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
+import ResetPasswordScreen  from '../screens/ResetPasswordScreen';
+import PaymentPlanScreen from '../screens/PaymentPlanScreen';
 
 export type RootStackParamList = {
   Login: undefined;
@@ -60,7 +62,9 @@ export type RootStackParamList = {
   EditProfile: undefined;
   ChangePassword: undefined;
   AdminLogs: undefined;
-  // PaymentPlans: { propertyId: string };
+  ForgotPassword: undefined;
+  ResetPassword: undefined;
+  PaymentPlan: { propertyId: string };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -96,7 +100,9 @@ export default function AppNavigator() {
         <Stack.Screen name="EditProfile" component={EditProfileScreen} />
         <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
         <Stack.Screen name="AdminLogs" component={AdminLogsScreen} />
-        {/* <Stack.Screen name="PaymentPlans" component={PaymentPlansSection} /> */}
+        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+        <Stack.Screen name="ResetPassword" component={ResetPasswordScreen } />
+        <Stack.Screen name="PaymentPlan" component={PaymentPlanScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

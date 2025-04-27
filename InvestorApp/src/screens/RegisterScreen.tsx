@@ -1,15 +1,20 @@
-import React, { useState } from 'react';
+import React, { useEffect,useState } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
-import Captcha from '../components/Captcha';
+//import Captcha from '../components/Captcha';
 import api from '../api';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Register'>;
 
 const RegisterScreen = ({ navigation }: Props) => {
   //const [captchaToken, setCaptchaToken] = useState('');
-  const [showCaptcha, setShowCaptcha] = useState(false);
+ // const [showCaptcha, setShowCaptcha] = useState(false);
+
+ const [captchaId, setCaptchaId] = useState<string>('');
+ const [captchaExpression, setCaptchaExpression] = useState<string>('');
+ const [captchaAnswer, setCaptchaAnswer] = useState<string>('');
+
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -36,16 +41,28 @@ const RegisterScreen = ({ navigation }: Props) => {
   //   }
   // };
 
-  const handleRegister = async (captchaToken: string) => {
+  const loadCaptcha = async () => {
+    try {
+      const res = await api.get('/captcha/generate');
+      setCaptchaId(res.data.id);
+      setCaptchaExpression(res.data.expression);
+      setCaptchaAnswer('');
+    } catch (err) {
+      console.error(err);
+      Alert.alert('Error', 'Failed to load CAPTCHA');
+    }
+  };
+
+  const handleRegister = async () => {
     if (!fullName || !email || !password || !secretWord) {
       Alert.alert('Registration failed', 'All fields are required');
       return;
     }
   
-    if (!captchaToken) {
-      Alert.alert('CAPTCHA required', 'Please verify you are human');
-      return;
-    }
+    // if (!captchaToken) {
+    //   Alert.alert('CAPTCHA required', 'Please verify you are human');
+    //   return;
+    // }
   
     try {
       await api.post('/users/register', {
@@ -53,16 +70,26 @@ const RegisterScreen = ({ navigation }: Props) => {
         email,
         password,
         secretWord,
-        captchaToken,
+        captchaId,
+        captchaAnswer: parseInt(captchaAnswer, 10),
       });
-      Alert.alert('Registration successful', 'You can now log in');
+      Alert.alert('Registration successful', 'You can now check your email');
       navigation.navigate('Login');
-    } catch (err) {
-      console.error(err);
-      Alert.alert('Error', 'Registration failed');
-    }
+    } catch (error: any) {
+          console.error(error);
+          let message = 'Registration failed';
+          if (error.response?.data?.message) {
+            message = error.response.data.message;
+          }
+          Alert.alert('Error', message);
+          await loadCaptcha();
+        }
   };
 
+  useEffect(() => {
+    loadCaptcha();
+  }, []);
+ 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Register</Text>
@@ -93,11 +120,41 @@ const RegisterScreen = ({ navigation }: Props) => {
         value={secretWord}
         onChangeText={setSecretWord}
       />
-      <Button title="Verify I'm human" onPress={() => setShowCaptcha(true)} />
+
+      {/* <View style={styles.captchaContainer}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+          <Text style={styles.captchaLabel}>Solve: </Text>
+          <Text style={styles.captchaExpression}>{captchaExpression}</Text>
+          <Button title="🔁" onPress={loadCaptcha} />
+        </View>
+        <TextInput
+          style={styles.input}
+          placeholder="Answer"
+          keyboardType="numeric"
+          value={captchaAnswer}
+          onChangeText={setCaptchaAnswer}
+        />
+      </View> */}
+
+      <View style={styles.captchaContainer}>
+        <Text style={styles.captchaLabel}>Solve:</Text>
+        <Text style={styles.captchaExpression}>{captchaExpression}</Text>
+        <Button title="🔁" onPress={loadCaptcha} />
+        <TextInput
+          style={styles.input}
+          placeholder="Answer"
+          keyboardType="numeric"
+          value={captchaAnswer}
+          onChangeText={setCaptchaAnswer}
+        />
+      </View>
+      <Button title="Register" onPress={handleRegister} />
+
+      {/* <Button title="Verify I'm human" onPress={() => setShowCaptcha(true)} />
       {showCaptcha && <Captcha onVerify={(token) => {
         setShowCaptcha(false);
         handleRegister(token);
-      }} />}
+      }} />} */}
     </View>
   );
 };
@@ -120,6 +177,17 @@ const styles = StyleSheet.create({
     padding: 10,
     marginBottom: 10,
     borderRadius: 5,
+  },
+  captchaContainer: {
+    marginBottom: 20,
+  },
+  captchaLabel: {
+    fontSize: 16,
+  },
+  captchaExpression: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 10,
   },
 });
 

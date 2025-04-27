@@ -18,13 +18,14 @@ namespace RealEstateInvestment.Controllers
         private readonly AppDbContext _context;
         private readonly EmailService _emailService;
         private readonly IConfiguration _config;
-         
+        private readonly CaptchaService _captchaService;
 
-        public UserController(AppDbContext context, EmailService emailService, IConfiguration config)
+        public UserController(AppDbContext context, EmailService emailService, IConfiguration config, CaptchaService captchaService)
         {
             _context = context;
             _emailService = emailService;
             _config = config;
+            _captchaService = captchaService;
         }
         
         // Get list of users (admin only)
@@ -277,6 +278,64 @@ namespace RealEstateInvestment.Controllers
             public string Base64Image { get; set; }
         }
 
+        // google
+        //[HttpPost("register")]
+        //public async Task<IActionResult> Register([FromBody] ProfileRegisterRequest req)
+        //{
+        //    if (string.IsNullOrWhiteSpace(req.Email) || string.IsNullOrWhiteSpace(req.Password))
+        //        return BadRequest(new { message = "Email and password are required" });
+
+        //    var existing = await _context.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == req.Email.ToLower());
+        //    if (existing != null)
+        //        return BadRequest(new { message = "Email already in use" });
+
+        //    if (!await VerifyCaptcha(req.CaptchaToken)) {
+        //        return BadRequest(new { message = "Captcha verification failed. Please try again. " });
+        //    }
+
+        //    var user = new User
+        //    {
+        //        FullName = req.FullName,
+        //        Email = req.Email,
+        //        PasswordHash = req.Password, // TODO: hash password
+        //        SecretWord = req.SecretWord
+        //    };
+
+        //    _context.Users.Add(user);
+        //    _context.ActionLogs.Add(new ActionLog
+        //    {
+        //        UserId = user.Id,
+        //        Action = "Register",
+        //        Details = "New user registered"
+        //    });
+
+
+        //    var token = Guid.NewGuid().ToString();
+
+        //    _context.EmailConfirmationTokens.Add(new EmailConfirmationToken
+        //    {
+        //        UserId = user.Id,
+        //        Token = token,
+        //        CreatedAt = DateTime.UtcNow,
+        //        ExpiresAt = DateTime.UtcNow.AddHours(24)
+        //    });
+             
+        //    var confirmUrl = $"https://sell-estate.onrender.com/api/user/confirm-email?token={token}"; // todo set to add conf- frontend-URL  
+
+        //    await _emailService.SendEmailAsync(user.Email, "Confirm your email",
+        //        $"<h2>Welcome!</h2><p>Please confirm your email: <a href='{confirmUrl}'>Confirm Email</a></p>");
+
+        //    await _emailService.SendToAdminAsync(
+        //        "New user registered",
+        //        $"A new user has registered: <strong>{user.FullName}</strong> ({user.Email})"
+        //    );
+
+
+        //    await _context.SaveChangesAsync();
+
+        //    return Ok(new { message = "User registered successfully" });
+        //}
+
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] ProfileRegisterRequest req)
         {
@@ -287,8 +346,9 @@ namespace RealEstateInvestment.Controllers
             if (existing != null)
                 return BadRequest(new { message = "Email already in use" });
 
-            if (!await VerifyCaptcha(req.CaptchaToken)) {
-                return BadRequest(new { message = "Captcha verification failed. Please try again. " });
+            if (!_captchaService.Verify(req.CaptchaId, req.CaptchaAnswer))
+            {
+                return BadRequest(new { message = "Captcha verification failed. Please try again." });
             }
 
             var user = new User
@@ -307,7 +367,6 @@ namespace RealEstateInvestment.Controllers
                 Details = "New user registered"
             });
 
-
             var token = Guid.NewGuid().ToString();
 
             _context.EmailConfirmationTokens.Add(new EmailConfirmationToken
@@ -317,8 +376,8 @@ namespace RealEstateInvestment.Controllers
                 CreatedAt = DateTime.UtcNow,
                 ExpiresAt = DateTime.UtcNow.AddHours(24)
             });
-             
-            var confirmUrl = $"https://sell-estate.onrender.com/api/user/confirm-email?token={token}"; // todo set to add conf- frontend-URL  
+
+            var confirmUrl = $"https://sell-estate.onrender.com/api/user/confirm-email?token={token}";
 
             await _emailService.SendEmailAsync(user.Email, "Confirm your email",
                 $"<h2>Welcome!</h2><p>Please confirm your email: <a href='{confirmUrl}'>Confirm Email</a></p>");
@@ -328,16 +387,16 @@ namespace RealEstateInvestment.Controllers
                 $"A new user has registered: <strong>{user.FullName}</strong> ({user.Email})"
             );
 
-
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "User registered successfully" });
         }
 
+        // todo разобраться с гугл капчей
         private async Task<bool> VerifyCaptcha(string token)
         {
             var client = new HttpClient();
-            var secret = "6LdAIiMrAAAAAJGSNacdrQmj0hZlkdpLAN_B2rxJ"; // todo mobe to config  _config["Recaptcha:SecretKey"];
+            var secret = "пока убрал"; // todo mobe to config  _config["Recaptcha:SecretKey"];
             var response = await client.PostAsync(
                 $"https://www.google.com/recaptcha/api/siteverify?secret={secret}&response={token}", null);
             var json = await response.Content.ReadAsStringAsync();
@@ -363,7 +422,14 @@ namespace RealEstateInvestment.Controllers
             public string SecretWord { get; set; }
 
             [Required]
-            public string CaptchaToken { get; set; }
+            public Guid CaptchaId { get; set; }
+
+            [Required]
+            public int CaptchaAnswer { get; set; }
+
+            // todo google
+            //[Required]
+            //public string CaptchaToken { get; set; }
         }
 
         [HttpGet("confirm-email")]
@@ -393,6 +459,60 @@ namespace RealEstateInvestment.Controllers
 
             return Ok(new { message = "Email confirmed!" });
         }
+
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword([FromBody] string email)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+            if (user == null) return NotFound(new { message = "User not found" });
+
+            var token = new PasswordResetToken
+            {
+                UserId = user.Id
+            };
+            _context.PasswordResetTokens.Add(token);
+
+            var resetUrl = $"https://sell-estate.onrender.com/reset-password?token={token.Token}"; // todo move to config
+            await _emailService.SendEmailAsync(email, "Reset Password",
+                $"Click here to reset your password: <a href='{resetUrl}'>Reset Password</a>");
+
+            await _context.SaveChangesAsync();
+            return Ok(new { message = "Password reset link sent to email" });
+        }
+
+        public class ResetPasswordRequest
+        {
+            public string Token { get; set; }
+            public string NewPassword { get; set; }
+        }
+
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest req)
+        {
+            var tokenEntry = await _context.PasswordResetTokens
+                .FirstOrDefaultAsync(t => t.Token == req.Token && t.ExpiresAt > DateTime.UtcNow);
+
+            if (tokenEntry == null)
+                return BadRequest(new { message = "Invalid or expired token" });
+
+            var user = await _context.Users.FindAsync(tokenEntry.UserId);
+            if (user == null)
+                return NotFound(new { message = "User not found" });
+
+            user.PasswordHash = req.NewPassword; // todo: hash
+            _context.PasswordResetTokens.Remove(tokenEntry);
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = user.Id,
+                Action = "ResetPassword",
+                Details = "User reset their password"
+            });
+
+            await _context.SaveChangesAsync();
+            return Ok(new { message = "Password has been reset" });
+        }
+
+
 
 
 

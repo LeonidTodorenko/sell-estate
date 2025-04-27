@@ -23,6 +23,7 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddTransient<EmailService>();
+builder.Services.AddSingleton<CaptchaService>();
 
 var app = builder.Build();
 
