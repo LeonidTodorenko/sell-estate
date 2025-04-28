@@ -226,5 +226,29 @@ namespace RealEstateInvestment.Controllers
             return Ok(new { message = "Listing type updated" });
         }
 
+        [HttpPost("{propertyId}/validate-payments")]
+        public async Task<IActionResult> ValidatePayments(Guid propertyId)
+        {
+            var plans = await _context.PaymentPlans
+                .Where(p => p.PropertyId == propertyId)
+                .OrderBy(p => p.DueDate)
+                .ToListAsync();
+
+            if (!plans.Any())
+                return NotFound(new { message = "No payment plans found." });
+
+            foreach (var plan in plans)
+            {
+                if (plan.DueDate < DateTime.UtcNow && plan.Outstanding > 0)
+                {
+                    plan.Overdue = true;
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            return Ok(new { message = "Payments validated" });
+        }
+
+
     }
 }

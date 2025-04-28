@@ -42,9 +42,7 @@ namespace RealEstateInvestment.Controllers
 
         //    return Ok(new { message = "Registered!" });
         //}
-
-    
-
+         
         [HttpPost("login")]
         public IActionResult Login([FromBody] LoginRequest request)
         {

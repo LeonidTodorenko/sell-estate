@@ -512,9 +512,5 @@ namespace RealEstateInvestment.Controllers
             return Ok(new { message = "Password has been reset" });
         }
 
-
-
-
-
     }
 }
