@@ -229,6 +229,16 @@ namespace RealEstateInvestment.Controllers
         [HttpPost("{propertyId}/validate-payments")]
         public async Task<IActionResult> ValidatePayments(Guid propertyId)
         {
+            var property = await _context.Properties.FindAsync(propertyId);
+            if (property == null)
+                return NotFound(new { message = "Property not found" });
+
+            // Protection: if already sold or rented out - nothing is done.
+            if (property.Status == "sold" || property.Status == "rented")
+            {
+                return Ok(new { message = $"No action needed. Property already {property.Status}." });
+            }
+
             var plans = await _context.PaymentPlans
                 .Where(p => p.PropertyId == propertyId)
                 .OrderBy(p => p.DueDate)
@@ -237,17 +247,61 @@ namespace RealEstateInvestment.Controllers
             if (!plans.Any())
                 return NotFound(new { message = "No payment plans found." });
 
-            foreach (var plan in plans)
+            bool hasOverdue = plans.Any(plan => plan.DueDate < DateTime.UtcNow && plan.Outstanding > 0);
+
+            if (!hasOverdue)
             {
-                if (plan.DueDate < DateTime.UtcNow && plan.Outstanding > 0)
+                return Ok(new { message = "All payments are valid." });
+            }
+
+            // change status to "declined"
+            property.Status = "declined";
+
+            // search all investments on this property
+            var investments = await _context.Investments
+                .Where(i => i.PropertyId == propertyId)
+                .ToListAsync();
+
+            decimal totalRefunded = 0m;
+            int investmentsRefunded = 0;
+
+            foreach (var inv in investments)
+            {
+                var user = await _context.Users.FindAsync(inv.UserId);
+                if (user != null)
                 {
-                    plan.Overdue = true;
+                    user.WalletBalance += inv.InvestedAmount;
+                    totalRefunded += inv.InvestedAmount;
+                    investmentsRefunded++;
+
+                    _context.ActionLogs.Add(new ActionLog
+                    {
+                        UserId = inv.UserId,
+                        Action = "InvestmentRefundedDueToDecline",
+                        Details = $"Refunded {inv.InvestedAmount} USD for investment {inv.Id} on declined property {propertyId}"
+                    });
                 }
             }
 
+            _context.Investments.RemoveRange(investments);
+              
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo admin GUID
+                Action = "PropertyDeclinedDueToPaymentFailure",
+                Details = $"Property {property.Title} ({property.Id}) declined. Refunded {investmentsRefunded} investments totaling {totalRefunded} USD."
+            });
+
             await _context.SaveChangesAsync();
-            return Ok(new { message = "Payments validated" });
+
+            return Ok(new
+            {
+                message = "Property declined and investments refunded.",
+                totalRefunded,
+                investmentsRefunded
+            });
         }
+
 
 
     }
