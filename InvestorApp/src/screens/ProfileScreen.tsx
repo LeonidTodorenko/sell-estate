@@ -82,6 +82,9 @@ const ProfileScreen = ({ navigation }: Props) => {
         <Button title="Top Up Balance" onPress={() => navigation.navigate('TopUp')} />
         <View style={{ height: 10 }} />
 
+        <Button title="Inbox Messages" onPress={() => navigation.navigate('Inbox')} />
+        <View style={{ height: 10 }} />
+
         <Button title="Change Password" onPress={() => navigation.navigate('ChangePassword')} />
         <View style={{ height: 10 }} />
 

@@ -33,6 +33,8 @@ import AdminLogsScreen from '../screens/AdminLogsScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import ResetPasswordScreen  from '../screens/ResetPasswordScreen';
 import PaymentPlanScreen from '../screens/PaymentPlanScreen';
+import InboxScreen from '../screens/InboxScreen';
+import AdminMessagesScreen from '../screens/AdminMessagesScreen';
 
 export type RootStackParamList = {
   Login: undefined;
@@ -65,6 +67,8 @@ export type RootStackParamList = {
   ForgotPassword: undefined;
   ResetPassword: undefined;
   PaymentPlan: { propertyId: string };
+  Inbox: undefined;
+  AdminMessages: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -103,6 +107,8 @@ export default function AppNavigator() {
         <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
         <Stack.Screen name="ResetPassword" component={ResetPasswordScreen } />
         <Stack.Screen name="PaymentPlan" component={PaymentPlanScreen} />
+        <Stack.Screen name="Inbox" component={InboxScreen} />
+        <Stack.Screen name="AdminMessages" component={AdminMessagesScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

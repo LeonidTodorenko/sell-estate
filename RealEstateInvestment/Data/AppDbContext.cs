@@ -20,6 +20,7 @@ namespace RealEstateInvestment.Data
         public DbSet<PropertyImage> PropertyImages { get; set; }
         public DbSet<PaymentPlan> PaymentPlans { get; set; }
         public DbSet<PasswordResetToken> PasswordResetTokens { get; set; }
+        public DbSet<Message> Messages { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

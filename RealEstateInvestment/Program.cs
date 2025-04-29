@@ -24,7 +24,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddTransient<EmailService>();
 builder.Services.AddSingleton<CaptchaService>();
-builder.Services.AddHostedService<ScheduledTaskService>();
+// todo test builder.Services.AddHostedService<ScheduledTaskService>();
 
 var app = builder.Build();
 
