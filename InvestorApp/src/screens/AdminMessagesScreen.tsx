@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, FlatList, Alert, Picker } from 'react-native';
+import { View, Text, TextInput, Button, StyleSheet, FlatList, Alert } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 import api from '../api';
-import { useNavigation } from '@react-navigation/native';
+//import { useNavigation } from '@react-navigation/native';
 
 interface Message {
   id: string;
@@ -23,7 +24,7 @@ const AdminMessagesScreen = () => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [recipientId, setRecipientId] = useState<string>('');
-  const navigation = useNavigation();
+  //const navigation = useNavigation();
 
   const loadMessages = async () => {
     const res = await api.get('/messages/all');
@@ -47,7 +48,7 @@ const AdminMessagesScreen = () => {
     }
 
     try {
-      await api.post('/messages', {
+      await api.post('/messages/send', {
         title,
         content,
         recipientId: recipientId || null,
@@ -57,9 +58,19 @@ const AdminMessagesScreen = () => {
       setContent('');
       setRecipientId('');
       loadMessages();
-    } catch (err) {
-      Alert.alert('Error', 'Failed to send message');
     }
+    catch (error: any) {
+             let message = 'Failed to send message ';
+                  console.error(error);
+                  if (error.response && error.response.data) {
+                    message = JSON.stringify(error.response.data);
+                  } else if (error.message) {
+                    message = error.message;
+                  }
+                  Alert.alert('Error', 'Failed to send message ' + message);
+                console.error(message);
+          }
+       
   };
 
   return (
@@ -81,7 +92,7 @@ const AdminMessagesScreen = () => {
       />
       <Picker
         selectedValue={recipientId}
-        onValueChange={(value) => setRecipientId(value)}
+        onValueChange={(value: string) => setRecipientId(value)}
         style={styles.input}
       >
         <Picker.Item label="All Users" value="" />

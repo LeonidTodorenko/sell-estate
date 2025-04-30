@@ -18,12 +18,30 @@ const InboxScreen = () => {
 
   useEffect(() => {
     const loadMessages = async () => {
-      const stored = await AsyncStorage.getItem('user');
-      if (!stored) return;
-      const user = JSON.parse(stored);
-      setUserId(user.id);
-      const res = await api.get(`/messages/inbox/${user.id}`);
-      setMessages(res.data);
+
+      try {
+        const stored = await AsyncStorage.getItem('user');
+        if (!stored) return;
+        const user = JSON.parse(stored);
+        //Alert.alert('USER' );
+        setUserId(user.id);
+        const res = await api.get(`/messages/inbox/${user.userId}`);
+        //Alert.alert(res.data );
+        setMessages(res.data);
+
+      }
+      catch (error: any) {
+        let message = 'Failed to get inbox ';
+        console.error(error);
+        if (error.response && error.response.data) {
+          message = JSON.stringify(error.response.data);
+        } else if (error.message) {
+          message = error.message;
+        }
+        Alert.alert('Error', 'Failed to get inbox ' + message);
+        console.error(message);
+      }
+
     };
 
     loadMessages();

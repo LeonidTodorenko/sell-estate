@@ -47,6 +47,17 @@ namespace RealEstateInvestment.Controllers
             await _context.SaveChangesAsync();
             return Ok(new { message = "Message sent" });
         }
+
+        [HttpGet("unread-count/{userId}")]
+        public async Task<IActionResult> GetUnreadCount(Guid userId)
+        {
+            var count = await _context.Messages
+                .Where(m => (m.RecipientId == null || m.RecipientId == userId) && !m.IsRead)
+                .CountAsync();
+
+            return Ok(new { count });
+        }
+
     }
 
 }
