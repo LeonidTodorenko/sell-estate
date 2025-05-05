@@ -36,6 +36,48 @@ namespace RealEstateInvestment.Controllers
             });
         }
 
+
+        [HttpGet("payment-plan-summary")]
+        public IActionResult GetPaymentPlanSummary()
+        {
+            var summary = _context.PaymentPlans
+                .Where(p => p.DueDate > DateTime.UtcNow)
+                .Join(_context.Properties,
+                    plan => plan.PropertyId,
+                    property => property.Id,
+                    (plan, property) => new
+                    {
+                        property.Title,
+                        plan.DueDate,
+                        plan.Total,
+                        plan.Paid,
+                        Outstanding = plan.Total - plan.Paid
+                    })
+                .AsEnumerable()  
+                .GroupBy(x => new
+                {
+                    Month = new DateTime(x.DueDate.Year, x.DueDate.Month, 1),
+                    x.Title
+                })
+                .Select(g => new
+                {
+                    Month = g.Key.Month.ToString("yyyy-MM"),
+                    PropertyTitle = g.Key.Title,
+                    TotalDue = g.Sum(x => x.Total),
+                    TotalPaid = g.Sum(x => x.Paid),
+                    TotalOutstanding = g.Sum(x => x.Outstanding)
+                })
+                .OrderBy(x => x.Month)
+                .ThenBy(x => x.PropertyTitle)
+                .ToList();  
+
+            return Ok(summary);
+        }
+
+
+
+
+
         [HttpGet("logs")]
         public async Task<IActionResult> GetLogs([FromQuery] string? action, [FromQuery] string? userName, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
         {

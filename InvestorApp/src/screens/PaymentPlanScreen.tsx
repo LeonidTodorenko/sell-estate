@@ -19,7 +19,7 @@ interface PaymentPlan {
 }
 
 const PaymentPlanScreen = ({ route }: any) => {
-  const { propertyId } = route.params;
+  const { propertyId, readonly } = route.params;
   const [plans, setPlans] = useState<PaymentPlan[]>([]);
   const [showModal, setShowModal] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
@@ -48,7 +48,10 @@ const PaymentPlanScreen = ({ route }: any) => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>📋 Payment Plan</Text>
-      <Button title="➕ Add Payment Plan" onPress={() => setShowModal(true)} />
+      {!readonly && (
+        <Button title="➕ Add Payment Plan" onPress={() => setShowModal(true)} />
+      )}
+    
 
       <ScrollView ref={scrollViewRef} style={styles.tableContainer} horizontal>
         <PaymentPlanTable plans={plans} reload={loadPlans} />

@@ -186,24 +186,6 @@ const AdminPropertiesScreen = () => {
           <Text>Status: {item.status}</Text>
           <Text>🏗 Completion Date: {new Date(item.expectedCompletionDate).toLocaleDateString()}</Text>
 
-          {/* {item.images && item.images.length > 0 && (
-            <View style={styles.carouselContainer}>
-              <Carousel
-                width={200}
-                height={120}
-                data={item.images}
-                scrollAnimationDuration={500}
-                renderItem={({ item: image }) => (
-                  <TouchableOpacity onPress={() => { setModalImage(image.base64Data); setModalVisible(true); }}>
-                    <Image source={{ uri: image.base64Data }} style={styles.carouselContainerImage} />
-                  </TouchableOpacity>
-                )}
-                onSnapToItem={(index) => setImageIndex(index)}
-              />
-              <Text style={styles.carouselContainerText}>{imageIndex + 1}/{item.images.length}</Text>
-            </View>
-          )} */}
- 
         {item.images && item.images.length > 0 && (
           <View style={styles.carouselContainer}>
             <Swiper
@@ -232,7 +214,7 @@ const AdminPropertiesScreen = () => {
         )}
 
           {/* <PaymentPlansSection propertyId={item.id} /> */}
-          <Button title="📄 View Payment Plan" onPress={() => navigation.navigate('PaymentPlan', { propertyId: item.id })} />
+          <Button title="📄 View Payment Plan" onPress={() => navigation.navigate('PaymentPlan', { propertyId: item.id, readonly: false })} />
 
           <View style={styles.buttonRow}>
             <Button title="📍 View on Map" onPress={() => {

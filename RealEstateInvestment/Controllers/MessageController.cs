@@ -51,11 +51,12 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("unread-count/{userId}")]
         public async Task<IActionResult> GetUnreadCount(Guid userId)
         {
-            var count = await _context.Messages
-                .Where(m => (m.RecipientId == null || m.RecipientId == userId) && !m.IsRead)
-                .CountAsync();
 
+            var count = await _context.Messages
+           .Where(m => (m.RecipientId == null || m.RecipientId == userId) && !m.IsRead)
+           .CountAsync();
             return Ok(new { count });
+             
         }
 
     }

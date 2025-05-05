@@ -27,7 +27,7 @@ const ProfileScreen = ({ navigation }: Props) => {
         if (stored) {
           const parsed = JSON.parse(stored);
           setUser(parsed);
-          fetchUnreadCount(parsed.userId);  
+          fetchUnreadCount(parsed.userId);
         } else {
           Alert.alert('No session', 'Please log in again');
           navigation.replace('Login');

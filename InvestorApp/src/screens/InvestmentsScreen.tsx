@@ -1,21 +1,13 @@
-import React, { useEffect, useState,useCallback  } from 'react';
-import { View, Text, FlatList, StyleSheet, Alert } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, Text, FlatList, StyleSheet, Alert, Image, TouchableOpacity,Button } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { useLoading } from '../contexts/LoadingContext';
-
-// interface Investment {
-//   investmentId: string;
-//   propertyId: string;
-//   propertyTitle: string;
-//   shares: number;
-//   investedAmount: number;
-//   createdAt: string;
-//   percent: number;
-// }
+import Swiper from 'react-native-swiper';
+import Modal from 'react-native-modal';
 
 interface Investment {
   propertyId: string;
@@ -24,10 +16,19 @@ interface Investment {
   totalInvested: number;
   ownershipPercent: number;
 }
-  
+
+interface PropertyImage {
+  id: string;
+  base64Data: string;
+}
+
 const InvestmentsScreen = () => {
   const { setLoading } = useLoading();
   const [investments, setInvestments] = useState<Investment[]>([]);
+  const [imagesMap, setImagesMap] = useState<Record<string, PropertyImage[]>>({});
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalImage, setModalImage] = useState<string | null>(null);
+  const [imageIndex, setImageIndex] = useState(0);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const loadInvestments = useCallback(async () => {
@@ -39,6 +40,17 @@ const InvestmentsScreen = () => {
       const user = JSON.parse(stored);
       const response = await api.get(`/investments/with-aggregated/${user.userId}`);
       setInvestments(response.data);
+
+      const imagesResult: Record<string, PropertyImage[]> = {};
+      for (const inv of response.data) {
+        try {
+          const res = await api.get(`/properties/${inv.propertyId}/images`);
+          imagesResult[inv.propertyId] = res.data;
+        } catch (err) {
+          imagesResult[inv.propertyId] = [];
+        }
+      }
+      setImagesMap(imagesResult);
     } catch (err) {
       console.error(err);
       Alert.alert('Error', 'Failed to load investments');
@@ -46,7 +58,7 @@ const InvestmentsScreen = () => {
       setLoading(false);
     }
   }, [setLoading]);
-   
+
   useEffect(() => {
     loadInvestments();
   }, [loadInvestments]);
@@ -56,14 +68,40 @@ const InvestmentsScreen = () => {
       <Text style={styles.title}>My Investments</Text>
       <FlatList
         data={investments}
-        //keyExtractor={(item) => item.investmentId}
         renderItem={({ item }) => (
           <View style={styles.card}>
             <Text style={styles.name}>🏠 {item.propertyTitle}</Text>
             <Text>💰 Invested: {item.totalInvested} USD</Text>
             <Text>📊 Shares: {item.totalShares}</Text>
             <Text>📈 Ownership: {item.ownershipPercent}%</Text>
-            {/* <Text>📅 Date: {new Date(item.createdAt).toLocaleDateString()}</Text>  todo заменить на дату сдачи */}
+            {imagesMap[item.propertyId] && imagesMap[item.propertyId].length > 0 && (
+              <View style={styles.carouselContainer}>
+                <Swiper
+                  style={styles.swiper}
+                  height={180}
+                  showsPagination={true}
+                  loop={false}
+                  onIndexChanged={(index) => setImageIndex(index)}
+                >
+                  {imagesMap[item.propertyId].map((image) => (
+                    <TouchableOpacity
+                      key={image.id}
+                      onPress={() => {
+                        setModalImage(image.base64Data);
+                        setModalVisible(true);
+                      }}
+                    >
+                      <Image source={{ uri: image.base64Data }} style={styles.carouselImage} />
+                    </TouchableOpacity>
+                  ))}
+                </Swiper>
+                <Text style={styles.carouselText}>
+                  {imageIndex + 1}/{imagesMap[item.propertyId].length}
+                </Text>
+              </View>
+            )}
+             <Button title="📄 View Payment Plan" onPress={() => navigation.navigate('PaymentPlan', { propertyId: item.propertyId, readonly: true })} />
+               <View style={{ height: 10 }} />
             <Text
               style={styles.link}
               onPress={() => navigation.navigate('PropertyDetail', { propertyId: item.propertyId })}
@@ -73,6 +111,14 @@ const InvestmentsScreen = () => {
           </View>
         )}
       />
+
+      <Modal isVisible={modalVisible} onBackdropPress={() => setModalVisible(false)}>
+        <View style={styles.modalView}>
+          {modalImage && (
+            <Image source={{ uri: modalImage }} style={styles.modalImage} />
+          )}
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -88,6 +134,30 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 5,
+  },
+  carouselContainer: {
+    alignItems: 'center',
+    marginVertical: 10,
+  },
+  carouselImage: {
+    width: 320,
+    height: 180,
+    borderRadius: 6,
+  },
+  carouselText: {
+    marginTop: 4,
+  },
+  swiper: {
+    height: 180,
+  },
+  modalView: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalImage: {
+    width: '100%',
+    height: 300,
+    resizeMode: 'contain',
   },
 });
 

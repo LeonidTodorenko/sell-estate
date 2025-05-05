@@ -66,7 +66,7 @@ export type RootStackParamList = {
   AdminLogs: undefined;
   ForgotPassword: undefined;
   ResetPassword: undefined;
-  PaymentPlan: { propertyId: string };
+  PaymentPlan: { propertyId: string, readonly: boolean };
   Inbox: undefined;
   AdminMessages: undefined;
 };
