@@ -14,6 +14,7 @@ const BuySharesScreen = () => {
 
   const [amount, setAmount] = useState('');
   const [sharePrice, setSharePrice] = useState<number | null>(null);
+  const [pinOrPassword, setPinOrPassword] = useState('');
 
   useEffect(() => {
     const loadProperty = async () => {
@@ -48,12 +49,17 @@ const BuySharesScreen = () => {
 
     const user = JSON.parse(stored);
 
+    if (!pinOrPassword) {
+      return Alert.alert('Validation', 'Enter PIN or password');
+    }
+
     try {
       await api.post('/investments/apply', {
         userId: user.userId,
         propertyId,
         shares,
         investedAmount: parsed,
+        pinOrPassword,
       });
 
       Alert.alert('Success', 'Investment submitted');
@@ -75,6 +81,13 @@ const BuySharesScreen = () => {
         value={amount}
         onChangeText={setAmount}
       />
+      <TextInput
+        style={styles.input}
+        placeholder="PIN or Password"
+        secureTextEntry
+        value={pinOrPassword}
+        onChangeText={setPinOrPassword}
+      />
       <Button title="Invest" onPress={handleBuy} />
     </View>
   );
@@ -87,7 +100,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ccc',
     padding: 10,
-    marginVertical: 20,
+    marginVertical: 10,
     borderRadius: 6,
   },
 });

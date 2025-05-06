@@ -10,7 +10,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Register'>;
 const RegisterScreen = ({ navigation }: Props) => {
   //const [captchaToken, setCaptchaToken] = useState('');
  // const [showCaptcha, setShowCaptcha] = useState(false);
-
+ const [pinCode, setPinCode] = useState('');
  const [captchaId, setCaptchaId] = useState<string>('');
  const [captchaExpression, setCaptchaExpression] = useState<string>('');
  const [captchaAnswer, setCaptchaAnswer] = useState<string>('');
@@ -70,6 +70,7 @@ const RegisterScreen = ({ navigation }: Props) => {
         email,
         password,
         secretWord,
+        pinCode,
         captchaId,
         captchaAnswer: parseInt(captchaAnswer, 10),
       });
@@ -120,6 +121,15 @@ const RegisterScreen = ({ navigation }: Props) => {
         value={secretWord}
         onChangeText={setSecretWord}
       />
+
+<TextInput
+  style={styles.input}
+  placeholder="PIN Code (optional, 4 digits)"
+  keyboardType="numeric"
+  maxLength={4}
+  value={pinCode}
+  onChangeText={setPinCode}
+/>
 
       {/* <View style={styles.captchaContainer}>
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>

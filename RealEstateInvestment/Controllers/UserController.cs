@@ -6,6 +6,7 @@ using RealEstateInvestment.Models;
 using System.ComponentModel.DataAnnotations;
 using RealEstateInvestment.Services;
 using Newtonsoft.Json;
+using System.Text.RegularExpressions;
 
 namespace RealEstateInvestment.Controllers
 { 
@@ -139,14 +140,26 @@ namespace RealEstateInvestment.Controllers
 
             return Ok(users);
         }
-
+         
         // place some money to wallet
         [HttpPost("wallet/topup")]
         public async Task<IActionResult> TopUp([FromBody] TopUpRequest req)
         {
             var user = await _context.Users.FindAsync(req.UserId);
-            if (user == null) return NotFound();
-             
+            if (user == null)
+                return NotFound(new { message = "User not found" });
+
+            if (!string.IsNullOrEmpty(user.PinCode))
+            {
+                if (req.PinOrPassword != user.PinCode)
+                    return BadRequest(new { message = "Invalid PIN" });
+            }
+            else
+            {
+                if (req.PinOrPassword != user.PasswordHash) // TODO: hash check
+                    return BadRequest(new { message = "Invalid password" });
+            }
+
             user.WalletBalance += req.Amount;
 
             _context.ActionLogs.Add(new ActionLog
@@ -166,6 +179,7 @@ namespace RealEstateInvestment.Controllers
         {
             public Guid UserId { get; set; }
             public decimal Amount { get; set; }
+            public string PinOrPassword { get; set; }
         }
 
         [HttpGet("{id}")]
@@ -351,12 +365,16 @@ namespace RealEstateInvestment.Controllers
                 return BadRequest(new { message = "Captcha verification failed. Please try again." });
             }
 
+            if (!string.IsNullOrWhiteSpace(req.PinCode) && !Regex.IsMatch(req.PinCode, @"^\d{4}$"))
+                return BadRequest(new { message = "PIN code must be exactly 4 digits" });
+
             var user = new User
             {
                 FullName = req.FullName,
                 Email = req.Email,
                 PasswordHash = req.Password, // TODO: hash password
-                SecretWord = req.SecretWord
+                SecretWord = req.SecretWord,
+                PinCode = req.PinCode
             };
 
             _context.Users.Add(user);
@@ -420,6 +438,9 @@ namespace RealEstateInvestment.Controllers
 
             [Required]
             public string SecretWord { get; set; }
+
+            [Required]
+            public string? PinCode { get; set; }
 
             [Required]
             public Guid CaptchaId { get; set; }

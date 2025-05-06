@@ -19,7 +19,7 @@ namespace RealEstateInvestment.Controllers
 
         //   An investor submits an application to purchase shares
         [HttpPost("apply")]
-        public async Task<IActionResult> ApplyForInvestment([FromBody] Investment investmentRequest)
+        public async Task<IActionResult> ApplyForInvestment([FromBody] InvestmentWithPin investmentRequest)
         {
             await _investmentLock.WaitAsync();
             try
@@ -33,6 +33,17 @@ namespace RealEstateInvestment.Controllers
                 var user = await _context.Users.FindAsync(investmentRequest.UserId);
                 if (user == null)
                     return NotFound(new { message = "User not found" });
+
+                if (!string.IsNullOrEmpty(user.PinCode))
+                {
+                    if (investmentRequest.PinOrPassword != user.PinCode)
+                        return BadRequest(new { message = "Invalid PIN" });
+                }
+                else
+                {
+                    if (investmentRequest.PinOrPassword != user.PasswordHash) // TODO: hash
+                        return BadRequest(new { message = "Invalid password" });
+                }
 
                 if (user.WalletBalance < investmentRequest.InvestedAmount)
                     return BadRequest(new { message = "Insufficient funds" });
@@ -72,6 +83,12 @@ namespace RealEstateInvestment.Controllers
             //Сделать статус Investment.Status = pending / confirmed и использовать это при финализации.
             //Добавить логику возврата денег при FinalizeInvestment, если заявка не попала в распределение.
             //В будущем: уведомления, e - mail, журнал транзакций.
+        }
+
+        // todo move
+        public class InvestmentWithPin : Investment
+        {
+            public string PinOrPassword { get; set; }
         }
 
         // Completing the share purchase process (used after the bid period expires)

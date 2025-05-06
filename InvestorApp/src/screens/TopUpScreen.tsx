@@ -5,11 +5,16 @@ import api from '../api';
 
 const TopUpScreen = () => {
   const [amount, setAmount] = useState('');
+  const [pinOrPassword, setPinOrPassword] = useState('');
 
   const handleTopUp = async () => {
     const parsed = parseFloat(amount);
     if (isNaN(parsed) || parsed <= 0) {
       return Alert.alert('Invalid', 'Enter a valid amount');
+    }
+
+    if (!pinOrPassword) {
+      return Alert.alert('Missing', 'Enter your PIN or password');
     }
 
     const stored = await AsyncStorage.getItem('user');
@@ -21,10 +26,12 @@ const TopUpScreen = () => {
       await api.post('/users/wallet/topup', {
         userId: user.userId,
         amount: parsed,
+        pinOrPassword,
       });
 
       Alert.alert('Success', 'Balance topped up');
       setAmount('');
+      setPinOrPassword('');
     } catch (err) {
       console.error(err);
       Alert.alert('Error', 'Top-up failed');
@@ -40,6 +47,13 @@ const TopUpScreen = () => {
         keyboardType="numeric"
         value={amount}
         onChangeText={setAmount}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="PIN or Password"
+        secureTextEntry
+        value={pinOrPassword}
+        onChangeText={setPinOrPassword}
       />
       <Button title="Top Up" onPress={handleTopUp} />
     </View>

@@ -36,5 +36,8 @@ namespace RealEstateInvestment.Models
         public string? AvatarBase64 { get; set; }
 
         public bool IsEmailConfirmed { get; set; } = false;
+
+        [RegularExpression(@"^\d{4}$", ErrorMessage = "PIN code must be exactly 4 digits")]
+        public string? PinCode { get; set; }
     }
 }
