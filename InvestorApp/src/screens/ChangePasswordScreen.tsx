@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
+import StyledInput from '../components/StyledInput';
 
 const ChangePasswordScreen = () => {
   const [currentPassword, setCurrentPassword] = useState('');
@@ -46,21 +47,21 @@ const ChangePasswordScreen = () => {
     <View style={styles.container}>
       <Text style={styles.title}>Change Password</Text>
 
-      <TextInput
+      <StyledInput
         style={styles.input}
         placeholder="Current Password"
         secureTextEntry
         value={currentPassword}
         onChangeText={setCurrentPassword}
       />
-      <TextInput
+      <StyledInput
         style={styles.input}
         placeholder="New Password"
         secureTextEntry
         value={newPassword}
         onChangeText={setNewPassword}
       />
-      <TextInput
+      <StyledInput
         style={styles.input}
         placeholder="Confirm New Password"
         secureTextEntry

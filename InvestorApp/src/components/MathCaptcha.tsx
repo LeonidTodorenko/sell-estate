@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, Button, Alert, StyleSheet } from 'react-native';
 import api from '../api';
+import StyledInput from '../components/StyledInput';
 
 const MathCaptcha = ({ onSuccess }: { onSuccess: () => void }) => {
   const [expression, setExpression] = useState('');
@@ -47,7 +48,7 @@ const MathCaptcha = ({ onSuccess }: { onSuccess: () => void }) => {
         <Text style={styles.expression}>{expression}</Text>
         <Button title="🔁" onPress={loadCaptcha} />
       </View>
-      <TextInput
+      <StyledInput
         value={answer}
         onChangeText={setAnswer}
         keyboardType="numeric"

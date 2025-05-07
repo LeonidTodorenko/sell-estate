@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { useLoading } from '../contexts/LoadingContext';
+import StyledInput from '../components/StyledInput';
 //import { Buffer } from 'buffer';
 
 global.Buffer = global.Buffer || require('buffer').Buffer;
@@ -102,10 +103,10 @@ const EditProfileScreen = () => {
       <View style={{ height: 20 }} />
       <Text>KYC Status: {user && user.kycStatus}</Text>
       <View style={{ height: 20 }} />
-      <TextInput style={styles.input} placeholder="Full Name" value={fullName} onChangeText={setFullName} />
-      <TextInput style={styles.input} placeholder="Email" value={email} onChangeText={setEmail} />
-      <TextInput style={styles.input} placeholder="Phone Number" value={phoneNumber} onChangeText={setPhoneNumber} />
-      <TextInput style={styles.input} placeholder="Address" value={address} onChangeText={setAddress} />
+      <StyledInput style={styles.input} placeholder="Full Name" value={fullName} onChangeText={setFullName} />
+      <StyledInput style={styles.input} placeholder="Email" value={email} onChangeText={setEmail} />
+      <StyledInput style={styles.input} placeholder="Phone Number" value={phoneNumber} onChangeText={setPhoneNumber} />
+      <StyledInput style={styles.input} placeholder="Address" value={address} onChangeText={setAddress} />
 
       <Text style={{ marginTop: 10, fontWeight: 'bold' }}>Avatar:</Text>
        {avatarBase64 ? (

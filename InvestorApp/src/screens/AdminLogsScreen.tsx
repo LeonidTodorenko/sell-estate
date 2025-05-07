@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, TextInput, Button } from 'react-native';
 import api from '../api';
+import StyledInput from '../components/StyledInput';
 
 interface ActionLog {
   id: string;
@@ -61,13 +62,13 @@ const AdminLogsScreen = () => {
       <Text style={styles.title}>📋 Action Logs</Text>
 
       <View style={styles.filterRow}>
-        <TextInput
+        <StyledInput
           placeholder="Filter by action"
           style={styles.input}
           value={actionFilter}
           onChangeText={setActionFilter}
         />
-        <TextInput
+        <StyledInput
           placeholder="Filter by user name"
           style={styles.input}
           value={userNameFilter}

@@ -4,6 +4,7 @@ import { launchImageLibrary } from 'react-native-image-picker';
 import api from '../api';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import StyledInput from '../components/StyledInput';
 
 type RouteProps = RouteProp<RootStackParamList, 'AdminKycUpload'>;
 
@@ -41,7 +42,7 @@ const AdminKycUploadScreen = () => {
     <View style={styles.container}>
       <Text style={styles.title}>Upload KYC for User</Text>
       <Text>User ID: {userId}</Text>
-      <TextInput value={type} onChangeText={setType} style={styles.input} placeholder="Type (e.g., passport)" />
+      <StyledInput value={type} onChangeText={setType} style={styles.input} placeholder="Type (e.g., passport)" />
       <Button title="Select File" onPress={selectFile} />
       {base64 && <Image source={{ uri: `data:image/jpeg;base64,${base64}` }} style={styles.preview} />}
       <Button title="Upload" onPress={upload} disabled={!base64} />

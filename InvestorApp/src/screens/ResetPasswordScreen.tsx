@@ -3,6 +3,7 @@ import { View, Text, TextInput, Button, Alert, StyleSheet } from 'react-native';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import api from '../api';
+import StyledInput from '../components/StyledInput';
 
 type ResetPasswordScreenRouteProp = RouteProp<RootStackParamList, 'ResetPassword'>;
 
@@ -41,14 +42,14 @@ const ResetPasswordScreen = () => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Reset Your Password</Text>
-      <TextInput
+      <StyledInput
         style={styles.input}
         placeholder="New password"
         secureTextEntry
         value={newPassword}
         onChangeText={setNewPassword}
       />
-      <TextInput
+      <StyledInput
         style={styles.input}
         placeholder="Confirm new password"
         secureTextEntry

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
+import StyledInput from '../components/StyledInput';
 
 const TopUpScreen = () => {
   const [amount, setAmount] = useState('');
@@ -41,14 +42,14 @@ const TopUpScreen = () => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Top Up Balance</Text>
-      <TextInput
+      <StyledInput
         style={styles.input}
         placeholder="Enter amount"
         keyboardType="numeric"
         value={amount}
         onChangeText={setAmount}
       />
-      <TextInput
+      <StyledInput
         style={styles.input}
         placeholder="PIN or Password"
         secureTextEntry

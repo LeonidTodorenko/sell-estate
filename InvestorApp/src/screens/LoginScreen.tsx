@@ -7,6 +7,7 @@ import { RootStackParamList } from '../navigation/AppNavigator';
 import { ImageBackground } from 'react-native';
 import loginBackground from '../assets/images/login.jpg';
 import { useLoading } from '../contexts/LoadingContext';
+import StyledInput from '../components/StyledInput';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
@@ -61,7 +62,7 @@ const LoginScreen = ({ navigation }: Props) => {
   >
     <View style={styles.container}>
       <Text style={styles.title}>Login to real-estate app</Text>
-      <TextInput
+      <StyledInput
         style={styles.input}
         placeholder="Email"
         value={email}
@@ -69,7 +70,7 @@ const LoginScreen = ({ navigation }: Props) => {
         keyboardType="email-address"
         onChangeText={setEmail}
       />
-      <TextInput
+      <StyledInput
         style={styles.input}
         placeholder="Password"
         secureTextEntry
@@ -125,6 +126,7 @@ const styles = StyleSheet.create({
     padding: 10,
     marginBottom: 10,
     borderRadius: 5,
+    backgroundColor: '#f0f0f0',
   },
   link: { marginTop: 10, color: 'blue', textAlign: 'center' },
   adminLink: {

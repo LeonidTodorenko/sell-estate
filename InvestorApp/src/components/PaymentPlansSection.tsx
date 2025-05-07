@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, Button, Alert, ScrollView, FlatList, TextInput, Modal } from 'react-native';
 import api from '../api';
+import StyledInput from '../components/StyledInput';
 
 interface PaymentPlan {
   id: string;
@@ -92,8 +93,8 @@ const PaymentPlansSection = ({ propertyId }: { propertyId: string }) => {
       <Modal visible={showModal} animationType="slide">
         <ScrollView style={styles.modalContent}>
           <Text style={styles.title}>Add Payment Plan</Text>
-          <TextInput placeholder="Milestone" style={styles.input} onChangeText={(text) => setNewPlan(p => ({ ...p, milestone: text }))} />
-          <TextInput
+          <StyledInput placeholder="Milestone" style={styles.input} onChangeText={(text) => setNewPlan(p => ({ ...p, milestone: text }))} />
+          <StyledInput
               placeholder="Due Date (YYYY-MM-DD)"
               style={styles.input}
               keyboardType="numeric"
@@ -113,11 +114,11 @@ const PaymentPlansSection = ({ propertyId }: { propertyId: string }) => {
               }}
             />
 
-          <TextInput placeholder="Installment Code" style={styles.input} onChangeText={(text) => setNewPlan(p => ({ ...p, installmentCode: text }))} />
-          <TextInput placeholder="Percentage" style={styles.input} keyboardType="numeric" onChangeText={(text) => setNewPlan(p => ({ ...p, percentage: parseNumber(text) }))} />
-          <TextInput placeholder="Amount Due" style={styles.input} keyboardType="numeric" onChangeText={(text) => setNewPlan(p => ({ ...p, amountDue: parseNumber(text) }))} />
-          <TextInput placeholder="VAT" style={styles.input} keyboardType="numeric" onChangeText={(text) => setNewPlan(p => ({ ...p, vat: parseNumber(text) }))} />
-          <TextInput placeholder="Paid" style={styles.input} keyboardType="numeric" onChangeText={(text) => setNewPlan(p => ({ ...p, paid: parseNumber(text) }))} />
+          <StyledInput placeholder="Installment Code" style={styles.input} onChangeText={(text) => setNewPlan(p => ({ ...p, installmentCode: text }))} />
+          <StyledInput placeholder="Percentage" style={styles.input} keyboardType="numeric" onChangeText={(text) => setNewPlan(p => ({ ...p, percentage: parseNumber(text) }))} />
+          <StyledInput placeholder="Amount Due" style={styles.input} keyboardType="numeric" onChangeText={(text) => setNewPlan(p => ({ ...p, amountDue: parseNumber(text) }))} />
+          <StyledInput placeholder="VAT" style={styles.input} keyboardType="numeric" onChangeText={(text) => setNewPlan(p => ({ ...p, vat: parseNumber(text) }))} />
+          <StyledInput placeholder="Paid" style={styles.input} keyboardType="numeric" onChangeText={(text) => setNewPlan(p => ({ ...p, paid: parseNumber(text) }))} />
           <Button title="💾 Save" onPress={handleAdd} />
           <Button title="Cancel" onPress={() => setShowModal(false)} color="gray" />
         </ScrollView>

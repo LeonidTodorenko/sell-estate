@@ -5,6 +5,7 @@ import api from '../api';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import StyledInput from '../components/StyledInput';
 
 const WithdrawScreen = () => {
   const [amount, setAmount] = useState('');
@@ -32,7 +33,7 @@ const WithdrawScreen = () => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Request Withdrawal</Text>
-      <TextInput
+      <StyledInput
         style={styles.input}
         placeholder="Amount (USD)"
         keyboardType="numeric"

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Button, Alert, StyleSheet } from 'react-native';
 import api from '../api';
+import StyledInput from '../components/StyledInput';
 
 const ForgotPasswordScreen = () => {
   const [email, setEmail] = useState('');
@@ -19,7 +20,7 @@ const ForgotPasswordScreen = () => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Reset Password</Text>
-      <TextInput
+      <StyledInput
         style={styles.input}
         placeholder="Email"
         value={email}

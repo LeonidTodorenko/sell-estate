@@ -2,6 +2,7 @@ import React, { useEffect,useState } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import StyledInput from '../components/StyledInput';
 //import Captcha from '../components/Captcha';
 import api from '../api';
 
@@ -94,13 +95,13 @@ const RegisterScreen = ({ navigation }: Props) => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Register</Text>
-      <TextInput
+      <StyledInput
         style={styles.input}
         placeholder="Full name"
         value={fullName}
         onChangeText={setFullName}
       />
-      <TextInput
+      <StyledInput
         style={styles.input}
         placeholder="Email"
         value={email}
@@ -108,21 +109,21 @@ const RegisterScreen = ({ navigation }: Props) => {
         keyboardType="email-address"
         onChangeText={setEmail}
       />
-      <TextInput
+      <StyledInput
         style={styles.input}
         placeholder="Password"
         secureTextEntry
         value={password}
         onChangeText={setPassword}
       />
-      <TextInput
+      <StyledInput
         style={styles.input}
         placeholder="Secret Word"
         value={secretWord}
         onChangeText={setSecretWord}
       />
 
-<TextInput
+<StyledInput
   style={styles.input}
   placeholder="PIN Code (optional, 4 digits)"
   keyboardType="numeric"
@@ -150,7 +151,7 @@ const RegisterScreen = ({ navigation }: Props) => {
         <Text style={styles.captchaLabel}>Solve:</Text>
         <Text style={styles.captchaExpression}>{captchaExpression}</Text>
         <Button title="🔁" onPress={loadCaptcha} />
-        <TextInput
+        <StyledInput
           style={styles.input}
           placeholder="Answer"
           keyboardType="numeric"

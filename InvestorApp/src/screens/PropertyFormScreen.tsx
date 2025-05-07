@@ -4,6 +4,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { KeyboardAvoidingView, Platform } from 'react-native';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import api from '../api';
+import StyledInput from '../components/StyledInput';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PropertyForm'>;
 
@@ -81,25 +82,25 @@ const PropertyFormScreen = ({ route, navigation }: Props) => {
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
       <Text style={styles.title}>{existing ? 'Edit' : 'Add'} Property</Text>
 
-      <TextInput style={styles.input} placeholder="Title" value={title} onChangeText={setTitle} />
-      <TextInput style={styles.input} placeholder="Location" value={location} onChangeText={setLocation} />
-      <TextInput style={styles.input} placeholder="Price" keyboardType="numeric" value={price} onChangeText={setPrice} />
-      <TextInput style={styles.input} placeholder="Total Shares" keyboardType="numeric" value={totalShares} onChangeText={setTotalShares} />
-      <TextInput style={styles.input} placeholder="Available Shares" keyboardType="numeric" value={availableShares} onChangeText={setAvailableShares} />
-      <TextInput style={styles.input} placeholder="Upfront Payment" keyboardType="numeric" value={upfrontPayment} onChangeText={setUpfrontPayment} />
-      <TextInput style={styles.input} placeholder="Application Deadline (YYYY-MM-DD)" value={deadline} onChangeText={setDeadline} />
+      <StyledInput style={styles.input} placeholder="Title" value={title} onChangeText={setTitle} />
+      <StyledInput style={styles.input} placeholder="Location" value={location} onChangeText={setLocation} />
+      <StyledInput style={styles.input} placeholder="Price" keyboardType="numeric" value={price} onChangeText={setPrice} />
+      <StyledInput style={styles.input} placeholder="Total Shares" keyboardType="numeric" value={totalShares} onChangeText={setTotalShares} />
+      <StyledInput style={styles.input} placeholder="Available Shares" keyboardType="numeric" value={availableShares} onChangeText={setAvailableShares} />
+      <StyledInput style={styles.input} placeholder="Upfront Payment" keyboardType="numeric" value={upfrontPayment} onChangeText={setUpfrontPayment} />
+      <StyledInput style={styles.input} placeholder="Application Deadline (YYYY-MM-DD)" value={deadline} onChangeText={setDeadline} />
       <Text>Listing Type:</Text>
       <Button
         title={listingType === 'sale' ? 'For Sale (Tap to switch)' : 'For Rent (Tap to switch)'}
         onPress={() => setListingType(listingType === 'sale' ? 'rent' : 'sale')}
       />
 
-      <TextInput style={styles.input} placeholder="Latitude" keyboardType="numeric" value={latitude} onChangeText={setLatitude} />
-      <TextInput style={styles.input} placeholder="Longitude" keyboardType="numeric" value={longitude} onChangeText={setLongitude} />
-      <TextInput style={styles.input} placeholder="Expected Completion Date (YYYY-MM-DD)" value={completionDate} onChangeText={setCompletionDate} />
+      <StyledInput style={styles.input} placeholder="Latitude" keyboardType="numeric" value={latitude} onChangeText={setLatitude} />
+      <StyledInput style={styles.input} placeholder="Longitude" keyboardType="numeric" value={longitude} onChangeText={setLongitude} />
+      <StyledInput style={styles.input} placeholder="Expected Completion Date (YYYY-MM-DD)" value={completionDate} onChangeText={setCompletionDate} />
 
-      <TextInput style={styles.input} placeholder="Monthly Rental Income" keyboardType="numeric" value={monthlyRentalIncome} onChangeText={setMonthlyRentalIncome} />
-      <TextInput style={styles.input} placeholder="Last Payout Date (YYYY-MM-DD)" value={lastPayoutDate} onChangeText={setLastPayoutDate} />
+      <StyledInput style={styles.input} placeholder="Monthly Rental Income" keyboardType="numeric" value={monthlyRentalIncome} onChangeText={setMonthlyRentalIncome} />
+      <StyledInput style={styles.input} placeholder="Last Payout Date (YYYY-MM-DD)" value={lastPayoutDate} onChangeText={setLastPayoutDate} />
 
       <Button title={existing ? 'Update' : 'Create'} onPress={handleSubmit} />
     </ScrollView>

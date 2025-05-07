@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View,Modal,  Text, TextInput, Button, ScrollView, StyleSheet, Alert } from 'react-native';
+import StyledInput from '../components/StyledInput';
 import api from '../api';
 
 export interface NewPaymentPlan {
@@ -56,14 +57,14 @@ const AddPaymentPlanModal = ({ visible, onClose, propertyId, onAdded }: AddPayme
       <ScrollView style={styles.modalContent}>
         <Text style={styles.title}>Add Payment Plan</Text>
 
-        <TextInput
+        <StyledInput
           placeholder="Milestone"
           style={styles.input}
           value={plan.milestone}
           onChangeText={(text) => setPlan(p => ({ ...p, milestone: text }))}
         />
 
-        <TextInput
+        <StyledInput
           placeholder="Due Date (YYYYMMDD)"
           style={styles.input}
           keyboardType="numeric"
@@ -81,17 +82,17 @@ const AddPaymentPlanModal = ({ visible, onClose, propertyId, onAdded }: AddPayme
           }}
         />
 
-        <TextInput
+        <StyledInput
           placeholder="Installment Code"
           style={styles.input}
           value={plan.installmentCode}
           onChangeText={(text) => setPlan(p => ({ ...p, installmentCode: text }))}
         />
 
-        <TextInput placeholder="Percentage" style={styles.input} keyboardType="numeric" onChangeText={(text) => setPlan(p => ({ ...p, percentage: parseNumber(text) }))} />
-        <TextInput placeholder="Amount Due" style={styles.input} keyboardType="numeric" onChangeText={(text) => setPlan(p => ({ ...p, amountDue: parseNumber(text) }))} />
-        <TextInput placeholder="VAT" style={styles.input} keyboardType="numeric" onChangeText={(text) => setPlan(p => ({ ...p, vat: parseNumber(text) }))} />
-        <TextInput placeholder="Paid" style={styles.input} keyboardType="numeric" onChangeText={(text) => setPlan(p => ({ ...p, paid: parseNumber(text) }))} />
+        <StyledInput placeholder="Percentage" style={styles.input} keyboardType="numeric" onChangeText={(text) => setPlan(p => ({ ...p, percentage: parseNumber(text) }))} />
+        <StyledInput placeholder="Amount Due" style={styles.input} keyboardType="numeric" onChangeText={(text) => setPlan(p => ({ ...p, amountDue: parseNumber(text) }))} />
+        <StyledInput placeholder="VAT" style={styles.input} keyboardType="numeric" onChangeText={(text) => setPlan(p => ({ ...p, vat: parseNumber(text) }))} />
+        <StyledInput placeholder="Paid" style={styles.input} keyboardType="numeric" onChangeText={(text) => setPlan(p => ({ ...p, paid: parseNumber(text) }))} />
 
         <Button title="💾 Save" onPress={handleSave} />
           <View style={{ height: 10 }} />

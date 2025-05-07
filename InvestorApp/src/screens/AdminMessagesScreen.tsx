@@ -3,6 +3,7 @@ import { View, Text, TextInput, Button, StyleSheet, FlatList, Alert } from 'reac
 import { Picker } from '@react-native-picker/picker';
 import api from '../api';
 //import { useNavigation } from '@react-navigation/native';
+import StyledInput from '../components/StyledInput';
 
 interface Message {
   id: string;
@@ -77,13 +78,13 @@ const AdminMessagesScreen = () => {
     <View style={styles.container}>
       <Text style={styles.header}>📨 Send New Message</Text>
 
-      <TextInput
+      <StyledInput
         style={styles.input}
         placeholder="Title"
         value={title}
         onChangeText={setTitle}
       />
-      <TextInput
+      <StyledInput
         style={[styles.input, { height: 80 }]}
         placeholder="Content"
         value={content}

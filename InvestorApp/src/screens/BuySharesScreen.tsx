@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import api from '../api';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import StyledInput from '../components/StyledInput';
 
 type BuyRouteProp = RouteProp<RootStackParamList, 'BuyShares'>;
 
@@ -74,14 +75,14 @@ const BuySharesScreen = () => {
     <View style={styles.container}>
       <Text style={styles.title}>Buy Shares</Text>
       {sharePrice && <Text>Price per share: {sharePrice.toFixed(2)} USD</Text>}
-      <TextInput
+      <StyledInput
         style={styles.input}
         placeholder="Amount to invest"
         keyboardType="numeric"
         value={amount}
         onChangeText={setAmount}
       />
-      <TextInput
+      <StyledInput
         style={styles.input}
         placeholder="PIN or Password"
         secureTextEntry
