@@ -2,10 +2,12 @@
 using RealEstateInvestment.Data;
 using RealEstateInvestment.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 
 namespace RealEstateInvestment.Controllers
 {
     [ApiController]
+    [Authorize]
     [Route("api/kyc")]
     public class KycController : ControllerBase
     {

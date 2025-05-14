@@ -1,13 +1,16 @@
 import React from 'react';
-import { View, Text, Button, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, Button, StyleSheet, ScrollView  } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import AdminProtectedScreen from '../components/AdminProtectedScreen';
 
 const AdminDashboardScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-
+ 
   return (
+    //todo Добавить это везде
+     <AdminProtectedScreen>
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Admin Panel</Text>
 
@@ -43,6 +46,7 @@ const AdminDashboardScreen = () => {
         <Button title="🏠 Admin Logs" onPress={() => navigation.navigate('AdminLogs')} />
       </View>
     </ScrollView>
+    </AdminProtectedScreen>
   );
 };
 

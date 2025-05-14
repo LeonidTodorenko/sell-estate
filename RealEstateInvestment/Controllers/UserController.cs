@@ -7,10 +7,12 @@ using System.ComponentModel.DataAnnotations;
 using RealEstateInvestment.Services;
 using Newtonsoft.Json;
 using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.Authorization;
 
 namespace RealEstateInvestment.Controllers
 { 
     [ApiController]
+    [Authorize]
     [Route("api/users")]
     public class UserController : ControllerBase
     {

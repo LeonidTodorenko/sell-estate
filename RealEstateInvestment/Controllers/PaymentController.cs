@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RealEstateInvestment.Models;
 using System;
@@ -6,6 +7,7 @@ using System;
 namespace RealEstateInvestment.Controllers
 {
     [ApiController]
+    [Authorize]
     [Route("api/payments")]
     public class PaymentController : ControllerBase
     {

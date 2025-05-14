@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RealEstateInvestment.Data;
 using RealEstateInvestment.Models;
@@ -6,6 +7,7 @@ using RealEstateInvestment.Models;
 namespace RealEstateInvestment.Controllers
 {
     [ApiController]
+    [Authorize(Roles = "admin")]
     [Route("api/admin/investments")]
     public class AdminInvestmentController : ControllerBase
     {

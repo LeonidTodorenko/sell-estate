@@ -20,15 +20,22 @@ const LoginScreen = ({ navigation }: Props) => {
     try {
       setLoading(true);
       const response = await api.post('/auth/login', { email, password });
+
+      const { token, ...userInfo } = response.data;
+      Alert.alert("response:" + response.data);
+      Alert.alert("token:" + token);
+      Alert.alert("userInfo:" + userInfo);
+      await AsyncStorage.setItem('user', JSON.stringify(userInfo));
+      await AsyncStorage.setItem('token', token);
      
-      const user = response.data;
-      await AsyncStorage.setItem('user', JSON.stringify(user));
+      //const user = response.data;
+     // await AsyncStorage.setItem('user', JSON.stringify(user));
      
       navigation.navigate('Profile');
       setLoading(false);
     } catch (error: any) {
         let message = 'Something went wrong';
-        if (error.response && error.response.data && error.response.data.message) {
+        if (error.response?.data?.message) { //if (error.response && error.response.data && error.response.data.message) {
             message = error.response.data.message;
           } else if (error.message) {
             message = error.message;
@@ -89,8 +96,19 @@ const LoginScreen = ({ navigation }: Props) => {
      {/* <Text onPress={() => navigation.navigate('AdminWithdrawals')} style={styles.adminLink}>
       ➤ Enter Admin Panel
     </Text> */}
-    <Text onPress={() => navigation.navigate('AdminDashboards')} style={styles.adminLink}>
-      ➤ Enter Admin Panel
+    <Text  onPress={async () => {
+      try {
+        const response = await api.post('/auth/login', {
+          email: 'admin@example.com',
+          password: 'securepassword',
+        });
+        await AsyncStorage.setItem('user', JSON.stringify(response.data));
+        navigation.navigate('AdminDashboards');
+      } catch (err) {
+        Alert.alert('Error', 'Failed to log in as admin@example.com');
+      }
+    }} style={styles.adminLink}>
+   ➤ Enter Admin Panel
     </Text>
 
     <Text onPress={async () => {
