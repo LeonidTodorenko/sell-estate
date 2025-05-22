@@ -60,7 +60,5 @@ namespace RealEstateInvestment.Controllers
             return Ok(new { count });
              
         }
-
     }
-
 }

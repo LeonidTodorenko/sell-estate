@@ -49,18 +49,19 @@ namespace RealEstateInvestment.Controllers
         {
             var offers = await _context.ShareOffers
                 .Where(o => o.IsActive && o.ExpirationDate > DateTime.UtcNow)
-                .Include(o => o.Property)
+                .Include(o => o.Property)  
                 .Select(o => new
                 {
                     o.Id,
                     o.InvestmentId,
                     o.SellerId,
                     o.PropertyId,
-                    PropertyTitle = o.Property.Title,
-                    o.PricePerShare,
                     o.SharesForSale,
+                    o.PricePerShare,
+                    o.ExpirationDate,
                     o.IsActive,
-                    o.ExpirationDate
+                    o.CreatedAt,
+                    PropertyTitle = o.Property.Title
                 })
                 .ToListAsync();
 

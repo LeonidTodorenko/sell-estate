@@ -152,10 +152,7 @@ namespace RealEstateInvestment.Services
                         Action = acceptedAny ? "InvestmentStepAccepted" : "InvestmentStepRejected",
                         Details = $"PropertyId: {property.Id}, Step DueDate: {step.DueDate}, Accepted: {acceptedAny}"
                     });
-
-               
-
-
+                     
 
                     //try
                     //{

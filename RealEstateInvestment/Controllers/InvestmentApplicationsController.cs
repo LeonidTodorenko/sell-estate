@@ -94,9 +94,7 @@ namespace RealEstateInvestment.Controllers
                     CreatedAt = now
                 });
             }
-
-
-
+             
             //var app = new InvestmentApplication
             //{
             //    UserId = req.UserId,

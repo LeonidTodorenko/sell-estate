@@ -340,9 +340,6 @@ namespace RealEstateInvestment.Controllers
 
             return Ok(data);
         }
-
-
-
-
+         
     }
 }
