@@ -1,5 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, Button, Alert } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  View, Text, FlatList, StyleSheet, Button, Alert, TextInput
+} from 'react-native';
 import api from '../api';
 import { formatCurrency } from '../utils/format';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -9,6 +11,7 @@ interface ShareOffer {
   investmentId: string;
   sellerId: string;
   propertyId: string;
+  propertyTitle: string;
   pricePerShare: number;
   sharesForSale: number;
   isActive: boolean;
@@ -17,24 +20,32 @@ interface ShareOffer {
 
 const ShareMarketplaceScreen = () => {
   const [offers, setOffers] = useState<ShareOffer[]>([]);
+  const [filteredOffers, setFilteredOffers] = useState<ShareOffer[]>([]);
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
 
-  useEffect(() => {
-    const loadUserId = async () => {
-      const stored = await AsyncStorage.getItem('user');
-      const user = stored ? JSON.parse(stored) : null;
-      if (user) setUserId(user.userId);
-    };
+  // Filters
+  const [searchTitle, setSearchTitle] = useState('');
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
 
-    loadUserId();
-  }, []);
-   
+  const applyFilters  = useCallback(() => {
+    const min = parseFloat(minPrice) || 0;
+    const max = parseFloat(maxPrice) || Infinity;
+    const filtered = offers.filter(o =>
+      o.propertyTitle.toLowerCase().includes(searchTitle.toLowerCase()) &&
+      o.pricePerShare >= min &&
+      o.pricePerShare <= max
+    );
+    setFilteredOffers(filtered);
+ }, [offers, searchTitle, minPrice, maxPrice]);
+
   const loadOffers = async () => {
     try {
       setLoading(true);
       const res = await api.get('/share-offers/active');
       setOffers(res.data);
+      setFilteredOffers(res.data); // init
     } catch (error) {
       Alert.alert('Error', 'Failed to load offers');
     } finally {
@@ -54,13 +65,13 @@ const ShareMarketplaceScreen = () => {
         }
 
         try {
-              const stored = await AsyncStorage.getItem('user');
-               const user = stored ? JSON.parse(stored) : null;
-             if (!user) return; // todo add error
- 
+          const stored = await AsyncStorage.getItem('user');
+          const user = stored ? JSON.parse(stored) : null;
+          if (!user) return;
+
           await api.post(`/share-offers/${offer.id}/buy?buyerId=${user.userId}&sharesToBuy=${count}`);
           Alert.alert('Success', 'Purchase complete');
-          loadOffers(); // обновить список
+          loadOffers();
         } catch (e) {
           Alert.alert('Error', 'Failed to buy shares');
         }
@@ -70,20 +81,57 @@ const ShareMarketplaceScreen = () => {
   };
 
   useEffect(() => {
+    const loadUserId = async () => {
+      const stored = await AsyncStorage.getItem('user');
+      const user = stored ? JSON.parse(stored) : null;
+      if (user) setUserId(user.userId);
+    };
+
+    loadUserId();
     loadOffers();
   }, []);
+
+  useEffect(() => {
+  applyFilters();
+}, [applyFilters]);
 
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Marketplace</Text>
+
+      {/* Filter Panel */}
+      <View style={styles.filterPanel}>
+        <TextInput
+          placeholder="Search by property"
+          value={searchTitle}
+          onChangeText={setSearchTitle}
+          style={styles.input}
+        />
+        <TextInput
+          placeholder="Min Price"
+          keyboardType="numeric"
+          value={minPrice}
+          onChangeText={setMinPrice}
+          style={styles.input}
+        />
+        <TextInput
+          placeholder="Max Price"
+          keyboardType="numeric"
+          value={maxPrice}
+          onChangeText={setMaxPrice}
+          style={styles.input}
+        />
+      </View>
+
       <FlatList
-        data={offers}
+        data={filteredOffers}
         keyExtractor={(item) => item.id}
         refreshing={loading}
         onRefresh={loadOffers}
+        ListEmptyComponent={<Text>No matching offers</Text>}
         renderItem={({ item }) => (
           <View style={styles.card}>
-            <Text style={styles.text}>Property ID: {item.propertyId}</Text>
+            <Text style={styles.text}>Property: {item.propertyTitle}</Text>
             <Text style={styles.text}>Price/Share: {formatCurrency(item.pricePerShare)}</Text>
             <Text style={styles.text}>Shares Available: {item.sharesForSale}</Text>
             <Text style={styles.text}>Expires: {new Date(item.expirationDate).toLocaleDateString()}</Text>
@@ -107,11 +155,20 @@ const styles = StyleSheet.create({
     borderColor: '#ccc',
     padding: 12,
     borderRadius: 8,
-    marginBottom: 10,
-    backgroundColor: '#f9f9f9',
+    marginBottom: 12,
   },
-  text: {
-    fontSize: 16,
-    marginBottom: 4,
+  text: { fontSize: 16, marginBottom: 4 },
+  filterPanel: {
+    marginBottom: 12,
+    backgroundColor: '#f2f2f2',
+    padding: 12,
+    borderRadius: 8,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    padding: 8,
+    borderRadius: 6,
+    marginBottom: 8,
   },
 });
