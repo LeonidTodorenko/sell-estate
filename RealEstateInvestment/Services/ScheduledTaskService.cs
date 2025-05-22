@@ -23,7 +23,7 @@ namespace RealEstateInvestment.Services
             {
                 try
                 {
-                  // todo отключили пока  await RunScheduledTasks();
+                   //todo отключили пока  await RunScheduledTasks();
                 }
                 catch (Exception ex)
                 {
@@ -39,49 +39,161 @@ namespace RealEstateInvestment.Services
             using (var scope = _serviceProvider.CreateScope())
             {
                 var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-                var client = _httpClientFactory.CreateClient();
+               // var client = _httpClientFactory.CreateClient();
 
-                var properties = await context.Properties.ToListAsync();
+                var now = DateTime.UtcNow;
+                var properties = await context.Properties
+                    .Include(p => p.PaymentPlans)
+                    .ToListAsync();
+
+                //var properties = await context.Properties.ToListAsync();
 
                 foreach (var property in properties)
                 {
-                    try
-                    {
-                        // https://sell-estate.onrender.com/api
-                        // http://10.0.2.2:7019/api
-                        var response = await client.PostAsync($"https://sell-estate.onrender.com/api/properties/{property.Id}/validate-payments", null); // todo move to config
+                    if (property.Status == "sold" || property.Status == "declined")
+                        continue;
+ 
+                    var step = property.PaymentPlans
+                                        ?.Where(p => p.DueDate <= now) // && p.Paid == 0
+                                        .OrderBy(p => p.DueDate)
+                                        .FirstOrDefault();
 
-                        if (response.IsSuccessStatusCode)
+                    if (step == null)
+                        continue;
+
+                    var minEventDate = property.PaymentPlans.Min(p => p.EventDate);
+
+                    var applications = await context.InvestmentApplications
+                        .Where(a => a.PropertyId == property.Id && step.EventDate == minEventDate  )
+                        .OrderByDescending(a => a.IsPriority)
+                        .ThenBy(a => a.CreatedAt)
+                        .ToListAsync();
+
+                    decimal totalAllocated = 0;
+                    bool acceptedAny = false;
+
+                    foreach (var app in applications)
+                    {
+                   
+                        if (totalAllocated + app.RequestedAmount <= step.Total)
                         {
-                            context.ActionLogs.Add(new ActionLog
+                            var user = await context.Users.FindAsync(app.UserId);
+                            if (user == null || user.WalletBalance < app.RequestedAmount)
+                                continue;
+
+                            user.WalletBalance -= app.RequestedAmount;
+                            property.AvailableShares -= app.RequestedShares;
+                            totalAllocated += app.RequestedAmount;
+
+                            context.Investments.Add(new Investment
                             {
-                                UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo admin guid
-                                Action = "ScheduledPaymentValidationSuccess",
-                                Details = $"Validated payments for property: {property.Title}"
+                                UserId = app.UserId,
+                                PropertyId = app.PropertyId,
+                                Shares = app.RequestedShares,
+                                InvestedAmount = app.RequestedAmount,
+                                CreatedAt = now
                             });
+
+                            app.Status = app.RequestedAmount == step.Total ? "accepted" : "partial";
+                            app.ApprovedShares = app.RequestedShares;
+                            app.ApprovedAmount = app.RequestedAmount;
+
+                            context.Messages.Add(new Message
+                            {
+                                Title = "Your investment application was approved",
+                                Content = $"You were allocated {app.RequestedShares} shares for property {property.Title}.",
+                                RecipientId = app.UserId
+                            });
+
+                            acceptedAny = true;
+
+                            if (app.RequestedAmount >= step.Total)
+                                property.PriorityInvestorId = app.UserId;
                         }
                         else
                         {
-                            context.ActionLogs.Add(new ActionLog
+                            app.Status = "carried";
+                            app.StepNumber += 1;
+
+                            context.Messages.Add(new Message
                             {
-                                UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"),
-                                Action = "ScheduledPaymentValidationError",
-                                Details = $"Failed to validate property: {property.Title}, StatusCode: {response.StatusCode}"
+                                Title = "Your application has been carried over",
+                                Content = $"Your application for property {property.Title} has been moved to the next stage.",
+                                RecipientId = app.UserId
                             });
                         }
                     }
-                    catch (Exception ex)
+
+                    if (!acceptedAny)
                     {
-                        context.ActionLogs.Add(new ActionLog
+                        foreach (var app in applications)
                         {
-                            UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"),
-                            Action = "ScheduledPaymentValidationException",
-                            Details = $"Exception validating property: {property.Title}, Error: {ex.Message}"
-                        });
+                            var user = await context.Users.FindAsync(app.UserId);
+                            if (user != null)
+                            {
+                                user.WalletBalance += app.RequestedAmount;
+
+                                app.Status = "rejected";
+
+                                context.Messages.Add(new Message
+                                {
+                                    Title = "Application rejected",
+                                    Content = $"Your application for property {property.Title} was rejected due to insufficient funding.",
+                                    RecipientId = app.UserId
+                                });
+                            }
+                            
+                        }
                     }
+                    step.Paid = totalAllocated;
+                    context.ActionLogs.Add(new ActionLog
+                    {
+                        UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"),
+                        Action = acceptedAny ? "InvestmentStepAccepted" : "InvestmentStepRejected",
+                        Details = $"PropertyId: {property.Id}, Step DueDate: {step.DueDate}, Accepted: {acceptedAny}"
+                    });
+
+               
+
+
+
+                    //try
+                    //{
+                    //    // https://sell-estate.onrender.com/api
+                    //    // http://10.0.2.2:7019/api
+                    //    var response = await client.PostAsync($"https://sell-estate.onrender.com/api/properties/{property.Id}/validate-payments", null); // todo move to config
+
+                    //    if (response.IsSuccessStatusCode)
+                    //    {
+                    //        context.ActionLogs.Add(new ActionLog
+                    //        {
+                    //            UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo admin guid
+                    //            Action = "ScheduledPaymentValidationSuccess",
+                    //            Details = $"Validated payments for property: {property.Title}"
+                    //        });
+                    //    }
+                    //    else
+                    //    {
+                    //        context.ActionLogs.Add(new ActionLog
+                    //        {
+                    //            UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"),
+                    //            Action = "ScheduledPaymentValidationError",
+                    //            Details = $"Failed to validate property: {property.Title}, StatusCode: {response.StatusCode}"
+                    //        });
+                    //    }
+                    //}
+                    //catch (Exception ex)
+                    //{
+                    //    context.ActionLogs.Add(new ActionLog
+                    //    {
+                    //        UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"),
+                    //        Action = "ScheduledPaymentValidationException",
+                    //        Details = $"Exception validating property: {property.Title}, Error: {ex.Message}"
+                    //    });
+                    //}
                 }
 
-                await context.SaveChangesAsync();  // save all logs
+                 await context.SaveChangesAsync(); 
             }
         }
     }

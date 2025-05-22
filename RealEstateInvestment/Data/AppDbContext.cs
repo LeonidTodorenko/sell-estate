@@ -21,10 +21,13 @@ namespace RealEstateInvestment.Data
         public DbSet<PaymentPlan> PaymentPlans { get; set; }
         public DbSet<PasswordResetToken> PasswordResetTokens { get; set; }
         public DbSet<Message> Messages { get; set; }
+        public DbSet<InvestmentApplication> InvestmentApplications { get; set; }
+        public DbSet<ShareOffer> ShareOffers { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-           
+
             base.OnModelCreating(modelBuilder);
 
             // use UtcDateTimeConverter to all DateTime
@@ -42,6 +45,6 @@ namespace RealEstateInvestment.Data
 
             modelBuilder.Entity<User>().HasIndex(u => u.Email).IsUnique();
         }
-       
+
     }
 }

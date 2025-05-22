@@ -112,7 +112,11 @@ const ProfileScreen = ({ navigation }: Props) => {
         <View style={{ height: 10 }} />
         <Button title="Change Password" onPress={() => navigation.navigate('ChangePassword')} />
         <View style={{ height: 10 }} />
-
+        <Button
+          title="Go to Share Marketplace"
+          onPress={() => navigation.navigate('ShareMarketplaces')}
+        />
+         <View style={{ height: 10 }} />
         {/* todo подумать <Button
           title="🔐 Test Password Reset - dunno will remove"
           onPress={() => navigation.navigate('ResetPassword')}

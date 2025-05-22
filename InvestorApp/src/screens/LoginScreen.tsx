@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
+import { View, Text,  Button, StyleSheet, Alert } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
@@ -25,8 +25,9 @@ const LoginScreen = ({ navigation }: Props) => {
       Alert.alert("response:" + response.data);
       Alert.alert("token:" + token);
       Alert.alert("userInfo:" + userInfo);
+     //  await AsyncStorage.setItem('data', JSON.stringify(response.data));
       await AsyncStorage.setItem('user', JSON.stringify(userInfo));
-      await AsyncStorage.setItem('token', token);
+      await AsyncStorage.setItem('token',JSON.stringify(userInfo.token));
      
       //const user = response.data;
      // await AsyncStorage.setItem('user', JSON.stringify(user));

@@ -3,20 +3,23 @@ import { View, Text, StyleSheet, Button, Alert, ScrollView, Image, TouchableOpac
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
-//import PaymentPlanScreen from '../components/PaymentPlanScreen';
 import api from '../api';
 import { launchImageLibrary } from 'react-native-image-picker';
-//import Carousel from 'react-native-reanimated-carousel';
 import Swiper from 'react-native-swiper';
 import Modal from 'react-native-modal';
+//import PaymentPlanScreen from '../components/PaymentPlanScreen';
 
 global.Buffer = global.Buffer || require('buffer').Buffer;
-
-//const screenWidth = Dimensions.get('window').width;
 
 interface PropertyImage {
   id: string;
   base64Data: string;
+}
+
+interface PropertyStats {
+  applicationCount: number;
+  totalRequested: number;
+  totalApprovedShares: number;
 }
 
 interface Property {
@@ -37,6 +40,7 @@ interface Property {
   monthlyRentalIncome: number;
   lastPayoutDate: string;
   images: PropertyImage[];
+  stats?: PropertyStats;
 }
 
 interface UserMap {
@@ -53,7 +57,7 @@ const AdminPropertiesScreen = () => {
 
   const loadProperties = async () => {
     try {
-      const userResponses = await api.get('/properties');
+      const userResponses = await api.get('/properties/with-stats');
       const propertiesWithImages = await Promise.all(userResponses.data.map(async (p: Property) => {
         const imgRes = await api.get(`/properties/${p.id}/images`);
         return { ...p, images: imgRes.data };
@@ -96,12 +100,12 @@ const AdminPropertiesScreen = () => {
 
   const uploadImage = async (propertyId: string) => {
     const result = await launchImageLibrary({ mediaType: 'photo', quality: 0.7, includeBase64: true });
-    if (result.didCancel || !result.assets?.length) { return; }
+    if (result.didCancel || !result.assets?.length)  { return; };
 
     const asset = result.assets[0];
     const type = asset.type || 'image/jpeg';
 
-    if (!asset.base64) { return; }
+    if (!asset.base64)  { return; };
     const base64Data = `data:${type};base64,${asset.base64}`;
 
     try {
@@ -109,7 +113,7 @@ const AdminPropertiesScreen = () => {
       Alert.alert('Success', 'Image uploaded');
       loadProperties();
     } catch (err) {
-      console.error(err);
+        console.error(err);
       Alert.alert('Error', 'Image upload failed');
     }
   };
@@ -134,9 +138,10 @@ const AdminPropertiesScreen = () => {
       Alert.alert('Error', 'Failed to change status');
     }
   };
+
   const changeListingType = async (id: string, newType: string) => {
     try {
-      await api.post(`/properties/${id}/change-listing-type`, `"${newType}"`, {
+      await api.post(`/properties/${id}/change-listing-type`, JSON.stringify(newType), {
         headers: { 'Content-Type': 'application/json' },
       });
       await loadProperties();
@@ -144,6 +149,7 @@ const AdminPropertiesScreen = () => {
       Alert.alert('Error', 'Failed to change listing type');
     }
   };
+
   const handleFinalize = async (id: string) => {
     try {
       await api.post(`/investments/finalize/${id}`);
@@ -186,46 +192,54 @@ const AdminPropertiesScreen = () => {
           <Text>Status: {item.status}</Text>
           <Text>🏗 Completion Date: {new Date(item.expectedCompletionDate).toLocaleDateString()}</Text>
 
-        {item.images && item.images.length > 0 && (
-          <View style={styles.carouselContainer}>
-            <Swiper
-              style={styles.swiper}
-              height={180}
-              showsPagination={true}
-              loop={false}
-              onIndexChanged={(index) => setImageIndex(index)}
-            >
-              {item.images.map((image) => (
-                <TouchableOpacity
-                  key={image.id}
-                  onPress={() => {
-                    setModalImage(image.base64Data);
-                    setModalVisible(true);
-                  }}
-                >
-                  <Image source={{ uri: image.base64Data }} style={styles.carouselContainerImage} />
-                </TouchableOpacity>
-              ))}
-            </Swiper>
-            <Text style={styles.carouselContainerText}>
-              {imageIndex + 1}/{item.images.length}
-            </Text>
-          </View>
-        )}
+          {item.stats && (
+            <View>
+              <Text>📥 Applications: {item.stats.applicationCount}</Text>
+              <Text>💸 Requested: {item.stats.totalRequested.toFixed(2)} USD</Text>
+              <Text>✅ Approved Shares: {item.stats.totalApprovedShares}</Text>
+            </View>
+          )}
 
-          {/* <PaymentPlansSection propertyId={item.id} /> */}
+          {/* Карусель */}
+          {item.images && item.images.length > 0 && (
+            <View style={styles.carouselContainer}>
+              <Swiper
+                style={styles.swiper}
+                height={180}
+                showsPagination={true}
+                loop={false}
+                onIndexChanged={(index) => setImageIndex(index)}
+              >
+                {item.images.map((image) => (
+                  <TouchableOpacity
+                    key={image.id}
+                    onPress={() => {
+                      setModalImage(image.base64Data);
+                      setModalVisible(true);
+                    }}
+                  >
+                    <Image source={{ uri: image.base64Data }} style={styles.carouselContainerImage} />
+                  </TouchableOpacity>
+                ))}
+              </Swiper>
+              <Text style={styles.carouselContainerText}>
+                {imageIndex + 1}/{item.images.length}
+              </Text>
+            </View>
+          )}
+
           <Button title="📄 View Payment Plan" onPress={() => navigation.navigate('PaymentPlan', { propertyId: item.id, readonly: false })} />
 
           <View style={styles.buttonRow}>
             <Button title="📍 View on Map" onPress={() => {
-              if (typeof item.latitude === 'number' && typeof item.longitude === 'number' && !isNaN(item.latitude) && !isNaN(item.longitude)) {
+              if (typeof item.latitude === 'number' && typeof item.longitude === 'number') {
                 navigation.navigate('PropertyMap', {
                   latitude: item.latitude,
                   longitude: item.longitude,
                   title: item.title,
                 });
               } else {
-                Alert.alert('Error', 'latitude or longitude corrupted');
+                Alert.alert('Error', 'Invalid coordinates');
               }
             }} />
 
@@ -239,7 +253,7 @@ const AdminPropertiesScreen = () => {
               title={item.listingType === 'sale' ? 'Set For Rent' : 'Set For Sale'}
               onPress={() => changeListingType(item.id, item.listingType === 'sale' ? 'rent' : 'sale')}
             />
-           
+
             <Button title="Set Sold" onPress={() => changeStatus(item.id, 'sold')} />
             <Button title="Set Available" onPress={() => changeStatus(item.id, 'available')} />
             <Button title="✏️ Edit" onPress={() => navigation.navigate('PropertyForm', { property: item })} />

@@ -4,12 +4,13 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import AdminProtectedScreen from '../components/AdminProtectedScreen';
+//import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const AdminDashboardScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
- 
+  
   return (
-    //todo Добавить это везде
+    //todo Добавить это везде и для юзеров
      <AdminProtectedScreen>
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Admin Panel</Text>

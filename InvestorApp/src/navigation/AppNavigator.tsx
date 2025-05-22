@@ -35,6 +35,7 @@ import ResetPasswordScreen  from '../screens/ResetPasswordScreen';
 import PaymentPlanScreen from '../screens/PaymentPlanScreen';
 import InboxScreen from '../screens/InboxScreen';
 import AdminMessagesScreen from '../screens/AdminMessagesScreen';
+import ShareMarketplaceScreen from '../screens/ShareMarketplaceScreen';
 
 export type RootStackParamList = {
   Login: undefined;
@@ -69,6 +70,7 @@ export type RootStackParamList = {
   PaymentPlan: { propertyId: string, readonly: boolean };
   Inbox: undefined;
   AdminMessages: undefined;
+  ShareMarketplaces: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -109,6 +111,7 @@ export default function AppNavigator() {
         <Stack.Screen name="PaymentPlan" component={PaymentPlanScreen} />
         <Stack.Screen name="Inbox" component={InboxScreen} />
         <Stack.Screen name="AdminMessages" component={AdminMessagesScreen} />
+        <Stack.Screen name="ShareMarketplaces" component={ShareMarketplaceScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using RealEstateInvestment.Data;
@@ -11,9 +12,11 @@ using RealEstateInvestment.Data;
 namespace RealEstateInvestment.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250516115917_InvestmentApplication")]
+    partial class InvestmentApplication
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -400,38 +403,6 @@ namespace RealEstateInvestment.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("RentalIncomes");
-                });
-
-            modelBuilder.Entity("RealEstateInvestment.Models.ShareOffer", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("ExpirationDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("InvestmentId")
-                        .HasColumnType("uuid");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<decimal>("PricePerShare")
-                        .HasColumnType("numeric");
-
-                    b.Property<Guid>("SellerId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("SharesForSale")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("ShareOffers");
                 });
 
             modelBuilder.Entity("RealEstateInvestment.Models.User", b =>
