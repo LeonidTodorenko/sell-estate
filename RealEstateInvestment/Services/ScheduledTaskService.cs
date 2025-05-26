@@ -23,7 +23,8 @@ namespace RealEstateInvestment.Services
             {
                 try
                 {
-                   //todo отключили пока  await RunScheduledTasks();
+                   //todo отключили пока
+                   await RunScheduledTasks();
                 }
                 catch (Exception ex)
                 {
@@ -54,7 +55,7 @@ namespace RealEstateInvestment.Services
                         continue;
  
                     var step = property.PaymentPlans
-                                        ?.Where(p => p.DueDate <= now) // && p.Paid == 0
+                                        ?.Where(p => p.DueDate <= now && p.Paid == 0)  
                                         .OrderBy(p => p.DueDate)
                                         .FirstOrDefault();
 
@@ -72,56 +73,66 @@ namespace RealEstateInvestment.Services
                     decimal totalAllocated = 0;
                     bool acceptedAny = false;
 
-                    foreach (var app in applications)
+                    decimal totalRequested = applications.Sum(a => a.RequestedAmount);
+                    if (totalRequested >= step.Total)
                     {
-                   
-                        if (totalAllocated + app.RequestedAmount <= step.Total)
+                        foreach (var app in applications)
                         {
-                            var user = await context.Users.FindAsync(app.UserId);
-                            if (user == null || user.WalletBalance < app.RequestedAmount)
-                                continue;
 
-                            user.WalletBalance -= app.RequestedAmount;
-                            property.AvailableShares -= app.RequestedShares;
-                            totalAllocated += app.RequestedAmount;
-
-                            context.Investments.Add(new Investment
+                            // todo пока проверку убрали if (totalAllocated + app.RequestedAmount <= step.Total)
                             {
-                                UserId = app.UserId,
-                                PropertyId = app.PropertyId,
-                                Shares = app.RequestedShares,
-                                InvestedAmount = app.RequestedAmount,
-                                CreatedAt = now
-                            });
+                                var user = await context.Users.FindAsync(app.UserId);
+                                if (user == null) //  || user.WalletBalance < app.RequestedAmount уже зарезервировали
+                                    continue;
 
-                            app.Status = app.RequestedAmount == step.Total ? "accepted" : "partial";
-                            app.ApprovedShares = app.RequestedShares;
-                            app.ApprovedAmount = app.RequestedAmount;
+                                //user.WalletBalance -= app.RequestedAmount; уже зарезервировали
+                                property.AvailableShares -= app.RequestedShares;
+                                totalAllocated += app.RequestedAmount;
 
-                            context.Messages.Add(new Message
-                            {
-                                Title = "Your investment application was approved",
-                                Content = $"You were allocated {app.RequestedShares} shares for property {property.Title}.",
-                                RecipientId = app.UserId
-                            });
+                                context.Investments.Add(new Investment
+                                {
+                                    UserId = app.UserId,
+                                    PropertyId = app.PropertyId,
+                                    Shares = app.RequestedShares,
+                                    InvestedAmount = app.RequestedAmount,
+                                    CreatedAt = now
+                                });
 
-                            acceptedAny = true;
+                                // todo логика на будущее app.Status = app.RequestedAmount == step.Total ? "accepted" : "partial";
+                                app.Status = "accepted";
+                                app.ApprovedShares = app.RequestedShares;
+                                app.ApprovedAmount = app.RequestedAmount;
 
-                            if (app.RequestedAmount >= step.Total)
-                                property.PriorityInvestorId = app.UserId;
+                                context.Messages.Add(new Message
+                                {
+                                    Title = "Your investment application was approved",
+                                    Content = $"You were allocated {app.RequestedShares} shares for property {property.Title}.",
+                                    RecipientId = app.UserId
+                                });
+
+                                acceptedAny = true;
+
+                              
+
+
+                                //if (app.RequestedAmount >= step.Total)   уже зарезервировали
+                                //    property.PriorityInvestorId = app.UserId;
+                            }
+                            // логика которую пока убрали
+                            //else
+                            //{
+                            //    app.Status = "carried";
+                            //    app.StepNumber += 1;
+
+                            //    context.Messages.Add(new Message
+                            //    {
+                            //        Title = "Your application has been carried over",
+                            //        Content = $"Your application for property {property.Title} has been moved to the next stage.",
+                            //        RecipientId = app.UserId
+                            //    });
+                            //}
                         }
-                        else
-                        {
-                            app.Status = "carried";
-                            app.StepNumber += 1;
-
-                            context.Messages.Add(new Message
-                            {
-                                Title = "Your application has been carried over",
-                                Content = $"Your application for property {property.Title} has been moved to the next stage.",
-                                RecipientId = app.UserId
-                            });
-                        }
+                        step.Paid = totalAllocated;
                     }
 
                     if (!acceptedAny)
@@ -134,7 +145,7 @@ namespace RealEstateInvestment.Services
                                 user.WalletBalance += app.RequestedAmount;
 
                                 app.Status = "rejected";
-
+                                property.PriorityInvestorId = null; // todo сбрасывает в рамках логики тестов
                                 context.Messages.Add(new Message
                                 {
                                     Title = "Application rejected",
@@ -145,14 +156,13 @@ namespace RealEstateInvestment.Services
                             
                         }
                     }
-                    step.Paid = totalAllocated;
+
                     context.ActionLogs.Add(new ActionLog
                     {
                         UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"),
                         Action = acceptedAny ? "InvestmentStepAccepted" : "InvestmentStepRejected",
                         Details = $"PropertyId: {property.Id}, Step DueDate: {step.DueDate}, Accepted: {acceptedAny}"
                     });
-                     
 
                     //try
                     //{

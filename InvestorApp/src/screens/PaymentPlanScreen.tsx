@@ -54,7 +54,7 @@ const PaymentPlanScreen = ({ route }: any) => {
     
 
       <ScrollView ref={scrollViewRef} style={styles.tableContainer} horizontal>
-        <PaymentPlanTable plans={plans} reload={loadPlans} />
+        <PaymentPlanTable plans={plans} reload={loadPlans}   propertyId={propertyId}  readonly={readonly} />
       </ScrollView>
 
       <AddPaymentPlanModal

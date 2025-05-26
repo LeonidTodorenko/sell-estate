@@ -36,6 +36,7 @@ import PaymentPlanScreen from '../screens/PaymentPlanScreen';
 import InboxScreen from '../screens/InboxScreen';
 import AdminMessagesScreen from '../screens/AdminMessagesScreen';
 import ShareMarketplaceScreen from '../screens/ShareMarketplaceScreen';
+import InvestmentApplicationScreen from '../screens/InvestmentApplicationScreen';
 
 export type RootStackParamList = {
   Login: undefined;
@@ -71,6 +72,7 @@ export type RootStackParamList = {
   Inbox: undefined;
   AdminMessages: undefined;
   ShareMarketplaces: undefined;
+  InvestmentApplications: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -112,6 +114,7 @@ export default function AppNavigator() {
         <Stack.Screen name="Inbox" component={InboxScreen} />
         <Stack.Screen name="AdminMessages" component={AdminMessagesScreen} />
         <Stack.Screen name="ShareMarketplaces" component={ShareMarketplaceScreen} />
+        <Stack.Screen name="InvestmentApplications" component={InvestmentApplicationScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

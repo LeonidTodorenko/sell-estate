@@ -90,6 +90,8 @@ const ProfileScreen = ({ navigation }: Props) => {
         <Button title="Edit Profile" onPress={() => navigation.navigate('EditProfile')} />
         <View style={{ height: 10 }} />
         <Button title="Browse Properties" onPress={() => navigation.navigate('Properties')} />
+             <View style={{ height: 10 }} />
+        <Button title="My Investments Applications" onPress={() => navigation.navigate('InvestmentApplications')} />
         <View style={{ height: 10 }} />
         <Button title="My Investments" onPress={() => navigation.navigate('Investments')} />
         <View style={{ height: 10 }} />

@@ -19,8 +19,8 @@ namespace RealEstateInvestment.Controllers
             _context = context;
         }
 
-        //   An investor submits an application to purchase shares
-        [HttpPost("apply")]
+        //   An investor submits an application to purchase shares - todo старая логика
+        [HttpPost("apply_old")]
         public async Task<IActionResult> ApplyForInvestment([FromBody] InvestmentWithPin investmentRequest)
         {
             await _investmentLock.WaitAsync();
@@ -87,8 +87,136 @@ namespace RealEstateInvestment.Controllers
             //В будущем: уведомления, e - mail, журнал транзакций.
         }
 
+        [HttpPost("apply")]
+        public async Task<IActionResult> ApplicateForInvestment([FromBody] InvestmentApplicationWithPin req)
+        {
+            var user = await _context.Users.FindAsync(req.UserId);
+            if (user == null) return NotFound(new { message = "User not found" });
+
+            var property = await _context.Properties
+                                         .Include(p => p.PaymentPlans)
+                                         .FirstOrDefaultAsync(p => p.Id == req.PropertyId);
+            if (property == null) return NotFound(new { message = "Property not found" });
+
+            if (property.PaymentPlans == null || !property.PaymentPlans.Any())
+                return BadRequest(new { message = "No payment plan found" });
+
+
+            if (!string.IsNullOrEmpty(user.PinCode))
+            {
+                if (req.PinOrPassword != user.PinCode)
+                    return BadRequest(new { message = "Invalid PIN" });
+            }
+            else
+            {
+                if (req.PinOrPassword != user.PasswordHash) // TODO: hash
+                    return BadRequest(new { message = "Invalid password" });
+            }
+             
+
+            // Проверка, что есть активный этап
+            var now = DateTime.UtcNow;
+            var step = property.PaymentPlans?
+                .FirstOrDefault(p => p.EventDate <= now && now <= p.DueDate);
+             if (step == null)
+                 return BadRequest(new { message = "No active payment step" }); // todo убрать потом
+
+            //if (DateTime.UtcNow > property.ApplicationDeadline)
+            //    return BadRequest(new { message = "The application deadline has expired" });
+
+            // calculating and checking wallet
+            var pricePerShare = property.Price / property.TotalShares;
+            var expectedAmount = req.RequestedShares * pricePerShare;
+
+            if (user.WalletBalance < expectedAmount)
+                return BadRequest(new { message = "Insufficient funds" });
+
+            if (property.AvailableShares < req.RequestedShares)
+                return BadRequest(new { message = "Not enough free shares" });
+
+            // Если это первый шаг — сохраняем как заявку
+            var minEventDate = property.PaymentPlans.Min(p => p.EventDate);
+
+            if (DateTime.UtcNow < minEventDate )
+              return BadRequest(new { message = "The application date in not started yet, please try again later." });
+
+            if (step.EventDate == minEventDate)
+            {
+                user.WalletBalance -= expectedAmount;
+
+                var wasPrior = false;
+                // Если сумма >= нужной для текущего этапа — пользователь становится приоритетным
+                if (expectedAmount >= step.Total && property.PriorityInvestorId == null)
+                {
+                    property.PriorityInvestorId = req.UserId;
+                    wasPrior = true;
+                }
+
+                // Это самый первый шаг
+                var app = new InvestmentApplication
+                {
+                    UserId = req.UserId,
+                    PropertyId = req.PropertyId,
+                    RequestedAmount = req.RequestedAmount,
+                    RequestedShares = req.RequestedShares,
+                    StepNumber = req.StepNumber,
+                    IsPriority = wasPrior,
+                    Status = "pending",
+                    CreatedAt = now
+                };
+                 
+                _context.InvestmentApplications.Add(app);
+                 
+               // step.Paid += expectedAmount;
+            }
+            else
+            {
+                // Автоматическое превращение заявки в инвестицию
+                user.WalletBalance -= expectedAmount;
+                property.AvailableShares -= req.RequestedShares;
+
+                step.Paid += expectedAmount; // todo учесть шаг для междусобытийных периодов
+
+                _context.Investments.Add(new Investment
+                {
+                    UserId = req.UserId,
+                    PropertyId = req.PropertyId,
+                    Shares = req.RequestedShares,
+                    InvestedAmount = expectedAmount,
+                    CreatedAt = now
+                });
+
+                _context.ActionLogs.Add(new ActionLog
+                {
+                    UserId = req.UserId,
+                    Action = "ApplicateForInvestment",
+                    Details = "Apply For Investment Shares: " + req.RequestedShares + "; InvestedAmount: " + expectedAmount + "; PropertyId: " + req.PropertyId
+                });
+              
+            }
+
+            //var app = new InvestmentApplication
+            //{
+            //    UserId = req.UserId,
+            //    PropertyId = req.PropertyId,
+            //    RequestedAmount = req.RequestedAmount,
+            //    RequestedShares = req.RequestedShares,
+            //    StepNumber = req.StepNumber,
+            //    IsPriority = false
+            //};
+
+            //_context.InvestmentApplications.Add(app);
+            await _context.SaveChangesAsync();
+            return Ok(new { message = "Application submitted" });
+        }
+
         // todo move
         public class InvestmentWithPin : Investment
+        {
+            public string PinOrPassword { get; set; }
+        }
+
+        public class InvestmentApplicationWithPin : InvestmentApplication
         {
             public string PinOrPassword { get; set; }
         }

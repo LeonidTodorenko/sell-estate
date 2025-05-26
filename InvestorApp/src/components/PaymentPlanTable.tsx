@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, Switch } from 'react-native';
+import { TouchableOpacity, Alert } from 'react-native';
+//import { Ionicons } from '@expo/vector-icons'; // todo: установить пакет иконок потом
+import api from '../api';
 
 interface PaymentPlan {
   id: string;
@@ -18,6 +21,8 @@ interface PaymentPlan {
 interface Props {
   plans: PaymentPlan[];
   reload: () => Promise<void>;
+   propertyId: string;
+   readonly: any;
 }
 
 const allColumns = [
@@ -33,7 +38,7 @@ const allColumns = [
   { key: 'outstanding', label: 'Outstanding' },
 ];
 
-const PaymentPlanTable = ({ plans }: Props) => {
+const PaymentPlanTable = ({ plans,reload,propertyId,readonly }: Props) => {
   const [visibleColumns, setVisibleColumns] = useState<string[]>(allColumns.map(c => c.key));
 
   const toggleColumn = (key: string) => {
@@ -43,6 +48,32 @@ const PaymentPlanTable = ({ plans }: Props) => {
   };
 
   const totalSum = plans.reduce((sum, p) => sum + (p.amountDue || 0) + (p.vat || 0), 0);
+
+  const confirmDelete = (id: string) => {
+    Alert.alert(
+      'Delete Payment Plan',
+      'Are you sure you want to delete this plan?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => deletePlan(id),
+        },
+      ]
+    );
+  };
+
+  const deletePlan = async (planId: string) => {
+    try {
+ 
+        await api.delete(`/properties/${propertyId}/payment-plans/${planId}`);
+      await reload();
+    } catch (err) {
+      console.error(err);
+      Alert.alert('Error', 'Failed to delete payment plan.');
+    }
+  };
 
   return (
     <View style={{ flex: 1 }}>
@@ -84,6 +115,12 @@ const PaymentPlanTable = ({ plans }: Props) => {
                 {visibleColumns.includes('total') && <Text style={styles.cell}>{plan.total}</Text>}
                 {visibleColumns.includes('paid') && <Text style={styles.cell}>{plan.paid}</Text>}
                 {visibleColumns.includes('outstanding') && <Text style={styles.cell}>{plan.outstanding}</Text>}
+                 {!readonly && (
+                             <TouchableOpacity onPress={() => confirmDelete(plan.id)} style={styles.deleteButton}>
+                                <Text style={{ color: 'red' }}>🗑</Text>{/* <Ionicons name="trash-outline" size={20} color="red" style={styles.deleteIcon} /> */}
+                            </TouchableOpacity>
+                  )}
+         
               </View>
             ))}
           </ScrollView>
@@ -144,6 +181,15 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
   },
+    deleteIcon: {
+    marginLeft: 8,
+    alignSelf: 'center',
+  },
+    deleteButton: {
+    paddingHorizontal: 8,
+    justifyContent: 'center',
+  },
+
 });
 
 export default PaymentPlanTable;

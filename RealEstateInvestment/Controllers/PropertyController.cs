@@ -303,42 +303,65 @@ namespace RealEstateInvestment.Controllers
                 investmentsRefunded
             });
         }
+         
 
         [HttpGet("with-stats")]
-        [Authorize(Roles = "admin")]
+        //[Authorize(Roles = "admin")] todo пока убрал тк нужен для приоритетного инестора для страницы юзера
         public async Task<IActionResult> GetPropertiesWithStats()
         {
             var now = DateTime.UtcNow;
+            try
+            {
+                var properties = await _context.Properties
+                   .Include(p => p.PaymentPlans).ToListAsync();
 
-            var data = await _context.Properties
-                .Include(p => p.PaymentPlans)
-                .Select(p => new
-                {
-                    p.Id,
-                    p.Title,
-                    p.Status,
+                var data= properties.Select(p => new
+                   {
+                       p.Id,
+                       p.Title,
+                       p.Status,
+                    p.Location,
+                    p.Price,
+                    p.TotalShares,
+                    p.AvailableShares,
+                    p.ListingType,
+                    p.ImageBase64,
+                    p.ExpectedCompletionDate,
+                    p.UpfrontPayment,
+                    p.ApplicationDeadline,
+                    p.CreatedAt,
+                    p.MonthlyRentalIncome,
+                    p.LastPayoutDate,
+                    p.Latitude,
+                    p.Longitude,
                     CurrentStep = p.PaymentPlans
-                        .Where(pp => pp.DueDate > now)
-                        .OrderBy(pp => pp.DueDate)
-                        .Select((pp, index) => new { Step = index + 1, pp.DueDate })
-                        .FirstOrDefault(),
+                           .Where(pp => pp.DueDate > now)
+                           .OrderBy(pp => pp.DueDate)
+                           .Select((pp, index) => new { Step = index + 1, pp.DueDate })
+                           .FirstOrDefault(),
 
-                    PriorityInvestorId = p.PriorityInvestorId,
+                       PriorityInvestorId = p.PriorityInvestorId,
 
-                    ApplicationsCount = _context.InvestmentApplications
-                        .Count(a => a.PropertyId == p.Id && a.Status == null),
+                       ApplicationsCount = _context.InvestmentApplications
+                           .Count(a => a.PropertyId == p.Id && a.Status == null),
 
-                    ApplicationsAmount = _context.InvestmentApplications
-                        .Where(a => a.PropertyId == p.Id && a.Status == null)
-                        .Sum(a => (decimal?)a.RequestedAmount) ?? 0,
+                       ApplicationsAmount = _context.InvestmentApplications
+                           .Where(a => a.PropertyId == p.Id && a.Status == null)
+                           .Sum(a => (decimal?)a.RequestedAmount) ?? 0,
 
-                    ApprovedShares = _context.Investments
-                        .Where(i => i.PropertyId == p.Id)
-                        .Sum(i => (int?)i.Shares) ?? 0
-                })
-                .ToListAsync();
+                       ApprovedShares = _context.Investments
+                           .Where(i => i.PropertyId == p.Id)
+                           .Sum(i => (int?)i.Shares) ?? 0
+                   })
+                   .ToList();
 
-            return Ok(data);
+                return Ok(data);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex);
+            }
+          
         }
          
     }

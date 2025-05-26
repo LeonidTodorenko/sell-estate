@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
+import { View, Text,  Button, StyleSheet, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import api from '../api';
@@ -43,7 +43,7 @@ const BuySharesScreen = () => {
       return Alert.alert('Invalid amount', `Investment must be a multiple of ${sharePrice.toFixed(2)} USD`);
     }
 
-    const shares = Math.round(parsed / sharePrice!);
+    const requestedShares = Math.round(parsed / sharePrice!);
 
     const stored = await AsyncStorage.getItem('user');
     if (!stored) return Alert.alert('Error', 'No user found');
@@ -58,17 +58,26 @@ const BuySharesScreen = () => {
       await api.post('/investments/apply', {
         userId: user.userId,
         propertyId,
-        shares,
-        investedAmount: parsed,
+        requestedShares,
+        requestedAmount: parsed,
         pinOrPassword,
       });
 
       Alert.alert('Success', 'Investment submitted');
       navigation.goBack();
-    } catch (err) {
-      console.error(err);
-      Alert.alert('Error', 'Failed to invest');
     }
+       catch (error: any) {
+                 let message = 'Failed to invest ';
+                      console.error(error);
+                      if (error.response && error.response.data) {
+                        message = JSON.stringify(error.response.data);
+                      } else if (error.message) {
+                        message = error.message;
+                      }
+                      Alert.alert('Error', 'Failed to invest ' + message);
+                    console.error(message);
+              }
+    
   };
 
   return (
