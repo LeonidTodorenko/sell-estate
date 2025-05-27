@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace RealEstateInvestment.Models
 {
@@ -20,5 +21,11 @@ namespace RealEstateInvestment.Models
         public decimal InvestedAmount { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        [ForeignKey("PropertyId")]
+        public Property Property { get; set; }
+
+        [ForeignKey("UserId")]
+        public User User { get; set; }
     }
 }

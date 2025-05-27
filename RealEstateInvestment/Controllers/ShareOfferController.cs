@@ -68,6 +68,56 @@ namespace RealEstateInvestment.Controllers
             return Ok(offers);
         }
 
+        [HttpPost("sell-to-platform")]
+        public async Task<IActionResult> SellToPlatform([FromBody] SellToPlatformRequest request)
+        {
+            var investment = await _context.Investments
+                .Include(i => i.Property)
+                .FirstOrDefaultAsync(i => i.Id == request.InvestmentId && i.UserId == request.UserId);
+
+            if (investment == null || investment.Shares < request.SharesToSell)
+                return BadRequest("Invalid investment or not enough shares");
+
+            var pricePerShare = investment.Property.BuybackPricePerShare;
+            if (pricePerShare == null) return BadRequest("No buyback price available");
+
+            var amount = pricePerShare.Value * request.SharesToSell;
+
+            investment.Shares -= request.SharesToSell;
+            investment.User.WalletBalance += amount;
+
+            if (investment.Shares == 0)
+                _context.Investments.Remove(investment);
+
+            await _context.SaveChangesAsync();
+            return Ok(new { amount });
+        }
+          
+        public class SellToPlatformRequest
+        {
+            public Guid InvestmentId { get; set; }
+            public Guid UserId { get; set; }
+            public int SharesToSell { get; set; }
+        }
+
+
+        [HttpGet("user/{id}/with-property")]
+        public async Task<IActionResult> GetInvestmentsWithProperty(Guid id)
+        {
+            var result = await _context.Investments
+                .Where(i => i.UserId == id)
+                .Include(i => i.Property)
+                .Select(i => new {
+                    i.Id,
+                    i.PropertyId,
+                    i.Shares,
+                    i.InvestedAmount,
+                    PropertyTitle = i.Property.Title
+                })
+                .ToListAsync();
+
+            return Ok(result);
+        }
 
 
         [HttpPost("{id}/buy")]

@@ -47,5 +47,7 @@ namespace RealEstateInvestment.Models
 
         public ICollection<PaymentPlan>? PaymentPlans { get; set; }
 
+        public decimal? BuybackPricePerShare { get; set; }
+
     }
 }

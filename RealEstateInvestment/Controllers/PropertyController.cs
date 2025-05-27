@@ -363,6 +363,14 @@ namespace RealEstateInvestment.Controllers
             }
           
         }
-         
+
+        [HttpGet("{id}/buyback-price")]
+        public async Task<IActionResult> GetBuybackPrice(Guid id)
+        {
+            var property = await _context.Properties.FindAsync(id);
+            if (property == null) return NotFound();
+            return Ok(new { buybackPrice = property.BuybackPricePerShare });
+        }
+
     }
 }
