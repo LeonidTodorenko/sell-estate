@@ -68,6 +68,21 @@ namespace RealEstateInvestment.Controllers
             return Ok(offers);
         }
 
+        [HttpGet("user/{userId}/active")]
+        public async Task<IActionResult> GetUserActiveOffers(Guid userId)
+        {
+            var offers = await _context.ShareOffers
+                .Where(o => o.SellerId == userId && o.IsActive && o.ExpirationDate > DateTime.UtcNow)
+                .Select(o => new {
+                    o.InvestmentId,
+                    o.PricePerShare,
+                    o.ExpirationDate
+                })
+                .ToListAsync();
+
+            return Ok(offers);
+        }
+
         [HttpPost("sell-to-platform")]
         public async Task<IActionResult> SellToPlatform([FromBody] SellToPlatformRequest request)
         {

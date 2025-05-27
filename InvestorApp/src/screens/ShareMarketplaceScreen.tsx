@@ -102,7 +102,9 @@ const ShareMarketplaceScreen = () => {
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Marketplace</Text>
+        <View style={{ height: 10 }} />
       <Button title="Sell My Shares" onPress={() => navigation.navigate('SellMyShares')} />
+          <View style={{ height: 10 }} />
       {/* Filter Panel */}
       <View style={styles.filterPanel}>
         <TextInput
