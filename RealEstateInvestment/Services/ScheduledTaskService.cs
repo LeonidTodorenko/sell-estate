@@ -24,7 +24,7 @@ namespace RealEstateInvestment.Services
                 try
                 {
                    //todo отключили пока
-                   await RunScheduledTasks();
+                  // await RunScheduledTasks();
                 }
                 catch (Exception ex)
                 {
