@@ -84,6 +84,50 @@ const ShareMarketplaceScreen = () => {
     );
   };
 
+  const cancelOffer = async (id: string) => {
+  try {
+    await api.post(`/share-offers/${id}/cancel`);
+    Alert.alert('Offer canceled');
+    loadOffers();
+  } catch {
+    Alert.alert('Error', 'Failed to cancel offer');
+  }
+};
+
+const extendOffer = async (id: string, days: number) => {
+  try {
+    await api.post(`/share-offers/${id}/extend?days=${days}`);
+    Alert.alert('Offer extended');
+    loadOffers();
+  } catch {
+    Alert.alert('Error', 'Failed to extend offer');
+  }
+};
+
+const promptPriceUpdate = (item: ShareOffer) => {
+  Alert.prompt(
+    'Update Price',
+    `Current: ${item.pricePerShare}. Enter new price:`,
+    async (input) => {
+      const newPrice = parseFloat(input || '0');
+      if (isNaN(newPrice) || newPrice <= 0) {
+        Alert.alert('Invalid price');
+        return;
+      }
+      try {
+        await api.post(`/share-offers/${item.id}/update-price?newPrice=${newPrice}`);
+        Alert.alert('Price updated');
+        loadOffers();
+      } catch {
+        Alert.alert('Error', 'Failed to update price');
+      }
+    },
+    'plain-text',
+    item.pricePerShare.toString()
+  );
+};
+
+
   useEffect(() => {
     const loadUserId = async () => {
       const stored = await AsyncStorage.getItem('user');
@@ -144,6 +188,15 @@ const ShareMarketplaceScreen = () => {
             {item.sellerId !== userId && (
               <Button title="Buy" onPress={() => handleBuy(item)} />
             )}
+            {item.sellerId === userId && (
+                <>
+                  <Button title="Cancel Listing" onPress={() => cancelOffer(item.id)} />
+                     <View style={{ height: 10 }} />
+                  <Button title="Extend 7 Days" onPress={() => extendOffer(item.id, 7)} />
+                     <View style={{ height: 10 }} />
+                  <Button title="Update Price" onPress={() => promptPriceUpdate(item)} />
+                </>
+              )}
           </View>
         )}
       />

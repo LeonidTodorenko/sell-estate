@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, Button, Alert } from 'react-native';
+import {
+  View, Text, FlatList, StyleSheet, Button, Alert, Modal, TextInput, Pressable,
+} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
 
@@ -22,10 +24,13 @@ const SellMySharesScreen = () => {
   const [buybackPrices, setBuybackPrices] = useState<Record<string, number | null>>({});
   const [activeOffers, setActiveOffers] = useState<Record<string, ActiveOfferInfo>>({});
 
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedInvestment, setSelectedInvestment] = useState<Investment | null>(null);
+  const [inputPrice, setInputPrice] = useState('');
+
   useEffect(() => {
     const loadUserAndInvestments = async () => {
       const stored = await AsyncStorage.getItem('user');
-
       if (!stored) return;
       const user = JSON.parse(stored);
       setUserId(user.userId);
@@ -96,7 +101,7 @@ const SellMySharesScreen = () => {
                 sharesToSell: inv.shares,
               });
               Alert.alert('Success', 'Shares sold to platform');
-              const updated = await api.get(`/investment/user/${userId}/with-property`);
+              const updated = await api.get(`/share-offers/user/${userId}/with-property`);
               setInvestments(updated.data);
               await loadActiveOffers(userId);
             } catch {
@@ -109,37 +114,38 @@ const SellMySharesScreen = () => {
   };
 
   const handleListOnMarketplace = (inv: Investment) => {
+    setSelectedInvestment(inv);
+    setInputPrice('');
+    setModalVisible(true);
+  };
 
-    Alert.prompt(
-      'Set Price',
-      `Enter price per share for "${inv.propertyTitle}" (${inv.shares} shares):`,
-      async (priceInput) => {
-        const price = parseFloat(priceInput || '0');
-        if (!price || price <= 0) {
-          Alert.alert('Invalid price');
-          return;
-        }
+  const submitListing = async () => {
+    const price = parseFloat(inputPrice);
+    if (!selectedInvestment || !price || price <= 0) {
+      Alert.alert('Invalid price');
+      return;
+    }
 
-        try {
-          const expirationDate = new Date();
-          expirationDate.setDate(expirationDate.getDate() + 7);
+    try {
+      const expirationDate = new Date();
+      expirationDate.setDate(expirationDate.getDate() + 7);
 
-          await api.post('/share-offers', {
-            investmentId: inv.id,
-            sellerId: userId,
-            propertyId: inv.propertyId,
-            sharesForSale: inv.shares,
-            pricePerShare: price,
-            expirationDate: expirationDate.toISOString(),
-          });
-          Alert.alert('Success', 'Offer listed on marketplace');
-          await loadActiveOffers(userId);
-        } catch {
-          Alert.alert('Error', 'Failed to create offer');
-        }
-      },
-      'plain-text'
-    );
+      await api.post('/share-offers', {
+        investmentId: selectedInvestment.id,
+        sellerId: userId,
+        propertyId: selectedInvestment.propertyId,
+        sharesForSale: selectedInvestment.shares,
+        pricePerShare: price,
+        expirationDate: expirationDate.toISOString(),
+      });
+
+      Alert.alert('Success', 'Offer listed on marketplace');
+      setModalVisible(false);
+      await loadActiveOffers(userId);
+    } catch(err) {
+      console.error('Submit failed:', JSON.stringify(err, null, 2));
+      Alert.alert('Error', 'Failed to create offer');
+    }
   };
 
   return (
@@ -183,6 +189,32 @@ const SellMySharesScreen = () => {
           );
         }}
       />
+
+      {/* Modal */}
+      <Modal visible={modalVisible} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 8 }}>
+              Set Price per Share
+            </Text>
+            <TextInput
+              placeholder="Enter price"
+              value={inputPrice}
+              onChangeText={setInputPrice}
+              keyboardType="numeric"
+              style={styles.input}
+            />
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 }}>
+              <Pressable onPress={() => setModalVisible(false)}>
+                <Text style={styles.cancelBtn}>Cancel</Text>
+              </Pressable>
+              <Pressable onPress={submitListing}>
+                <Text style={styles.confirmBtn}>Submit</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -196,6 +228,35 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 6,
     marginBottom: 10,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 10,
+    width: '80%',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    padding: 10,
+    borderRadius: 6,
+    fontSize: 16,
+  },
+  cancelBtn: {
+    color: 'red',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  confirmBtn: {
+    color: 'green',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
 });
 

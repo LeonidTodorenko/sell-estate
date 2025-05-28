@@ -21,26 +21,43 @@ namespace RealEstateInvestment.Controllers
 
         //  Добавить новое предложение
         [HttpPost]
-        public async Task<IActionResult> CreateOffer([FromBody] ShareOffer offer)
+        public async Task<IActionResult> CreateOffer([FromBody] CreateShareOfferRequest request)
         {
-            if (!ModelState.IsValid) return BadRequest(ModelState);
-
-            var investment = await _context.Investments.FindAsync(offer.InvestmentId);
-            if (investment == null || investment.UserId != offer.SellerId)
+            var investment = await _context.Investments.FindAsync(request.InvestmentId);
+            if (investment == null || investment.UserId != request.SellerId)
                 return BadRequest("Invalid investment or unauthorized");
 
-            // Проверка на количество доступных долей
-            if (offer.SharesForSale > investment.Shares)
+            if (request.SharesForSale > investment.Shares)
                 return BadRequest("Cannot sell more shares than owned");
 
-            offer.Id = Guid.NewGuid();
-            offer.CreatedAt = DateTime.UtcNow;
-            offer.IsActive = true;
+            var offer = new ShareOffer
+            {
+                Id = Guid.NewGuid(),
+                InvestmentId = request.InvestmentId,
+                SellerId = request.SellerId,
+                PropertyId = request.PropertyId,
+                SharesForSale = request.SharesForSale,
+                PricePerShare = request.PricePerShare,
+                ExpirationDate = request.ExpirationDate,
+                CreatedAt = DateTime.UtcNow,
+                IsActive = true
+            };
 
             _context.ShareOffers.Add(offer);
             await _context.SaveChangesAsync();
 
             return Ok(offer);
+        }
+
+
+        public class CreateShareOfferRequest
+        {
+            public Guid InvestmentId { get; set; }
+            public Guid SellerId { get; set; }
+            public Guid PropertyId { get; set; }
+            public int SharesForSale { get; set; }
+            public decimal PricePerShare { get; set; }
+            public DateTime ExpirationDate { get; set; }
         }
 
 
@@ -200,6 +217,46 @@ namespace RealEstateInvestment.Controllers
             public Guid BuyerId { get; set; }
             public int Shares { get; set; }
         }
+
+        [HttpPost("{id}/cancel")]
+        public async Task<IActionResult> CancelOffer(Guid id)
+        {
+            var offer = await _context.ShareOffers.FindAsync(id);
+            if (offer == null || !offer.IsActive)
+                return NotFound("Offer not found or already inactive");
+
+            offer.IsActive = false;
+            await _context.SaveChangesAsync();
+            return Ok("Offer canceled");
+        }
+
+        [HttpPost("{id}/extend")]
+        public async Task<IActionResult> ExtendOffer(Guid id, [FromQuery] int days)
+        {
+            var offer = await _context.ShareOffers.FindAsync(id);
+            if (offer == null || !offer.IsActive)
+                return NotFound("Offer not found or inactive");
+
+            offer.ExpirationDate = offer.ExpirationDate.AddDays(days);
+            await _context.SaveChangesAsync();
+            return Ok(new { offer.ExpirationDate });
+        }
+
+        [HttpPost("{id}/update-price")]
+        public async Task<IActionResult> UpdateOfferPrice(Guid id, [FromQuery] decimal newPrice)
+        {
+            var offer = await _context.ShareOffers.FindAsync(id);
+            if (offer == null || !offer.IsActive)
+                return NotFound("Offer not found or inactive");
+
+            if (newPrice <= 0) return BadRequest("Invalid price");
+
+            offer.PricePerShare = newPrice;
+            await _context.SaveChangesAsync();
+            return Ok(new { offer.PricePerShare });
+        }
+
+
     }
 
 }
