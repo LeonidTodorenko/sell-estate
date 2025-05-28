@@ -25,11 +25,12 @@ const SellMySharesScreen = () => {
   useEffect(() => {
     const loadUserAndInvestments = async () => {
       const stored = await AsyncStorage.getItem('user');
+
       if (!stored) return;
       const user = JSON.parse(stored);
       setUserId(user.userId);
 
-      const res = await api.get(`/investment/user/${user.userId}/with-property`);
+      const res = await api.get(`/share-offers/user/${user.userId}/with-property`);
       setInvestments(res.data);
 
       await loadActiveOffers(user.userId);
@@ -108,6 +109,7 @@ const SellMySharesScreen = () => {
   };
 
   const handleListOnMarketplace = (inv: Investment) => {
+
     Alert.prompt(
       'Set Price',
       `Enter price per share for "${inv.propertyTitle}" (${inv.shares} shares):`,

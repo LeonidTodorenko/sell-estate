@@ -353,7 +353,7 @@ namespace RealEstateInvestment.Controllers
 
             return Ok(investments);
         }
-
+         
         [HttpGet("all")]
         public async Task<IActionResult> GetAllInvestments()
         {

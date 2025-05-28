@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RealEstateInvestment.Data;
+using RealEstateInvestment.Migrations;
 using RealEstateInvestment.Models;
 
 namespace RealEstateInvestment.Controllers
@@ -127,7 +128,8 @@ namespace RealEstateInvestment.Controllers
                     i.PropertyId,
                     i.Shares,
                     i.InvestedAmount,
-                    PropertyTitle = i.Property.Title
+                    PropertyTitle = i.Property.Title,
+                    BuybackPricePerShare = i.Property.BuybackPricePerShare
                 })
                 .ToListAsync();
 
