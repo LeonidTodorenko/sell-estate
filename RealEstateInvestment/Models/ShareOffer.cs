@@ -7,7 +7,6 @@ namespace RealEstateInvestment.Models
     {
         [Key] public Guid Id { get; set; } = Guid.NewGuid();
 
-        [Required] public Guid InvestmentId { get; set; }
         [Required] public Guid SellerId { get; set; }
         [Required] public Guid PropertyId { get; set; }
 

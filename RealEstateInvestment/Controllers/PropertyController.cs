@@ -134,6 +134,7 @@ namespace RealEstateInvestment.Controllers
             existing.ApplicationDeadline = updated.ApplicationDeadline;
             existing.Latitude = updated.Latitude;
             existing.Longitude = updated.Longitude;
+            existing.BuybackPricePerShare = updated.BuybackPricePerShare;
             _context.ActionLogs.Add(new ActionLog
             {
                 UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add admin guid later
@@ -332,6 +333,7 @@ namespace RealEstateInvestment.Controllers
                     p.CreatedAt,
                     p.MonthlyRentalIncome,
                     p.LastPayoutDate,
+                    p.BuybackPricePerShare,
                     p.Latitude,
                     p.Longitude,
                     CurrentStep = p.PaymentPlans

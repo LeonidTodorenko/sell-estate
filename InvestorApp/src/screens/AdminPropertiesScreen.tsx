@@ -38,6 +38,7 @@ interface Property {
   applicationDeadline: string;
   priorityInvestorId?: string;
   monthlyRentalIncome: number;
+  buybackPricePerShare: number;
   lastPayoutDate: string;
   images: PropertyImage[];
   stats?: PropertyStats;
@@ -191,7 +192,9 @@ const AdminPropertiesScreen = () => {
           <Text>Type: {item.listingType === 'sale' ? 'For Sale' : 'For Rent'}</Text>
           <Text>Status: {item.status}</Text>
           <Text>🏗 Completion Date: {new Date(item.expectedCompletionDate).toLocaleDateString()}</Text>
-
+          {item.buybackPricePerShare && (
+            <Text>Buy back price per share: {item.buybackPricePerShare}</Text>
+          )}
           {item.stats && (
             <View>
               <Text>📥 Applications: {item.stats.applicationCount}</Text>

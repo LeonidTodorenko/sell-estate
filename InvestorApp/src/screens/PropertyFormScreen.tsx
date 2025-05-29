@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Text, TextInput, Button, StyleSheet, ScrollView, Alert } from 'react-native';
+import { Text, Button, StyleSheet, ScrollView, Alert } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { KeyboardAvoidingView, Platform } from 'react-native';
 import { RootStackParamList } from '../navigation/AppNavigator';
@@ -22,7 +22,7 @@ const PropertyFormScreen = ({ route, navigation }: Props) => {
   const [lastPayoutDate, setLastPayoutDate] = useState(existing?.lastPayoutDate?.split('T')[0] || '');
 
   const [listingType, setListingType] = useState(existing?.listingType || 'sale');
-
+  const [buybackPricePerShare, setBuybackPricePerShare] = useState(existing?.buybackPricePerShare?.toString() || '');
   const [latitude, setLatitude] = useState(existing?.latitude?.toString() || '');
   const [longitude, setLongitude] = useState(existing?.longitude?.toString() || '');
 
@@ -45,6 +45,7 @@ const PropertyFormScreen = ({ route, navigation }: Props) => {
       upfrontPayment: parseFloat(upfrontPayment) || 0,
       applicationDeadline: new Date(deadline).toISOString(),
       listingType,
+      buybackPricePerShare: parseFloat(buybackPricePerShare),
       latitude: parseFloat(latitude),
       longitude: parseFloat(longitude),
       expectedCompletionDate: new Date(completionDate).toISOString(),
@@ -94,7 +95,7 @@ const PropertyFormScreen = ({ route, navigation }: Props) => {
         title={listingType === 'sale' ? 'For Sale (Tap to switch)' : 'For Rent (Tap to switch)'}
         onPress={() => setListingType(listingType === 'sale' ? 'rent' : 'sale')}
       />
-
+      <StyledInput style={styles.input} placeholder="BuybackPricePerShare" keyboardType="numeric" value={buybackPricePerShare} onChangeText={setBuybackPricePerShare} />
       <StyledInput style={styles.input} placeholder="Latitude" keyboardType="numeric" value={latitude} onChangeText={setLatitude} />
       <StyledInput style={styles.input} placeholder="Longitude" keyboardType="numeric" value={longitude} onChangeText={setLongitude} />
       <StyledInput style={styles.input} placeholder="Expected Completion Date (YYYY-MM-DD)" value={completionDate} onChangeText={setCompletionDate} />

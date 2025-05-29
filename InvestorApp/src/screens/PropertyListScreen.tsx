@@ -8,7 +8,6 @@ import {
   Image,
   TouchableOpacity,
   Modal,
-  Alert,
 } from 'react-native';
 import Swiper from 'react-native-swiper';
 import api from '../api';
