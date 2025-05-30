@@ -102,8 +102,8 @@ const ShareMarketplaceScreen = () => {
       if (!user) return;
 
       await api.post(`/share-offers/${currentOffer.id}/bid`, {
-        userId: user.userId,
-        pricePerShare: price,
+        bidderId: user.userId,
+        bidPricePerShare: price,
         shares,
       });
 
@@ -111,9 +111,37 @@ const ShareMarketplaceScreen = () => {
       setBidModalVisible(false);
       loadBidsForOffer(currentOffer.id);
     } catch (error: any) {
-         console.error(JSON.stringify(error.response.data));
+      console.error(JSON.stringify(error.response.data));
       Alert.alert('Error', 'Failed to place bid');
     }
+  };
+
+  const handleBuyNow = async (offer: ShareOffer) => {
+    Alert.alert(
+      'Confirm Purchase',
+      `Buy ${offer.sharesForSale} shares for ${formatCurrency(offer.pricePerShare)} per share?`,
+      [
+        { text: 'Cancel' },
+        {
+          text: 'Buy',
+          onPress: async () => {
+            try {
+              const stored = await AsyncStorage.getItem('user');
+              const user = stored ? JSON.parse(stored) : null;
+              if (!user) return;
+
+              await api.post(`/share-offers/${offer.id}/buy?buyerId=${user.userId}&sharesToBuy=${offer.sharesForSale}`);
+
+              Alert.alert('Success', 'Purchase completed');
+              loadOffers();
+            } catch (error: any) {
+              console.error(error.response?.data);
+              Alert.alert('Error', 'Purchase failed');
+            }
+          }
+        }
+      ]
+    );
   };
 
   const handleAcceptBid = async (bid: ShareOfferBid) => {
@@ -184,8 +212,7 @@ const ShareMarketplaceScreen = () => {
           Alert.alert('Price updated');
           loadOffers();
         } catch (error: any) {
-      
-      console.error(error);
+          console.error(error);
           Alert.alert('Error', 'Failed to update price');
         }
       },
@@ -228,7 +255,11 @@ const ShareMarketplaceScreen = () => {
             <Text style={styles.text}>Expires: {new Date(item.expirationDate).toLocaleDateString()}</Text>
 
             {item.sellerId !== userId && (
-              <Button title="Place Bid" onPress={() => openBidModal(item)} />
+              <>
+                <Button title="Place Bid" onPress={() => openBidModal(item)} />
+                <View style={{ height: 10 }} />
+                <Button title="Buy Now" onPress={() => handleBuyNow(item)} />
+              </>
             )}
 
             {item.sellerId === userId && (
