@@ -1,32 +1,33 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, FlatList, StyleSheet, Button, Alert, Modal, TextInput, Pressable,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
 
-interface Investment {
-  id: string;
+interface GroupedInvestment {
   propertyId: string;
-  shares: number;
-  investedAmount: number;
   propertyTitle: string;
-}
-
-interface ActiveOfferInfo {
-  price: number;
-  expires: string;
+  shares: number;
+  totalInvested: number;
+  averagePrice: number;
+  buybackPricePerShare: number | null;
 }
 
 const SellMySharesScreen = () => {
-  const [investments, setInvestments] = useState<Investment[]>([]);
+  const [investments, setInvestments] = useState<GroupedInvestment[]>([]);
   const [userId, setUserId] = useState<string>('');
-  const [buybackPrices, setBuybackPrices] = useState<Record<string, number | null>>({});
-  const [activeOffers, setActiveOffers] = useState<Record<string, ActiveOfferInfo>>({});
-
   const [modalVisible, setModalVisible] = useState(false);
-  const [selectedInvestment, setSelectedInvestment] = useState<Investment | null>(null);
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
+  const [selectedPropertyTitle, setSelectedPropertyTitle] = useState<string>('');
   const [inputPrice, setInputPrice] = useState('');
+  const [inputShares, setInputShares] = useState('');
+
+  const fetchBuybackPrices = useCallback(async (userId: string) => {
+   
+    const res = await api.get(`/share-offers/user/${userId}/grouped`);
+    setInvestments(res.data);
+  }, []);
 
   useEffect(() => {
     const loadUserAndInvestments = async () => {
@@ -34,76 +35,34 @@ const SellMySharesScreen = () => {
       if (!stored) return;
       const user = JSON.parse(stored);
       setUserId(user.userId);
-
-      const res = await api.get(`/share-offers/user/${user.userId}/with-property`);
-      setInvestments(res.data);
-
-      await loadActiveOffers(user.userId);
+      await fetchBuybackPrices(user.userId);
     };
-
     loadUserAndInvestments();
-  }, []);
+  }, [fetchBuybackPrices]);
 
-  useEffect(() => {
-    const fetchBuybackPrices = async () => {
-      const prices: Record<string, number | null> = {};
-      for (const inv of investments) {
-        try {
-          const res = await api.get(`/properties/${inv.propertyId}/buyback-price`);
-          prices[inv.propertyId] = res.data.buybackPrice;
-        } catch {
-          prices[inv.propertyId] = null;
-        }
-      }
-      setBuybackPrices(prices);
-    };
-
-    if (investments.length > 0) {
-      fetchBuybackPrices();
-    }
-  }, [investments]);
-
-  const loadActiveOffers = async (userId: string) => {
-    try {
-      const res = await api.get(`/share-offers/user/${userId}/active`);
-      const map: Record<string, ActiveOfferInfo> = {};
-      for (const offer of res.data) {
-        map[offer.investmentId] = {
-          price: offer.pricePerShare,
-          expires: offer.expirationDate,
-        };
-      }
-      setActiveOffers(map);
-    } catch (e) {
-      console.error('Failed to load active offers');
-    }
-  };
-
-  const handleSellToPlatform = async (inv: Investment) => {
-    const buybackPrice = buybackPrices[inv.propertyId];
-    if (!buybackPrice) {
-      Alert.alert('No buyback price available');
-      return;
-    }
+  const handleSellToPlatform = async (inv: GroupedInvestment) => {
+    if (!userId) return;
 
     Alert.alert(
       'Confirm Sale',
-      `Sell ${inv.shares} shares of ${inv.propertyTitle} for $${(buybackPrice * inv.shares).toFixed(2)}?`,
+      `Sell ${inv.shares} shares of ${inv.propertyTitle} for $${(inv.buybackPricePerShare ?? 0 * inv.shares).toFixed(2)}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Sell',
           onPress: async () => {
             try {
-              await api.post('/share-offers/sell-to-platform', {
-                investmentId: inv.id,
-                userId: userId,
-                sharesToSell: inv.shares,
-              });
+              const res = await api.get(`/share-offers/user/${userId}/with-property`);
+              const userInvestments = res.data.filter((x: any) => x.propertyId === inv.propertyId);
+              for (const i of userInvestments) {
+                await api.post('/share-offers/sell-to-platform', {
+                  investmentId: i.id,
+                  userId: userId,
+                  sharesToSell: i.shares,
+                });
+              }
               Alert.alert('Success', 'Shares sold to platform');
-              const updated = await api.get(`/share-offers/user/${userId}/with-property`);
-              setInvestments(updated.data);
-              await loadActiveOffers(userId);
+              await fetchBuybackPrices(userId);
             } catch {
               Alert.alert('Error', 'Failed to sell shares');
             }
@@ -113,16 +72,19 @@ const SellMySharesScreen = () => {
     );
   };
 
-  const handleListOnMarketplace = (inv: Investment) => {
-    setSelectedInvestment(inv);
+  const handleListOnMarketplace = (inv: GroupedInvestment) => {
+    setSelectedPropertyId(inv.propertyId);
+    setSelectedPropertyTitle(inv.propertyTitle);
     setInputPrice('');
+    setInputShares('');
     setModalVisible(true);
   };
 
   const submitListing = async () => {
     const price = parseFloat(inputPrice);
-    if (!selectedInvestment || !price || price <= 0) {
-      Alert.alert('Invalid price');
+    const shares = parseInt(inputShares);
+    if (!selectedPropertyId || !price || price <= 0 || !shares || shares <= 0) {
+      Alert.alert('Invalid input');
       return;
     }
 
@@ -131,19 +93,17 @@ const SellMySharesScreen = () => {
       expirationDate.setDate(expirationDate.getDate() + 7);
 
       await api.post('/share-offers', {
-        investmentId: selectedInvestment.id,
         sellerId: userId,
-        propertyId: selectedInvestment.propertyId,
-        sharesForSale: selectedInvestment.shares,
+        propertyId: selectedPropertyId,
+        sharesForSale: shares,
         pricePerShare: price,
         expirationDate: expirationDate.toISOString(),
       });
 
       Alert.alert('Success', 'Offer listed on marketplace');
       setModalVisible(false);
-      await loadActiveOffers(userId);
-    } catch(err) {
-      console.error('Submit failed:', JSON.stringify(err, null, 2));
+      await fetchBuybackPrices(userId);
+    } catch {
       Alert.alert('Error', 'Failed to create offer');
     }
   };
@@ -153,52 +113,42 @@ const SellMySharesScreen = () => {
       <Text style={styles.title}>Sell My Shares</Text>
       <FlatList
         data={investments}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => {
-          const buyback = buybackPrices[item.propertyId];
-          const offer = activeOffers[item.id];
+        keyExtractor={(item) => item.propertyId}
+        renderItem={({ item }) => (
+          <View style={styles.card}>
+            <Text>Property: {item.propertyTitle}</Text>
+            <Text>Shares: {item.shares}</Text>
+            <Text>Total Invested: ${item.totalInvested.toFixed(2)}</Text>
+            <Text>Average Price/Share: ${item.averagePrice.toFixed(2)}</Text>
 
-          return (
-            <View style={styles.card}>
-              <Text>Property: {item.propertyTitle}</Text>
-              <Text>Shares: {item.shares}</Text>
-              <Text>Invested: ${item.investedAmount}</Text>
-
-              {offer ? (
-                <>
-                  <Text style={{ color: 'green', fontWeight: 'bold', marginTop: 6 }}>
-                    🔵 Listed on marketplace
-                  </Text>
-                  <Text>Price: ${offer.price}/share</Text>
-                  <Text>Expires: {new Date(offer.expires).toLocaleDateString()}</Text>
-                </>
-              ) : (
-                <>
-                  {buyback && (
-                    <Button
-                      title={`Sell for buyback price ($${buyback}/share)`}
-                      onPress={() => handleSellToPlatform(item)}
-                    />
-                  )}
-                  <View style={{ marginTop: 8 }}>
-                    <Button title="List on marketplace" onPress={() => handleListOnMarketplace(item)} />
-                  </View>
-                </>
-              )}
+            {item.buybackPricePerShare && (
+              <Button
+                title={`Sell for buyback price ($${item.buybackPricePerShare}/share)`}
+                onPress={() => handleSellToPlatform(item)}
+              />
+            )}
+            <View style={{ marginTop: 8 }}>
+              <Button title="List on marketplace" onPress={() => handleListOnMarketplace(item)} />
             </View>
-          );
-        }}
+          </View>
+        )}
       />
 
-      {/* Modal */}
       <Modal visible={modalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 8 }}>
-              Set Price per Share
+              List shares of {selectedPropertyTitle}
             </Text>
             <TextInput
-              placeholder="Enter price"
+              placeholder="Number of shares"
+              value={inputShares}
+              onChangeText={setInputShares}
+              keyboardType="numeric"
+              style={styles.input}
+            />
+            <TextInput
+              placeholder="Price per share"
               value={inputPrice}
               onChangeText={setInputPrice}
               keyboardType="numeric"
@@ -247,6 +197,7 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 6,
     fontSize: 16,
+    marginBottom: 10,
   },
   cancelBtn: {
     color: 'red',

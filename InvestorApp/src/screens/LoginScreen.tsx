@@ -21,13 +21,15 @@ const LoginScreen = ({ navigation }: Props) => {
       setLoading(true);
       const response = await api.post('/auth/login', { email, password });
 
-      const { token, ...userInfo } = response.data;
-      Alert.alert("response:" + response.data);
-      Alert.alert("token:" + token);
-      Alert.alert("userInfo:" + userInfo);
+      //const { token, ...userInfo } = response.data;
+      //Alert.alert("response:" + response.data);
+      //Alert.alert("token:" + token);
+      //Alert.alert("userInfo:" + userInfo);
      //  await AsyncStorage.setItem('data', JSON.stringify(response.data));
-      await AsyncStorage.setItem('user', JSON.stringify(userInfo));
-      await AsyncStorage.setItem('token',JSON.stringify(userInfo.token));
+      //await AsyncStorage.setItem('user', JSON.stringify(userInfo));
+      //await AsyncStorage.setItem('token',JSON.stringify(userInfo.token));
+
+      await AsyncStorage.setItem('user', JSON.stringify(response.data));
      
       //const user = response.data;
      // await AsyncStorage.setItem('user', JSON.stringify(user));

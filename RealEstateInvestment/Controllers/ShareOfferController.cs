@@ -57,9 +57,9 @@ namespace RealEstateInvestment.Controllers
             _context.ShareOffers.Add(offer);
             _context.ActionLogs.Add(new ActionLog
             {
-                UserId = request.SellerId,  
+                UserId = request.SellerId,
                 Action = "CreateOffer",
-                Details = "request.SellerId   " + request.SellerId + " request.PropertyId" + request.PropertyId + "request.SharesForSale " + request.SharesForSale
+                Details = $"Seller: {request.SellerId}, Property: {request.PropertyId}, Shares: {request.SharesForSale}"
             });
             await _context.SaveChangesAsync();
 
@@ -73,6 +73,40 @@ namespace RealEstateInvestment.Controllers
             public int SharesForSale { get; set; }
             public decimal PricePerShare { get; set; }
             public DateTime ExpirationDate { get; set; }
+        }
+
+        [HttpGet("user/{id}/grouped")]
+        public async Task<IActionResult> GetGroupedInvestments(Guid id)
+        {
+            try
+            {
+                var grouped = await _context.Investments
+                  .Where(i => i.UserId == id && i.Shares > 0)
+                  .GroupBy(i => i.PropertyId)
+                  .Select(g => new
+                  {
+                      PropertyId = g.Key,
+                      Shares = g.Sum(i => i.Shares),
+                      TotalInvested = g.Sum(i => i.InvestedAmount),
+                      averagePrice = g.Sum(i => i.Shares) == 0 ? 0 : g.Sum(i => i.InvestedAmount) / g.Sum(i => i.Shares),
+                      PropertyTitle = g.Select(i => i.Property.Title).FirstOrDefault(),
+                      BuybackPricePerShare = g.Select(i => i.Property.BuybackPricePerShare).FirstOrDefault()
+                  })
+                  .ToListAsync();
+                return Ok(grouped);
+            }
+            catch (Exception ex)
+            {
+                _context.ActionLogs.Add(new ActionLog
+                {
+                    UserId = id,
+                    Action = "GetGroupedInvestments error",
+                    Details = ex.Message,
+                });
+                await _context.SaveChangesAsync();
+                return BadRequest(ex);
+            }
+
         }
 
         [HttpGet("active")]
@@ -103,7 +137,8 @@ namespace RealEstateInvestment.Controllers
         {
             var offers = await _context.ShareOffers
                 .Where(o => o.SellerId == userId && o.IsActive && o.ExpirationDate > DateTime.UtcNow)
-                .Select(o => new {
+                .Select(o => new
+                {
                     o.PricePerShare,
                     o.ExpirationDate
                 })
@@ -139,7 +174,7 @@ namespace RealEstateInvestment.Controllers
             {
                 UserId = request.UserId, // todo add admin guid later
                 Action = "SellToPlatform",
-                Details = "request.SharesToSell: " + request.SharesToSell  
+                Details = "request.SharesToSell: " + request.SharesToSell
             });
 
             await _context.SaveChangesAsync();
@@ -159,7 +194,8 @@ namespace RealEstateInvestment.Controllers
             var result = await _context.Investments
                 .Where(i => i.UserId == id)
                 .Include(i => i.Property)
-                .Select(i => new {
+                .Select(i => new
+                {
                     i.Id,
                     i.PropertyId,
                     i.Shares,
@@ -221,7 +257,7 @@ namespace RealEstateInvestment.Controllers
 
             _context.ActionLogs.Add(new ActionLog
             {
-                UserId = buyerId, 
+                UserId = buyerId,
                 Action = "buy share",
                 Details = "sharesToBuy: " + sharesToBuy + "offer " + id
             });
@@ -310,5 +346,133 @@ namespace RealEstateInvestment.Controllers
             await _context.SaveChangesAsync();
             return Ok(new { offer.PricePerShare });
         }
+
+        // Добавить ставку (bid) на оффер
+        [HttpPost("{id}/bid")]
+        public async Task<IActionResult> PlaceBid(Guid id, [FromBody] PlaceBidRequest request)
+        {
+            var offer = await _context.ShareOffers.FindAsync(id);
+            if (offer == null || !offer.IsActive || offer.ExpirationDate < DateTime.UtcNow)
+                return BadRequest("Offer is not available");
+
+            if (request.BidPricePerShare <= 0 || request.BidPricePerShare > offer.PricePerShare)
+                return BadRequest("Invalid bid price");
+
+            if (request.Shares <= 0 || request.Shares > offer.SharesForSale)
+                return BadRequest("Invalid number of shares");
+
+            var bid = new ShareOfferBid
+            {
+                OfferId = id,
+                BidderId = request.BidderId,
+                BidPricePerShare = request.BidPricePerShare,
+                Shares = request.Shares, 
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.ShareOfferBids.Add(bid);
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = request.BidderId,
+                Action = "PlaceBid",
+                Details = $"OfferId: {id}, Price: {request.BidPricePerShare}, Shares: {request.Shares}"
+            });
+
+            await _context.SaveChangesAsync();
+            return Ok(bid);
+        }
+
+
+        // todo move
+        public class PlaceBidRequest
+        {
+            public Guid BidderId { get; set; }
+            public decimal BidPricePerShare { get; set; }
+            public int Shares { get; set; }
+        }
+
+        //Получить список бидов для оффера
+        [HttpGet("{id}/bids")]
+        public async Task<IActionResult> GetBidsForOffer(Guid id)
+        {
+            var bids = await _context.ShareOfferBids
+                .Where(b => b.OfferId == id)
+                .OrderByDescending(b => b.CreatedAt)
+                .Select(b => new
+                {
+                    b.Id,
+                    b.BidPricePerShare,
+                    b.CreatedAt
+                })
+                .ToListAsync();
+
+            return Ok(bids);
+        }
+
+        // Принять предложение
+        [HttpPost("bid/{bidId}/accept")]
+        public async Task<IActionResult> AcceptBid(Guid bidId, [FromQuery] int sharesToSell)
+        {
+            var bid = await _context.ShareOfferBids
+                .Include(b => b.Offer)
+                .FirstOrDefaultAsync(b => b.Id == bidId);
+
+            if (bid == null || bid.Offer == null || !bid.Offer.IsActive)
+                return BadRequest("Invalid bid or offer");
+
+            if (sharesToSell > bid.Offer.SharesForSale)
+                return BadRequest("Not enough shares in the offer");
+
+            var buyer = await _context.Users.FindAsync(bid.BidderId);
+            var seller = await _context.Users.FindAsync(bid.Offer.SellerId);
+            if (buyer == null || seller == null) return BadRequest();
+
+            var totalCost = bid.BidPricePerShare * sharesToSell;
+            if (buyer.WalletBalance < totalCost) return BadRequest("Insufficient balance");
+
+            // Перевод средств
+            buyer.WalletBalance -= totalCost;
+            seller.WalletBalance += totalCost;
+
+            // Обновление оффера
+            bid.Offer.SharesForSale -= sharesToSell;
+            if (bid.Offer.SharesForSale == 0)
+                bid.Offer.IsActive = false;
+
+            // Добавление инвестиций
+            var investment = await _context.Investments
+                .FirstOrDefaultAsync(i => i.UserId == buyer.Id && i.PropertyId == bid.Offer.PropertyId);
+
+            if (investment == null)
+            {
+                investment = new Investment
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = buyer.Id,
+                    PropertyId = bid.Offer.PropertyId,
+                    Shares = sharesToSell,
+                    InvestedAmount = totalCost,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.Investments.Add(investment);
+            }
+            else
+            {
+                investment.Shares += sharesToSell;
+                investment.InvestedAmount += totalCost;
+            }
+
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = seller.Id,
+                Action = "AcceptBid",
+                Details = $"BidId: {bidId}, Shares: {sharesToSell}, Price: {bid.BidPricePerShare}"
+            });
+
+            await _context.SaveChangesAsync();
+            return Ok("Bid accepted and transaction completed.");
+        }
+
+
     }
 }

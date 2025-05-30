@@ -23,7 +23,7 @@ namespace RealEstateInvestment.Data
         public DbSet<Message> Messages { get; set; }
         public DbSet<InvestmentApplication> InvestmentApplications { get; set; }
         public DbSet<ShareOffer> ShareOffers { get; set; }
-
+        public DbSet<ShareOfferBid> ShareOfferBids { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
