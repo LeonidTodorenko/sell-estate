@@ -23,8 +23,8 @@ interface ShareOffer {
 interface ShareOfferBid {
   id: string;
   offerId: string;
-  userId: string;
-  pricePerShare: number;
+  bidderId: string;
+  bidPricePerShare: number;
   shares: number;
   createdAt: string;
 }
@@ -38,7 +38,7 @@ const ShareMarketplaceScreen = () => {
   const [bidModalVisible, setBidModalVisible] = useState(false);
   const [currentOffer, setCurrentOffer] = useState<ShareOffer | null>(null);
   const [bidPrice, setBidPrice] = useState('');
-  const [bidShares, setBidShares] = useState('');
+  //const [bidShares, setBidShares] = useState('');
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const [searchTitle, setSearchTitle] = useState('');
@@ -76,25 +76,27 @@ const ShareMarketplaceScreen = () => {
   const openBidModal = (offer: ShareOffer) => {
     setCurrentOffer(offer);
     setBidPrice('');
-    setBidShares('');
+   // setBidShares('');
     setBidModalVisible(true);
   };
 
   const submitBid = async () => {
     const price = parseFloat(bidPrice);
-    const shares = parseInt(bidShares, 10);
+   
 
     if (!currentOffer) return;
+
+     const shares = currentOffer.sharesForSale; // parseInt(bidShares, 10);
 
     if (isNaN(price) || price <= 0) {
       Alert.alert('Invalid price');
       return;
     }
 
-    if (isNaN(shares) || shares <= 0 || shares > currentOffer.sharesForSale) {
-      Alert.alert('Invalid share count');
-      return;
-    }
+    // if (isNaN(shares) || shares <= 0 || shares > currentOffer.sharesForSale) {
+    //   Alert.alert('Invalid share count');
+    //   return;
+    // }
 
     try {
       const stored = await AsyncStorage.getItem('user');
@@ -147,7 +149,7 @@ const ShareMarketplaceScreen = () => {
   const handleAcceptBid = async (bid: ShareOfferBid) => {
     Alert.alert(
       'Accept Bid',
-      `Sell ${bid.shares} shares for ${formatCurrency(bid.pricePerShare)} per share?`,
+      `Sell ${bid.shares} shares for ${formatCurrency(bid.bidPricePerShare)} per share?`,
       [
         { text: 'Cancel' },
         {
@@ -280,7 +282,7 @@ const ShareMarketplaceScreen = () => {
                 <Text style={{ fontWeight: 'bold' }}>Bids:</Text>
                 {bidsMap[item.id].map((bid) => (
                   <View key={bid.id} style={{ marginTop: 4, padding: 6, borderColor: '#ddd', borderWidth: 1, borderRadius: 6 }}>
-                    <Text>Price: {formatCurrency(bid.pricePerShare)}</Text>
+                    <Text>Price: {formatCurrency(bid.bidPricePerShare)}</Text>
                     <Text>Shares: {bid.shares}</Text>
                     <Text>At: {new Date(bid.createdAt).toLocaleString()}</Text>
                     {item.sellerId === userId && (
@@ -305,13 +307,13 @@ const ShareMarketplaceScreen = () => {
               value={bidPrice}
               onChangeText={setBidPrice}
             />
-            <TextInput
+            {/* <TextInput
               style={styles.input}
               placeholder={`Shares (max ${currentOffer?.sharesForSale ?? ''})`}
               keyboardType="numeric"
               value={bidShares}
               onChangeText={setBidShares}
-            />
+            /> */}
             <Button title="Submit" onPress={submitBid} />
             <View style={{ height: 10 }} />
             <Button title="Cancel" onPress={() => setBidModalVisible(false)} />

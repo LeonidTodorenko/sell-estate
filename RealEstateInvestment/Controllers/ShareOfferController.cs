@@ -402,7 +402,8 @@ namespace RealEstateInvestment.Controllers
                 {
                     b.Id,
                     b.BidPricePerShare,
-                    b.CreatedAt
+                    b.CreatedAt,
+                    b.Shares
                 })
                 .ToListAsync();
 
