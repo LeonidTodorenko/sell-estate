@@ -74,7 +74,7 @@ export type RootStackParamList = {
   AdminMessages: undefined;
   ShareMarketplaces: undefined;
   InvestmentApplications: undefined;
-  SellMyShares: undefined;
+  SellMyShares: { propertyId: string; propertyName: string };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();

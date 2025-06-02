@@ -4,6 +4,8 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
+import { RouteProp, useRoute } from '@react-navigation/native';
+import { RootStackParamList } from '../navigation/AppNavigator';
 
 interface GroupedInvestment {
   propertyId: string;
@@ -14,7 +16,13 @@ interface GroupedInvestment {
   buybackPricePerShare: number | null;
 }
 
+type SellMySharesRouteProp = RouteProp<RootStackParamList, 'SellMyShares'>;
+
 const SellMySharesScreen = () => {
+  const route = useRoute<SellMySharesRouteProp>();
+  const propertyId = route.params?.propertyId;
+  const propertyName = route.params?.propertyName;
+
   const [investments, setInvestments] = useState<GroupedInvestment[]>([]);
   const [userId, setUserId] = useState<string>('');
   const [modalVisible, setModalVisible] = useState(false);
@@ -24,10 +32,11 @@ const SellMySharesScreen = () => {
   const [inputShares, setInputShares] = useState('');
 
   const fetchBuybackPrices = useCallback(async (userId: string) => {
-   
     const res = await api.get(`/share-offers/user/${userId}/grouped`);
-    setInvestments(res.data);
-  }, []);
+    const all = res.data;
+    const filtered = propertyId ? all.filter((i: GroupedInvestment) => i.propertyId === propertyId) : all;
+    setInvestments(filtered);
+  }, [propertyId]);
 
   useEffect(() => {
     const loadUserAndInvestments = async () => {
@@ -110,7 +119,7 @@ const SellMySharesScreen = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Sell My Shares</Text>
+      <Text style={styles.title}>Sell Shares {propertyName ? `for ${propertyName}` : ''}</Text>
       <FlatList
         data={investments}
         keyExtractor={(item) => item.propertyId}

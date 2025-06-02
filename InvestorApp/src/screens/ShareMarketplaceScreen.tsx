@@ -5,9 +5,9 @@ import {
 import api from '../api';
 import { formatCurrency } from '../utils/format';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/AppNavigator';
+// import { useNavigation } from '@react-navigation/native';
+// import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+// import { RootStackParamList } from '../navigation/AppNavigator';
 
 interface ShareOffer {
   id: string;
@@ -39,7 +39,7 @@ const ShareMarketplaceScreen = () => {
   const [currentOffer, setCurrentOffer] = useState<ShareOffer | null>(null);
   const [bidPrice, setBidPrice] = useState('');
   //const [bidShares, setBidShares] = useState('');
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  // const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const [searchTitle, setSearchTitle] = useState('');
   const [minPrice, setMinPrice] = useState('');
@@ -235,7 +235,7 @@ const ShareMarketplaceScreen = () => {
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Marketplace</Text>
-      <Button title="Sell My Shares" onPress={() => navigation.navigate('SellMyShares')} />
+      {/* <Button title="Sell My Shares" onPress={() => navigation.navigate('SellMyShares')} /> */}
 
       <View style={styles.filterPanel}>
         <TextInput placeholder="Search by property" value={searchTitle} onChangeText={setSearchTitle} style={styles.input} />

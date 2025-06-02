@@ -37,10 +37,9 @@ interface UserMap {
   [key: string]: string;
 }
 
-
 const PropertyListScreen = () => {
   const [properties, setProperties] = useState<Property[]>([]);
-   const [userMap, setUserMap] = useState<UserMap>({});
+  const [userMap, setUserMap] = useState<UserMap>({});
   const [modalVisible, setModalVisible] = useState(false);
   const [modalImage, setModalImage] = useState<string | null>(null);
   const [imageIndex, setImageIndex] = useState(0);
@@ -58,22 +57,20 @@ const PropertyListScreen = () => {
         );
         setProperties(propertiesWithImages);
 
-     const userResponses = await api.get('/properties/with-stats');
-          const userIds = userResponses.data.filter((p: Property) => p.priorityInvestorId).map((p: Property) => p.priorityInvestorId);
-      const uniqueIds = [...new Set(userIds)];
-      const map: UserMap = {};
+        const userResponses = await api.get('/properties/with-stats');
+        const userIds = userResponses.data.filter((p: Property) => p.priorityInvestorId).map((p: Property) => p.priorityInvestorId);
+        const uniqueIds = [...new Set(userIds)];
+        const map: UserMap = {};
 
-      if (uniqueIds.length > 0) {
-        const usersRes = await Promise.all(uniqueIds.map((id) => api.get(`/users/${id}`)));
-      
-        usersRes.forEach((res) => {
-          const user = res.data;
-          map[user.id] = user.fullName;
-        });
-      }
+        if (uniqueIds.length > 0) {
+          const usersRes = await Promise.all(uniqueIds.map((id) => api.get(`/users/${id}`)));
+          usersRes.forEach((res) => {
+            const user = res.data;
+            map[user.id] = user.fullName;
+          });
+        }
 
-      setUserMap(map);
-
+        setUserMap(map);
       } catch (error) {
         console.error('Failed to load properties', error);
       }
@@ -121,9 +118,9 @@ const PropertyListScreen = () => {
             <Text>Price: {item.price} USD</Text>
             <Text>Type: {item.listingType === 'sale' ? 'For Sale' : 'For Rent'}</Text>
             <Text>Available Shares: {item.availableShares}</Text>
-               {item.priorityInvestorId && (
-                        <Text>⭐ Priority Investor: {userMap[item.priorityInvestorId] || item.priorityInvestorId}</Text>
-                      )}
+            {item.priorityInvestorId && (
+              <Text>⭐ Priority Investor: {userMap[item.priorityInvestorId] || item.priorityInvestorId}</Text>
+            )}
             <Button
               title="📍 View on Map"
               onPress={() =>
@@ -134,13 +131,23 @@ const PropertyListScreen = () => {
                 })
               }
             />
-              <View style={{ height: 10 }} />
-                 <Button title="📄 View Payment Plan" onPress={() => navigation.navigate('PaymentPlan', { propertyId: item.id, readonly: true })} />
-                 <View style={{ height: 10 }} />
+            <View style={{ height: 10 }} />
+            <Button title="📄 View Payment Plan" onPress={() => navigation.navigate('PaymentPlan', { propertyId: item.id, readonly: true })} />
+            <View style={{ height: 10 }} />
             <Button
               title="Invest"
               onPress={() =>
                 navigation.navigate('BuyShares', {
+                  propertyId: item.id,
+                  propertyName: item.title,
+                })
+              }
+            />
+            <View style={{ height: 10 }} />
+            <Button
+              title="Sell My Shares"
+              onPress={() =>
+                navigation.navigate('SellMyShares', {
                   propertyId: item.id,
                   propertyName: item.title,
                 })
