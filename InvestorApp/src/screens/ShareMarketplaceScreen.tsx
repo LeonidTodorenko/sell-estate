@@ -5,9 +5,6 @@ import {
 import api from '../api';
 import { formatCurrency } from '../utils/format';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-// import { useNavigation } from '@react-navigation/native';
-// import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-// import { RootStackParamList } from '../navigation/AppNavigator';
 
 interface ShareOffer {
   id: string;
@@ -18,6 +15,7 @@ interface ShareOffer {
   sharesForSale: number;
   isActive: boolean;
   expirationDate: string;
+  buyoutPricePerShare?: number | null;
 }
 
 interface ShareOfferBid {
@@ -38,8 +36,6 @@ const ShareMarketplaceScreen = () => {
   const [bidModalVisible, setBidModalVisible] = useState(false);
   const [currentOffer, setCurrentOffer] = useState<ShareOffer | null>(null);
   const [bidPrice, setBidPrice] = useState('');
-  //const [bidShares, setBidShares] = useState('');
-  // const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const [searchTitle, setSearchTitle] = useState('');
   const [minPrice, setMinPrice] = useState('');
@@ -76,27 +72,18 @@ const ShareMarketplaceScreen = () => {
   const openBidModal = (offer: ShareOffer) => {
     setCurrentOffer(offer);
     setBidPrice('');
-   // setBidShares('');
     setBidModalVisible(true);
   };
 
   const submitBid = async () => {
     const price = parseFloat(bidPrice);
-   
-
     if (!currentOffer) return;
-
-     const shares = currentOffer.sharesForSale; // parseInt(bidShares, 10);
+    const shares = currentOffer.sharesForSale;
 
     if (isNaN(price) || price <= 0) {
       Alert.alert('Invalid price');
       return;
     }
-
-    // if (isNaN(shares) || shares <= 0 || shares > currentOffer.sharesForSale) {
-    //   Alert.alert('Invalid share count');
-    //   return;
-    // }
 
     try {
       const stored = await AsyncStorage.getItem('user');
@@ -118,10 +105,10 @@ const ShareMarketplaceScreen = () => {
     }
   };
 
-  const handleBuyNow = async (offer: ShareOffer) => {
+  const handleBuyNow = async (offer: ShareOffer, price: number) => {
     Alert.alert(
       'Confirm Purchase',
-      `Buy ${offer.sharesForSale} shares for ${formatCurrency(offer.pricePerShare)} per share?`,
+      `Buy ${offer.sharesForSale} shares for ${formatCurrency(price)} per share?`,
       [
         { text: 'Cancel' },
         {
@@ -235,7 +222,6 @@ const ShareMarketplaceScreen = () => {
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Marketplace</Text>
-      {/* <Button title="Sell My Shares" onPress={() => navigation.navigate('SellMyShares')} /> */}
 
       <View style={styles.filterPanel}>
         <TextInput placeholder="Search by property" value={searchTitle} onChangeText={setSearchTitle} style={styles.input} />
@@ -256,11 +242,21 @@ const ShareMarketplaceScreen = () => {
             <Text style={styles.text}>Shares Available: {item.sharesForSale}</Text>
             <Text style={styles.text}>Expires: {new Date(item.expirationDate).toLocaleDateString()}</Text>
 
+            {item.buyoutPricePerShare != null && (
+              <Text style={styles.text}>Buyout Price: {formatCurrency(item.buyoutPricePerShare)}</Text>
+            )}
+
             {item.sellerId !== userId && (
               <>
                 <Button title="Place Bid" onPress={() => openBidModal(item)} />
                 <View style={{ height: 10 }} />
-                <Button title="Buy Now" onPress={() => handleBuyNow(item)} />
+                <Button title="Buy Now" onPress={() => handleBuyNow(item, item.pricePerShare)} />
+                {item.buyoutPricePerShare != null && (
+                  <>
+                    <View style={{ height: 10 }} />
+                    <Button title="Buy at Buyout Price" onPress={() => handleBuyNow(item, item.buyoutPricePerShare!)} />
+                  </>
+                )}
               </>
             )}
 
@@ -307,13 +303,6 @@ const ShareMarketplaceScreen = () => {
               value={bidPrice}
               onChangeText={setBidPrice}
             />
-            {/* <TextInput
-              style={styles.input}
-              placeholder={`Shares (max ${currentOffer?.sharesForSale ?? ''})`}
-              keyboardType="numeric"
-              value={bidShares}
-              onChangeText={setBidShares}
-            /> */}
             <Button title="Submit" onPress={submitBid} />
             <View style={{ height: 10 }} />
             <Button title="Cancel" onPress={() => setBidModalVisible(false)} />

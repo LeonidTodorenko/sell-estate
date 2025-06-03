@@ -11,7 +11,9 @@ namespace RealEstateInvestment.Models
         [Required] public Guid PropertyId { get; set; }
 
         public int SharesForSale { get; set; }
-        public decimal PricePerShare { get; set; } // выставленная цена
+        public decimal? PricePerShare { get; set; }
+        public decimal? StartPricePerShare { get; set; } 
+        public decimal? BuyoutPricePerShare { get; set; }  
         public DateTime ExpirationDate { get; set; }
         public bool IsActive { get; set; } = true;
 

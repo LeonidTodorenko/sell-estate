@@ -28,8 +28,9 @@ const SellMySharesScreen = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
   const [selectedPropertyTitle, setSelectedPropertyTitle] = useState<string>('');
-  const [inputPrice, setInputPrice] = useState('');
   const [inputShares, setInputShares] = useState('');
+  const [inputStartPrice, setInputStartPrice] = useState('');
+  const [inputBuyoutPrice, setInputBuyoutPrice] = useState('');
 
   const fetchBuybackPrices = useCallback(async (userId: string) => {
     const res = await api.get(`/share-offers/user/${userId}/grouped`);
@@ -84,15 +85,18 @@ const SellMySharesScreen = () => {
   const handleListOnMarketplace = (inv: GroupedInvestment) => {
     setSelectedPropertyId(inv.propertyId);
     setSelectedPropertyTitle(inv.propertyTitle);
-    setInputPrice('');
     setInputShares('');
+    setInputStartPrice('');
+    setInputBuyoutPrice('');
     setModalVisible(true);
   };
 
   const submitListing = async () => {
-    const price = parseFloat(inputPrice);
     const shares = parseInt(inputShares);
-    if (!selectedPropertyId || !price || price <= 0 || !shares || shares <= 0) {
+    const startPrice = parseFloat(inputStartPrice);
+    const buyoutPrice = inputBuyoutPrice ? parseFloat(inputBuyoutPrice) : null;
+
+    if (!selectedPropertyId || isNaN(shares) || shares <= 0 || isNaN(startPrice) || startPrice <= 0) {
       Alert.alert('Invalid input');
       return;
     }
@@ -105,7 +109,8 @@ const SellMySharesScreen = () => {
         sellerId: userId,
         propertyId: selectedPropertyId,
         sharesForSale: shares,
-        pricePerShare: price,
+        startPricePerShare: startPrice,
+        buyoutPricePerShare: buyoutPrice,
         expirationDate: expirationDate.toISOString(),
       });
 
@@ -157,9 +162,16 @@ const SellMySharesScreen = () => {
               style={styles.input}
             />
             <TextInput
-              placeholder="Price per share"
-              value={inputPrice}
-              onChangeText={setInputPrice}
+              placeholder="Start price per share (for bidding)"
+              value={inputStartPrice}
+              onChangeText={setInputStartPrice}
+              keyboardType="numeric"
+              style={styles.input}
+            />
+            <TextInput
+              placeholder="Buyout price per share (optional)"
+              value={inputBuyoutPrice}
+              onChangeText={setInputBuyoutPrice}
               keyboardType="numeric"
               style={styles.input}
             />
