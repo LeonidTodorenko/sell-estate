@@ -11,7 +11,6 @@ interface ShareOffer {
   sellerId: string;
   propertyId: string;
   propertyTitle: string;
-  pricePerShare: number;
   sharesForSale: number;
   isActive: boolean;
   expirationDate: string;
@@ -180,30 +179,6 @@ const ShareMarketplaceScreen = () => {
     }
   };
 
-  const promptPriceUpdate = (item: ShareOffer) => {
-    Alert.prompt(
-      'Update Price',
-      `Current: ${item.pricePerShare}. Enter new price:`,
-      async (input) => {
-        const newPrice = parseFloat(input || '0');
-        if (isNaN(newPrice) || newPrice <= 0) {
-          Alert.alert('Invalid price');
-          return;
-        }
-        try {
-          await api.post(`/share-offers/${item.id}/update-price?newPrice=${newPrice}`);
-          Alert.alert('Price updated');
-          loadOffers();
-        } catch (error: any) {
-          console.error(error);
-          Alert.alert('Error', 'Failed to update price');
-        }
-      },
-      'plain-text',
-      item.pricePerShare.toString()
-    );
-  };
-
   useEffect(() => {
     loadUserId();
     loadOffers();
@@ -230,10 +205,7 @@ const ShareMarketplaceScreen = () => {
         renderItem={({ item }) => (
           <View style={styles.card}>
             <Text style={styles.text}>Property: {item.propertyTitle}</Text>
-            <Text style={styles.text}>Price/Share: {formatCurrency(item.pricePerShare)}</Text>
-            {item.startPricePerShare != null && (
-              <Text style={styles.text}>Start Price: {formatCurrency(item.startPricePerShare)}</Text>
-            )}
+            <Text style={styles.text}>Start Price: {formatCurrency(item.startPricePerShare ?? 0)}</Text>
             {item.buyoutPricePerShare != null && (
               <Text style={styles.text}>Buyout Price: {formatCurrency(item.buyoutPricePerShare)}</Text>
             )}
@@ -244,7 +216,7 @@ const ShareMarketplaceScreen = () => {
               <>
                 <Button title="Place Bid" onPress={() => openBidModal(item)} />
                 <View style={{ height: 10 }} />
-                <Button title="Buy Now" onPress={() => handleBuyNow(item, item.pricePerShare)} />
+                <Button title="Buy Now" onPress={() => handleBuyNow(item, item.startPricePerShare ?? 0)} />
                 {item.buyoutPricePerShare != null && (
                   <>
                     <View style={{ height: 10 }} />
@@ -260,8 +232,6 @@ const ShareMarketplaceScreen = () => {
                 <Button title="Cancel Listing" onPress={() => cancelOffer(item.id)} />
                 <View style={{ height: 10 }} />
                 <Button title="Extend 7 Days" onPress={() => extendOffer(item.id, 7)} />
-                <View style={{ height: 10 }} />
-                <Button title="Update Price" onPress={() => promptPriceUpdate(item)} />
                 <View style={{ height: 10 }} />
                 <Button title="Load Bids" onPress={() => loadBidsForOffer(item.id)} />
               </>
