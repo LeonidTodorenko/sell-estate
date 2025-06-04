@@ -124,6 +124,8 @@ namespace RealEstateInvestment.Controllers
                     o.PropertyId,
                     o.SharesForSale,
                     o.PricePerShare,
+                    o.BuyoutPricePerShare,
+                    o.StartPricePerShare,
                     o.ExpirationDate,
                     o.IsActive,
                     o.CreatedAt,
@@ -142,6 +144,8 @@ namespace RealEstateInvestment.Controllers
                 .Select(o => new
                 {
                     o.PricePerShare,
+                    o.BuyoutPricePerShare,
+                    o.StartPricePerShare,
                     o.ExpirationDate
                 })
                 .ToListAsync();

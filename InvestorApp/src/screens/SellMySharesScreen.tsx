@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-  View, Text, FlatList, StyleSheet, Button, Alert, Modal, TextInput, Pressable,
+  View, Text, FlatList, StyleSheet, Button, Alert, Modal, TextInput, Pressable, Platform, TouchableOpacity
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 interface GroupedInvestment {
   propertyId: string;
@@ -26,11 +27,12 @@ const SellMySharesScreen = () => {
   const [investments, setInvestments] = useState<GroupedInvestment[]>([]);
   const [userId, setUserId] = useState<string>('');
   const [modalVisible, setModalVisible] = useState(false);
-  const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
-  const [selectedPropertyTitle, setSelectedPropertyTitle] = useState<string>('');
+  const [selectedProperty, setSelectedProperty] = useState<GroupedInvestment | null>(null);
   const [inputShares, setInputShares] = useState('');
   const [inputStartPrice, setInputStartPrice] = useState('');
   const [inputBuyoutPrice, setInputBuyoutPrice] = useState('');
+  const [expirationDate, setExpirationDate] = useState<Date>(new Date(Date.now() + 7 * 86400000));
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const fetchBuybackPrices = useCallback(async (userId: string) => {
     const res = await api.get(`/share-offers/user/${userId}/grouped`);
@@ -83,11 +85,11 @@ const SellMySharesScreen = () => {
   };
 
   const handleListOnMarketplace = (inv: GroupedInvestment) => {
-    setSelectedPropertyId(inv.propertyId);
-    setSelectedPropertyTitle(inv.propertyTitle);
+    setSelectedProperty(inv);
     setInputShares('');
     setInputStartPrice('');
     setInputBuyoutPrice('');
+    setExpirationDate(new Date(Date.now() + 7 * 86400000));
     setModalVisible(true);
   };
 
@@ -96,18 +98,21 @@ const SellMySharesScreen = () => {
     const startPrice = parseFloat(inputStartPrice);
     const buyoutPrice = inputBuyoutPrice ? parseFloat(inputBuyoutPrice) : null;
 
-    if (!selectedPropertyId || isNaN(shares) || shares <= 0 || isNaN(startPrice) || startPrice <= 0) {
+    if (!selectedProperty || isNaN(shares) || shares <= 0 || isNaN(startPrice) || startPrice <= 0) {
       Alert.alert('Invalid input');
       return;
     }
 
-    try {
-      const expirationDate = new Date();
-      expirationDate.setDate(expirationDate.getDate() + 7);
+    const daysDiff = Math.ceil((expirationDate.getTime() - Date.now()) / 86400000);
+    if (daysDiff < 7) {
+      Alert.alert('Minimum auction duration is 7 days');
+      return;
+    }
 
+    try {
       await api.post('/share-offers', {
         sellerId: userId,
-        propertyId: selectedPropertyId,
+        propertyId: selectedProperty.propertyId,
         sharesForSale: shares,
         startPricePerShare: startPrice,
         buyoutPricePerShare: buyoutPrice,
@@ -151,9 +156,10 @@ const SellMySharesScreen = () => {
       <Modal visible={modalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 8 }}>
-              List shares of {selectedPropertyTitle}
+            <Text style={styles.modalTitle}>
+              List shares of {selectedProperty?.propertyTitle}
             </Text>
+
             <TextInput
               placeholder="Number of shares"
               value={inputShares}
@@ -162,12 +168,23 @@ const SellMySharesScreen = () => {
               style={styles.input}
             />
             <TextInput
-              placeholder="Start price per share (for bidding)"
+              placeholder="Start price per share"
               value={inputStartPrice}
               onChangeText={setInputStartPrice}
               keyboardType="numeric"
-              style={styles.input}
+              style={[
+                styles.input,
+                selectedProperty && parseFloat(inputStartPrice) > 0 &&
+                  parseFloat(inputStartPrice) < selectedProperty.averagePrice
+                  ? styles.inputWarning
+                  : {},
+              ]}
             />
+            {selectedProperty && parseFloat(inputStartPrice) > 0 &&
+              parseFloat(inputStartPrice) < selectedProperty.averagePrice && (
+              <Text style={styles.warningText}>⚠️ Price is below your average share price</Text>
+            )}
+
             <TextInput
               placeholder="Buyout price per share (optional)"
               value={inputBuyoutPrice}
@@ -175,7 +192,30 @@ const SellMySharesScreen = () => {
               keyboardType="numeric"
               style={styles.input}
             />
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 }}>
+
+            <TouchableOpacity onPress={() => setShowDatePicker(true)}>
+              <TextInput
+                style={styles.input}
+                value={expirationDate.toDateString()}
+                editable={false}
+                pointerEvents="none"
+              />
+            </TouchableOpacity>
+
+            {showDatePicker && (
+              <DateTimePicker
+                value={expirationDate}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                minimumDate={new Date(Date.now() + 7 * 86400000)}
+                onChange={(event, selectedDate) => {
+                  setShowDatePicker(false);
+                  if (selectedDate) setExpirationDate(selectedDate);
+                }}
+              />
+            )}
+
+            <View style={styles.btnRow}>
               <Pressable onPress={() => setModalVisible(false)}>
                 <Text style={styles.cancelBtn}>Cancel</Text>
               </Pressable>
@@ -210,7 +250,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     padding: 20,
     borderRadius: 10,
-    width: '80%',
+    width: '90%',
+  },
+  modalTitle: {
+    fontWeight: 'bold',
+    fontSize: 18,
+    marginBottom: 8,
+    textAlign: 'center',
   },
   input: {
     borderWidth: 1,
@@ -219,6 +265,21 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     fontSize: 16,
     marginBottom: 10,
+    backgroundColor: '#fff',
+  },
+  inputWarning: {
+    borderColor: '#ff9900',
+    backgroundColor: '#fff6e5',
+  },
+  warningText: {
+    color: '#cc6600',
+    marginBottom: 8,
+    fontStyle: 'italic',
+  },
+  btnRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 12,
   },
   cancelBtn: {
     color: 'red',

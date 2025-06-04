@@ -15,6 +15,7 @@ interface ShareOffer {
   sharesForSale: number;
   isActive: boolean;
   expirationDate: string;
+  startPricePerShare?: number;
   buyoutPricePerShare?: number | null;
 }
 
@@ -36,10 +37,7 @@ const ShareMarketplaceScreen = () => {
   const [bidModalVisible, setBidModalVisible] = useState(false);
   const [currentOffer, setCurrentOffer] = useState<ShareOffer | null>(null);
   const [bidPrice, setBidPrice] = useState('');
-
   const [searchTitle, setSearchTitle] = useState('');
-  const [minPrice, setMinPrice] = useState('');
-  const [maxPrice, setMaxPrice] = useState('');
 
   const loadOffers = async () => {
     try {
@@ -156,15 +154,11 @@ const ShareMarketplaceScreen = () => {
   };
 
   const applyFilters = useCallback(() => {
-    const min = parseFloat(minPrice) || 0;
-    const max = parseFloat(maxPrice) || Infinity;
     const filtered = offers.filter(o =>
-      o.propertyTitle.toLowerCase().includes(searchTitle.toLowerCase()) &&
-      o.pricePerShare >= min &&
-      o.pricePerShare <= max
+      o.propertyTitle.toLowerCase().includes(searchTitle.toLowerCase())
     );
     setFilteredOffers(filtered);
-  }, [offers, searchTitle, minPrice, maxPrice]);
+  }, [offers, searchTitle]);
 
   const cancelOffer = async (id: string) => {
     try {
@@ -225,8 +219,6 @@ const ShareMarketplaceScreen = () => {
 
       <View style={styles.filterPanel}>
         <TextInput placeholder="Search by property" value={searchTitle} onChangeText={setSearchTitle} style={styles.input} />
-        <TextInput placeholder="Min Price" keyboardType="numeric" value={minPrice} onChangeText={setMinPrice} style={styles.input} />
-        <TextInput placeholder="Max Price" keyboardType="numeric" value={maxPrice} onChangeText={setMaxPrice} style={styles.input} />
       </View>
 
       <FlatList
@@ -239,12 +231,14 @@ const ShareMarketplaceScreen = () => {
           <View style={styles.card}>
             <Text style={styles.text}>Property: {item.propertyTitle}</Text>
             <Text style={styles.text}>Price/Share: {formatCurrency(item.pricePerShare)}</Text>
-            <Text style={styles.text}>Shares Available: {item.sharesForSale}</Text>
-            <Text style={styles.text}>Expires: {new Date(item.expirationDate).toLocaleDateString()}</Text>
-
+            {item.startPricePerShare != null && (
+              <Text style={styles.text}>Start Price: {formatCurrency(item.startPricePerShare)}</Text>
+            )}
             {item.buyoutPricePerShare != null && (
               <Text style={styles.text}>Buyout Price: {formatCurrency(item.buyoutPricePerShare)}</Text>
             )}
+            <Text style={styles.text}>Shares Available: {item.sharesForSale}</Text>
+            <Text style={styles.text}>Expires: {new Date(item.expirationDate).toLocaleDateString()}</Text>
 
             {item.sellerId !== userId && (
               <>
