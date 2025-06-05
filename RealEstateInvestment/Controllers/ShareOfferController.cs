@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RealEstateInvestment.Data;
 using RealEstateInvestment.Models;
+using RealEstateInvestment.Services;
 
 namespace RealEstateInvestment.Controllers
 {
@@ -32,6 +33,8 @@ namespace RealEstateInvestment.Controllers
                 return BadRequest("Not enough shares to sell");
 
             int remaining = request.SharesForSale;
+            decimal lockedAmount = 0;
+
             foreach (var inv in investments)
             {
                 if (remaining == 0) break;
@@ -39,6 +42,7 @@ namespace RealEstateInvestment.Controllers
                 decimal pricePerShare = inv.Shares == 0 ? 0 : inv.InvestedAmount / inv.Shares;
                 inv.Shares -= deduct;
                 inv.InvestedAmount -= pricePerShare * deduct;
+                lockedAmount += pricePerShare * deduct;
                 remaining -= deduct;
             }
 
@@ -52,7 +56,8 @@ namespace RealEstateInvestment.Controllers
                 BuyoutPricePerShare = request.BuyoutPricePerShare,
                 ExpirationDate = request.ExpirationDate,
                 CreatedAt = DateTime.UtcNow,
-                IsActive = true
+                IsActive = true,
+                LockedInvestedAmount = lockedAmount
             };
 
             _context.ShareOffers.Add(offer);
@@ -60,7 +65,7 @@ namespace RealEstateInvestment.Controllers
             {
                 UserId = request.SellerId,
                 Action = "CreateOffer",
-                Details = $"Seller: {request.SellerId}, Property: {request.PropertyId}, Shares: {request.SharesForSale}"
+                Details = $"Seller: {request.SellerId}, Property: {request.PropertyId}, Shares: {request.SharesForSale}, Locked: {lockedAmount}"
             });
             await _context.SaveChangesAsync();
 
@@ -123,7 +128,7 @@ namespace RealEstateInvestment.Controllers
                     o.SellerId,
                     o.PropertyId,
                     o.SharesForSale,
-                    o.PricePerShare,
+                    // o.PricePerShare,
                     o.BuyoutPricePerShare,
                     o.StartPricePerShare,
                     o.ExpirationDate,
@@ -143,7 +148,7 @@ namespace RealEstateInvestment.Controllers
                 .Where(o => o.SellerId == userId && o.IsActive && o.ExpirationDate > DateTime.UtcNow)
                 .Select(o => new
                 {
-                    o.PricePerShare,
+                    //   o.PricePerShare,
                     o.BuyoutPricePerShare,
                     o.StartPricePerShare,
                     o.ExpirationDate
@@ -169,9 +174,39 @@ namespace RealEstateInvestment.Controllers
 
             var amount = pricePerShare.Value * request.SharesToSell;
 
+            var superUserId = superUserService.GetSuperUserId();
+            var superUser = await _context.Users.FindAsync(superUserId);
+            if (superUser == null) return BadRequest("Super user not found");
+
+            if (superUser.WalletBalance < amount)
+                return BadRequest("Platform has insufficient funds");
+
             investment.Shares -= request.SharesToSell;
             investment.InvestedAmount -= (investment.InvestedAmount / investment.Shares) * request.SharesToSell;
             investment.User.WalletBalance += amount;
+
+            superUser.WalletBalance -= amount;
+
+            var existing = await _context.Investments.FirstOrDefaultAsync(i => i.UserId == superUserId && i.PropertyId == investment.PropertyId);
+
+            if (existing == null)
+            {
+                existing = new Investment
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = superUserId,
+                    PropertyId = investment.PropertyId,
+                    Shares = request.SharesToSell,
+                    InvestedAmount = amount,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.Investments.Add(existing);
+            }
+            else
+            {
+                existing.Shares += request.SharesToSell;
+                existing.InvestedAmount += amount;
+            }
 
             if (investment.Shares == 0)
                 _context.Investments.Remove(investment);
@@ -227,10 +262,10 @@ namespace RealEstateInvestment.Controllers
             var seller = await _context.Users.FindAsync(offer.SellerId);
             if (buyer == null || seller == null) return BadRequest();
 
-            //if ((offer.PricePerShare ?? 0) <= 0) // todo test
-            //    return BadRequest("Invalid offer price");
+            if (!offer.BuyoutPricePerShare.HasValue || offer.BuyoutPricePerShare.Value <= 0) // todo test
+                return BadRequest("Invalid offer price");
 
-            var totalCost = sharesToBuy * offer.PricePerShare;
+            var totalCost = sharesToBuy * offer.BuyoutPricePerShare.Value;
             if (buyer.WalletBalance < totalCost) return BadRequest("Insufficient balance");
 
             // Трансфер средств
@@ -291,7 +326,7 @@ namespace RealEstateInvestment.Controllers
             if (investments.Any())
             {
                 investments[0].Shares += offer.SharesForSale;
-                investments[0].InvestedAmount += offer.PricePerShare * offer.SharesForSale; 
+                investments[0].InvestedAmount += offer.LockedInvestedAmount;
             }
             else
             {
@@ -301,7 +336,7 @@ namespace RealEstateInvestment.Controllers
                     UserId = offer.SellerId,
                     PropertyId = offer.PropertyId,
                     Shares = offer.SharesForSale,
-                    InvestedAmount = offer.PricePerShare * offer.SharesForSale,
+                    InvestedAmount = offer.LockedInvestedAmount,
                     CreatedAt = DateTime.UtcNow
                 });
             }
@@ -335,27 +370,27 @@ namespace RealEstateInvestment.Controllers
             return Ok(new { offer.ExpirationDate });
         }
 
-        [HttpPost("{id}/update-price")]
-        public async Task<IActionResult> UpdateOfferPrice(Guid id, [FromQuery] decimal newPrice)
-        {
-            var offer = await _context.ShareOffers.FindAsync(id);
-            if (offer == null || !offer.IsActive)
-                return NotFound("Offer not found or inactive");
+        //[HttpPost("{id}/update-price")]
+        //public async Task<IActionResult> UpdateOfferPrice(Guid id, [FromQuery] decimal newPrice)
+        //{
+        //    var offer = await _context.ShareOffers.FindAsync(id);
+        //    if (offer == null || !offer.IsActive)
+        //        return NotFound("Offer not found or inactive");
 
-            if (newPrice <= 0) return BadRequest("Invalid price");
+        //    if (newPrice <= 0) return BadRequest("Invalid price");
 
-            _context.ActionLogs.Add(new ActionLog
-            {
-                UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add admin guid later
-                Action = "UpdateOfferPrice",
-                Details = "Old: " + offer.PricePerShare.ToString() + "New: " + newPrice.ToString()
-            });
+        //    _context.ActionLogs.Add(new ActionLog
+        //    {
+        //        UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add admin guid later
+        //        Action = "UpdateOfferPrice",
+        //        Details = "Old: " + offer.PricePerShare.ToString() + "New: " + newPrice.ToString()
+        //    });
 
-            offer.PricePerShare = newPrice;
-            
-            await _context.SaveChangesAsync();
-            return Ok(new { offer.PricePerShare });
-        }
+        //    offer.PricePerShare = newPrice;
+
+        //    await _context.SaveChangesAsync();
+        //    return Ok(new { offer.PricePerShare });
+        //}
 
         // Добавить ставку (bid) на оффер
         [HttpPost("{id}/bid")]
@@ -368,7 +403,7 @@ namespace RealEstateInvestment.Controllers
             //if (request.BidPricePerShare <= 0 || offer.PricePerShare == null || request.BidPricePerShare > offer.PricePerShare)
             //    return BadRequest("Invalid bid price");
 
-            if (request.BidPricePerShare <= 0 || request.BidPricePerShare > offer.PricePerShare)
+            if (request.BidPricePerShare <= 0 || request.BidPricePerShare > offer.StartPricePerShare) // todo test
                 return BadRequest("Invalid bid price");
 
             if (request.Shares <= 0 || request.Shares > offer.SharesForSale)
@@ -379,7 +414,7 @@ namespace RealEstateInvestment.Controllers
                 OfferId = id,
                 BidderId = request.BidderId,
                 BidPricePerShare = request.BidPricePerShare,
-                Shares = request.Shares, 
+                Shares = request.Shares,
                 CreatedAt = DateTime.UtcNow
             };
 

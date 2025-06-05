@@ -51,6 +51,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddTransient<EmailService>();
 builder.Services.AddSingleton<CaptchaService>();
+builder.Services.AddScoped<ISuperUserService, SuperUserService>();
 // todo test
 builder.Services.AddHttpClient();
 builder.Services.AddHostedService<ScheduledTaskService>();
@@ -70,6 +71,10 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-
+using (var scope = app.Services.CreateScope())
+{
+    var superUserService = scope.ServiceProvider.GetRequiredService<ISuperUserService>();
+    await superUserService.EnsureSuperUserExistsAsync();
+}
 
 app.Run();

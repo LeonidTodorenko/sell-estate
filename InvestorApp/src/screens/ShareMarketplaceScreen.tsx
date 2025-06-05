@@ -5,6 +5,10 @@ import {
 import api from '../api';
 import { formatCurrency } from '../utils/format';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { TouchableOpacity } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/AppNavigator';
 
 interface ShareOffer {
   id: string;
@@ -37,6 +41,7 @@ const ShareMarketplaceScreen = () => {
   const [currentOffer, setCurrentOffer] = useState<ShareOffer | null>(null);
   const [bidPrice, setBidPrice] = useState('');
   const [searchTitle, setSearchTitle] = useState('');
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const loadOffers = async () => {
     try {
@@ -130,27 +135,27 @@ const ShareMarketplaceScreen = () => {
     );
   };
 
-  const handleAcceptBid = async (bid: ShareOfferBid) => {
-    Alert.alert(
-      'Accept Bid',
-      `Sell ${bid.shares} shares for ${formatCurrency(bid.bidPricePerShare)} per share?`,
-      [
-        { text: 'Cancel' },
-        {
-          text: 'Confirm', onPress: async () => {
-            try {
-              await api.post(`/share-offers/bid/${bid.id}/accept?sharesToSell=${bid.shares}`);
-              Alert.alert('Success', 'Bid accepted');
-              loadOffers();
-              loadBidsForOffer(bid.offerId);
-            } catch {
-              Alert.alert('Error', 'Failed to accept bid');
-            }
-          }
-        }
-      ]
-    );
-  };
+  // const handleAcceptBid = async (bid: ShareOfferBid) => {
+  //   Alert.alert(
+  //     'Accept Bid',
+  //     `Sell ${bid.shares} shares for ${formatCurrency(bid.bidPricePerShare)} per share?`,
+  //     [
+  //       { text: 'Cancel' },
+  //       {
+  //         text: 'Confirm', onPress: async () => {
+  //           try {
+  //             await api.post(`/share-offers/bid/${bid.id}/accept?sharesToSell=${bid.shares}`);
+  //             Alert.alert('Success', 'Bid accepted');
+  //             loadOffers();
+  //             loadBidsForOffer(bid.offerId);
+  //           } catch {
+  //             Alert.alert('Error', 'Failed to accept bid');
+  //           }
+  //         }
+  //       }
+  //     ]
+  //   );
+  // };
 
   const applyFilters = useCallback(() => {
     const filtered = offers.filter(o =>
@@ -204,6 +209,11 @@ const ShareMarketplaceScreen = () => {
         ListEmptyComponent={<Text>No matching offers</Text>}
         renderItem={({ item }) => (
           <View style={styles.card}>
+            <TouchableOpacity onPress={() => navigation.navigate('PropertyDetail', { propertyId: item.propertyId })}>
+              <Text style={[styles.text, { color: '#007AFF', textDecorationLine: 'underline' }]}>
+                Property: {item.propertyTitle}
+              </Text>
+            </TouchableOpacity>
             <Text style={styles.text}>Property: {item.propertyTitle}</Text>
             <Text style={styles.text}>Start Price: {formatCurrency(item.startPricePerShare ?? 0)}</Text>
             {item.buyoutPricePerShare != null && (
@@ -245,9 +255,9 @@ const ShareMarketplaceScreen = () => {
                     <Text>Price: {formatCurrency(bid.bidPricePerShare)}</Text>
                     <Text>Shares: {bid.shares}</Text>
                     <Text>At: {new Date(bid.createdAt).toLocaleString()}</Text>
-                    {item.sellerId === userId && (
-                      <Button title="Accept" onPress={() => handleAcceptBid(bid)} />
-                    )}
+                    {/* {item.sellerId === userId && (
+                      <Button title="Accept" onPress={() => handleAcceptBid(bid)}  />
+                    )} */}
                   </View>
                 ))}
               </View>
