@@ -9,6 +9,7 @@ import { TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import { Picker } from '@react-native-picker/picker';
 
 interface ShareOffer {
   id: string;
@@ -40,15 +41,23 @@ const ShareMarketplaceScreen = () => {
   const [bidModalVisible, setBidModalVisible] = useState(false);
   const [currentOffer, setCurrentOffer] = useState<ShareOffer | null>(null);
   const [bidPrice, setBidPrice] = useState('');
-  const [searchTitle, setSearchTitle] = useState('');
+  const [selectedProperty, setSelectedProperty] = useState<string>('');
+  const [propertyTitles, setPropertyTitles] = useState<string[]>([]);
+  //const [searchTitle, setSearchTitle] = useState('');
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const totalSharesForSelected = filteredOffers.reduce((sum, o) => sum + o.sharesForSale, 0);
+
 
   const loadOffers = async () => {
     try {
       setLoading(true);
-      const res = await api.get('/share-offers/active');
+//   const res = await api.get('/share-offers/active');
+      const res = await api.get<ShareOffer[]>('/share-offers/active');
+
       setOffers(res.data);
       setFilteredOffers(res.data);
+      const titles = Array.from(new Set(res.data.map((o: ShareOffer) => o.propertyTitle)));
+      setPropertyTitles(titles);
     } catch {
       Alert.alert('Error', 'Failed to load offers');
     } finally {
@@ -135,6 +144,21 @@ const ShareMarketplaceScreen = () => {
     );
   };
 
+   const applySort = (type: 'max' | 'min' | 'exp') => {
+    let sorted = [...filteredOffers];
+    if (type === 'max') sorted.sort((a, b) => (b.startPricePerShare ?? 0) - (a.startPricePerShare ?? 0));
+    if (type === 'min') sorted.sort((a, b) => (a.startPricePerShare ?? 0) - (b.startPricePerShare ?? 0));
+    if (type === 'exp') sorted.sort((a, b) => new Date(a.expirationDate).getTime() - new Date(b.expirationDate).getTime());
+    setFilteredOffers(sorted);
+  };
+
+  useEffect(() => {
+    const filtered = offers.filter(o =>
+      (selectedProperty === '' || o.propertyTitle === selectedProperty)
+    );
+    setFilteredOffers(filtered);
+  }, [offers, selectedProperty]);
+
   // const handleAcceptBid = async (bid: ShareOfferBid) => {
   //   Alert.alert(
   //     'Accept Bid',
@@ -157,12 +181,12 @@ const ShareMarketplaceScreen = () => {
   //   );
   // };
 
-  const applyFilters = useCallback(() => {
-    const filtered = offers.filter(o =>
-      o.propertyTitle.toLowerCase().includes(searchTitle.toLowerCase())
-    );
-    setFilteredOffers(filtered);
-  }, [offers, searchTitle]);
+  // const applyFilters = useCallback(() => {
+  //   const filtered = offers.filter(o =>
+  //     o.propertyTitle.toLowerCase().includes(searchTitle.toLowerCase())
+  //   );
+  //   setFilteredOffers(filtered);
+  // }, [offers, searchTitle]);
 
   const cancelOffer = async (id: string) => {
     try {
@@ -189,17 +213,37 @@ const ShareMarketplaceScreen = () => {
     loadOffers();
   }, []);
 
-  useEffect(() => {
-    applyFilters();
-  }, [applyFilters]);
+  // useEffect(() => {
+  //   applyFilters();
+  // }, [applyFilters]);
 
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Marketplace</Text>
 
       <View style={styles.filterPanel}>
-        <TextInput placeholder="Search by property" value={searchTitle} onChangeText={setSearchTitle} style={styles.input} />
+        <Text style={{ marginBottom: 4 }}>Filter by property:</Text>
+        <Picker
+          selectedValue={selectedProperty}
+          onValueChange={(val) => setSelectedProperty(val)}>
+          <Picker.Item label="All Properties" value="" />
+          {propertyTitles.map(title => (
+            <Picker.Item key={title} label={title} value={title} />
+          ))}
+        </Picker>
+
+        <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginTop: 8 }}>
+          <Button title="Sort by Max Price" onPress={() => applySort('max')} />
+          <Button title="Sort by Min Price" onPress={() => applySort('min')} />
+          <Button title="Expiring Soon" onPress={() => applySort('exp')} />
+        </View>
+        {selectedProperty !== '' && (
+          <Text style={{ marginTop: 8, fontStyle: 'italic' }}>
+          There are {totalSharesForSelected} shares listed for this property
+          </Text>
+        )}
       </View>
+     
 
       <FlatList
         data={filteredOffers}
