@@ -182,10 +182,10 @@ namespace RealEstateInvestment.Controllers
 
             if (superUser.WalletBalance < amount)
                 return BadRequest("Platform has insufficient funds");
-
-            investment.Shares -= request.SharesToSell;
+             
             investment.InvestedAmount -= (investment.InvestedAmount / investment.Shares) * request.SharesToSell;
             investment.User.WalletBalance += amount;
+            investment.Shares -= request.SharesToSell;
 
             superUser.WalletBalance -= amount;
 
