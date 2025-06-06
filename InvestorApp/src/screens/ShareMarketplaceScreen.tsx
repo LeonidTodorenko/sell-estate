@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, {  useEffect, useState } from 'react';
 import {
   View, Text, FlatList, StyleSheet, Button, Alert, TextInput, Modal
 } from 'react-native';
@@ -9,7 +9,8 @@ import { TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
-import { Picker } from '@react-native-picker/picker';
+// import { Picker } from '@react-native-picker/picker';
+import DropDownPicker from 'react-native-dropdown-picker';
 
 interface ShareOffer {
   id: string;
@@ -46,6 +47,7 @@ const ShareMarketplaceScreen = () => {
   //const [searchTitle, setSearchTitle] = useState('');
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const totalSharesForSelected = filteredOffers.reduce((sum, o) => sum + o.sharesForSale, 0);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
 
   const loadOffers = async () => {
@@ -56,11 +58,35 @@ const ShareMarketplaceScreen = () => {
 
       setOffers(res.data);
       setFilteredOffers(res.data);
+
       const titles = Array.from(new Set(res.data.map((o: ShareOffer) => o.propertyTitle)));
       setPropertyTitles(titles);
-    } catch {
-      Alert.alert('Error', 'Failed to load offers');
-    } finally {
+
+
+      // load all bids
+      const allBids: { [offerId: string]: ShareOfferBid[] } = {};
+      for (const offer of res.data) {
+        try {
+          const bidRes = await api.get(`/share-offers/${offer.id}/bids`);
+          allBids[offer.id] = bidRes.data;
+        } catch (err) {
+          console.warn(`Failed to load bids for offer ${offer.id}`); // todo test
+        }
+      }
+      setBidsMap(allBids);
+    }
+    catch (error: any) {
+                 let message = 'Failed to load offers ';
+                      console.error(error);
+                      if (error.response && error.response.data) {
+                        message = JSON.stringify(error.response.data);
+                      } else if (error.message) {
+                        message = error.message;
+                      }
+                      Alert.alert('Error', 'Failed to load offers ' + message);
+                    console.error(message);
+    }
+     finally {
       setLoading(false);
     }
   };
@@ -90,9 +116,18 @@ const ShareMarketplaceScreen = () => {
     const price = parseFloat(bidPrice);
     if (!currentOffer) return;
     const shares = currentOffer.sharesForSale;
+    const minPrice = currentOffer.startPricePerShare ?? 0;
 
     if (isNaN(price) || price <= 0) {
       Alert.alert('Invalid price');
+      return;
+    }
+
+    if (price < minPrice) {
+      Alert.alert(
+        'The bid is too low',
+        `Minimum price per share: ${formatCurrency(minPrice)}`
+      );
       return;
     }
 
@@ -221,20 +256,34 @@ const ShareMarketplaceScreen = () => {
     <View style={styles.container}>
       <Text style={styles.header}>Marketplace</Text>
 
-      <View style={styles.filterPanel}>
+      <View style={styles.filterPanel}   >
         <Text style={{ marginBottom: 4 }}>Filter by property:</Text>
-        <Picker
+        {/* <Picker
           selectedValue={selectedProperty}
           onValueChange={(val) => setSelectedProperty(val)}>
           <Picker.Item label="All Properties" value="" />
           {propertyTitles.map(title => (
             <Picker.Item key={title} label={title} value={title} />
           ))}
-        </Picker>
+        </Picker> */}
+
+        <DropDownPicker
+          open={dropdownOpen}
+          value={selectedProperty}
+          items={[  { label: 'All Properties', value: '' },  ...propertyTitles.map(title => ({ label: title, value: title }))]}
+          setOpen={setDropdownOpen}
+          setValue={setSelectedProperty}
+          setItems={() => {}}
+          placeholder="All Properties"
+          searchable={true}
+          containerStyle={{ marginBottom: 10, zIndex: 1000 }}
+          style={{ borderColor: '#ccc' }}
+          dropDownContainerStyle={{ borderColor: '#ccc' }}
+        />
 
         <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginTop: 8 }}>
-          <Button title="Sort by Max Price" onPress={() => applySort('max')} />
-          <Button title="Sort by Min Price" onPress={() => applySort('min')} />
+          <Button title=" Max Price" onPress={() => applySort('max')} />
+          <Button title=" Min Price" onPress={() => applySort('min')} />
           <Button title="Expiring Soon" onPress={() => applySort('exp')} />
         </View>
         {selectedProperty !== '' && (
@@ -270,7 +319,7 @@ const ShareMarketplaceScreen = () => {
               <>
                 <Button title="Place Bid" onPress={() => openBidModal(item)} />
                 <View style={{ height: 10 }} />
-                <Button title="Buy Now" onPress={() => handleBuyNow(item, item.startPricePerShare ?? 0)} />
+                {/* <Button title="Buy Now" onPress={() => handleBuyNow(item, item.startPricePerShare ?? 0)} /> */}
                 {item.buyoutPricePerShare != null && (
                   <>
                     <View style={{ height: 10 }} />
@@ -286,8 +335,8 @@ const ShareMarketplaceScreen = () => {
                 <Button title="Cancel Listing" onPress={() => cancelOffer(item.id)} />
                 <View style={{ height: 10 }} />
                 <Button title="Extend 7 Days" onPress={() => extendOffer(item.id, 7)} />
-                <View style={{ height: 10 }} />
-                <Button title="Load Bids" onPress={() => loadBidsForOffer(item.id)} />
+                {/* <View style={{ height: 10 }} />
+                <Button title="Load Bids" onPress={() => loadBidsForOffer(item.id)} /> */}
               </>
             )}
 

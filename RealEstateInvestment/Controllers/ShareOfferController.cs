@@ -13,10 +13,12 @@ namespace RealEstateInvestment.Controllers
     public class ShareOfferController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly ISuperUserService _superUserService;
 
-        public ShareOfferController(AppDbContext context)
+        public ShareOfferController(ISuperUserService superUserService, AppDbContext context)
         {
             _context = context;
+            _superUserService = superUserService;
         }
 
         //  Добавить новое предложение
@@ -174,7 +176,7 @@ namespace RealEstateInvestment.Controllers
 
             var amount = pricePerShare.Value * request.SharesToSell;
 
-            var superUserId = superUserService.GetSuperUserId();
+            var superUserId = _superUserService.GetSuperUserId();
             var superUser = await _context.Users.FindAsync(superUserId);
             if (superUser == null) return BadRequest("Super user not found");
 
@@ -273,8 +275,10 @@ namespace RealEstateInvestment.Controllers
             seller.WalletBalance += totalCost;
 
             // Уменьшаем кол-во доступных шеров в оффере
-            offer.SharesForSale -= sharesToBuy;
-            if (offer.SharesForSale == 0) offer.IsActive = false;
+            //offer.SharesForSale -= sharesToBuy;
+            //if (offer.SharesForSale == 0) offer.IsActive = false;
+
+            offer.IsActive = false;
 
             //  добавляем покупателю
             var buyerInvestment = await _context.Investments
@@ -403,7 +407,7 @@ namespace RealEstateInvestment.Controllers
             //if (request.BidPricePerShare <= 0 || offer.PricePerShare == null || request.BidPricePerShare > offer.PricePerShare)
             //    return BadRequest("Invalid bid price");
 
-            if (request.BidPricePerShare <= 0 || request.BidPricePerShare > offer.StartPricePerShare) // todo test
+            if (request.BidPricePerShare <= 0 || request.BidPricePerShare < offer.StartPricePerShare)
                 return BadRequest("Invalid bid price");
 
             if (request.Shares <= 0 || request.Shares > offer.SharesForSale)

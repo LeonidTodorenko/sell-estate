@@ -21,6 +21,8 @@ namespace RealEstateInvestment.Models
 
         [ForeignKey("PropertyId")]
         public Property Property { get; set; }
+
+        public List<ShareOfferBid> Bids { get; set; } = new();
     }
 
 }
