@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using RealEstateInvestment.Data;
+using RealEstateInvestment.Models;
 using RealEstateInvestment.Services;
 using System.Text;
  
@@ -80,6 +81,21 @@ using (var scope = app.Services.CreateScope())
 {
     var superUserService = scope.ServiceProvider.GetRequiredService<ISuperUserService>();
     await superUserService.EnsureSuperUserExistsAsync();
+}
+
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+    if (!context.SystemSettings.Any(s => s.Key == "CancelListingFee"))
+    {
+        context.SystemSettings.Add(new SystemSetting
+        {
+            Key = "CancelListingFee",
+            Value = "10" // default
+        });
+        context.SaveChanges();
+    }
 }
 
 app.Run();

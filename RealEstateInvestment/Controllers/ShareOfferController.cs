@@ -322,6 +322,27 @@ namespace RealEstateInvestment.Controllers
             if (offer == null || !offer.IsActive)
                 return NotFound("Offer not found or already inactive");
 
+            var seller = await _context.Users.FindAsync(offer.SellerId);
+            if (seller == null)
+                return BadRequest("Seller not found");
+
+            // find comission
+            var cancelFeeSetting = await _context.SystemSettings.FirstOrDefaultAsync(s => s.Key == "CancelListingFee");
+            var fee = cancelFeeSetting != null ? decimal.Parse(cancelFeeSetting.Value) : 0;
+
+            // check balance
+            if (seller.WalletBalance < fee)
+                return BadRequest($"Insufficient funds for cancellation fee: {fee} USD");
+
+            // check superuser
+            var superUser = await _context.Users.FirstOrDefaultAsync(u => u.Role == "superuser");
+            if (superUser == null)
+                return BadRequest("Superuser not configured");
+
+            // money for superuser
+            seller.WalletBalance -= fee;
+            superUser.WalletBalance += fee;
+
             var investments = await _context.Investments
                 .Where(i => i.UserId == offer.SellerId && i.PropertyId == offer.PropertyId)
                 .OrderBy(i => i.CreatedAt)
@@ -350,10 +371,10 @@ namespace RealEstateInvestment.Controllers
             {
                 UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add admin guid later
                 Action = "CancelOffer",
-                Details = "offer: " + id
+                Details = $"Offer: {id}, Fee: {fee} transferred to superuser"
             });
             await _context.SaveChangesAsync();
-            return Ok("Offer canceled");
+            return Ok($"Offer canceled with {fee} USD cancellation fee.");
         }
 
         [HttpPost("{id}/extend")]

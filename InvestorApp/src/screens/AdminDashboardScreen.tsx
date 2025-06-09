@@ -46,6 +46,14 @@ const AdminDashboardScreen = () => {
       <View style={styles.buttonWrapper}>
         <Button title="🏠 Admin Logs" onPress={() => navigation.navigate('AdminLogs')} />
       </View>
+
+    <View style={styles.buttonWrapper}>
+      <Button
+        title="System Parameters"
+        onPress={() => navigation.navigate('AdminSystemSettings')}
+      />
+    </View>
+
     </ScrollView>
     </AdminProtectedScreen>
   );

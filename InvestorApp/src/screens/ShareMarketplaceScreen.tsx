@@ -223,6 +223,28 @@ const ShareMarketplaceScreen = () => {
   //   setFilteredOffers(filtered);
   // }, [offers, searchTitle]);
 
+  const confirmCancelOffer = async (offerId: string) => {
+    try {
+      const res = await api.get('/admin/settings/cancel-fee'); // вернёт число
+      const fee = parseFloat(res.data);
+
+      Alert.alert(
+        'Confirm Cancellation',
+        `Canceling this listing will deduct a fee of ${formatCurrency(fee)} from your balance. This fee goes to the platform. Do you want to continue?`,
+        [
+          { text: 'No' },
+          {
+            text: 'Yes',
+            onPress: () => cancelOffer(offerId),
+          },
+        ]
+      );
+    } catch {
+      Alert.alert('Error', 'Failed to load cancellation fee');
+    }
+  };
+
+
   const cancelOffer = async (id: string) => {
     try {
       await api.post(`/share-offers/${id}/cancel`);
@@ -332,7 +354,7 @@ const ShareMarketplaceScreen = () => {
             {item.sellerId === userId && (
               <>
                 <View style={{ height: 10 }} />
-                <Button title="Cancel Listing" onPress={() => cancelOffer(item.id)} />
+                <Button title="Cancel Listing" onPress={() => confirmCancelOffer(item.id)} />
                 <View style={{ height: 10 }} />
                 <Button title="Extend 7 Days" onPress={() => extendOffer(item.id, 7)} />
                 {/* <View style={{ height: 10 }} />
