@@ -13,7 +13,7 @@ const AdminSystemSettingsScreen = () => {
 
   const loadSettings = async () => {
     try {
-      const res = await api.get('/admin/settings');
+      const res = await api.get('/admin/stats/settings');
       setSettings(res.data);
       const initEdited: { [key: string]: string } = {};
       res.data.forEach((s: SystemSetting) => {
@@ -27,12 +27,21 @@ const AdminSystemSettingsScreen = () => {
 
   const saveSetting = async (key: string) => {
     try {
-      await api.put(`/admin/settings/${key}`, { value: edited[key] });
+      await api.put(`/admin/stats/settings/${key}`, { value: edited[key] });
       Alert.alert('Success', `${key} updated`);
       loadSettings();
-    } catch {
-      Alert.alert('Error', 'Failed to update setting');
-    }
+    }  
+     catch (error: any) {
+                     let message = 'Failed to update setting ';
+                          console.error(error);
+                          if (error.response && error.response.data) {
+                            message = JSON.stringify(error.response.data);
+                          } else if (error.message) {
+                            message = error.message;
+                          }
+                          Alert.alert('Error', 'Failed to update setting ' + message);
+                        console.error(message);
+                  }
   };
 
   useEffect(() => {

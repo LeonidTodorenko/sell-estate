@@ -40,6 +40,6 @@ namespace RealEstateInvestment.Models
         [RegularExpression(@"^\d{4}$", ErrorMessage = "PIN code must be exactly 4 digits")]
         public string? PinCode { get; set; }
 
-        public ICollection<Investment> Investments { get; set; } = new List<Investment>();
+        // public ICollection<Investment> Investments { get; set; } = new List<Investment>();
     }
 }

@@ -61,12 +61,24 @@ builder.Services.AddScoped<ISuperUserService, SuperUserService>();
 // todo test
 builder.Services.AddHttpClient();
 builder.Services.AddHostedService<ScheduledTaskService>();
+builder.Services.AddScoped<SettingsService>();
+//builder.Services.AddSwaggerGen(c =>
+//{
+//    c.IgnoreObsoleteProperties();
+//});
 
 var app = builder.Build();
 
 //app.UseCors();
 
 app.UseDeveloperExceptionPage(); //todo remove after debug
+//if (app.Environment.IsDevelopment())
+//{
+//    app.UseDeveloperExceptionPage();
+//    app.UseSwagger();
+//    app.UseSwaggerUI();
+//}
+
 app.UseSwagger();
 app.UseSwaggerUI();
 

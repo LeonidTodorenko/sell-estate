@@ -231,7 +231,7 @@ const ShareMarketplaceScreen = () => {
 
   const confirmCancelOffer = async (offerId: string) => {
     try {
-      const res = await api.get('/admin/settings/cancel-fee'); // вернёт число
+      const res = await api.get('/admin/stats/settings/cancel-fee'); // вернёт число
       const fee = parseFloat(res.data);
 
       Alert.alert(
@@ -245,9 +245,18 @@ const ShareMarketplaceScreen = () => {
           },
         ]
       );
-    } catch {
-      Alert.alert('Error', 'Failed to load cancellation fee');
-    }
+    }  
+     catch (error: any) {
+                 let message = 'Failed to load cancellation fee' ;
+                      console.error(error);
+                      if (error.response && error.response.data) {
+                        message = JSON.stringify(error.response.data);
+                      } else if (error.message) {
+                        message = error.message;
+                      }
+                      Alert.alert('Error', 'Failed to load cancellation fee'   + message);
+                    console.error(message);
+              }
   };
 
 
@@ -426,13 +435,26 @@ const ShareMarketplaceScreen = () => {
                       await api.post(`/share-offers/${selectedOfferForExtension.id}/extend-to?newDate=${selected.toISOString()}`);
                       Alert.alert('Success', 'Offer extended');
                       loadOffers();
-                    } catch {
-                      Alert.alert('Error', 'Failed to extend offer');
-                    } finally {
+                    }catch (error: any) {
+                          let message = 'Failed to update setting';
+
+                            if (error instanceof Error) {
+                              message = error.message;
+                              console.error(error.stack);   
+                            } else if (error?.response?.data) {
+                              message = JSON.stringify(error.response.data);
+                              console.error(error.response.data);  
+                            } else {
+                              message = String(error);
+                              console.error('Raw error:', message); 
+                            }
+
+                            Alert.alert('Error', 'Failed to update setting: ' + message);
+                        } finally {
                       setSelectedOfferForExtension(null);
                     }
-                  }
-                }
+                  },
+                },
               ]
             );
           }}

@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RealEstateInvestment.Data;
 using RealEstateInvestment.Models;
+using RealEstateInvestment.Services;
+using System.ComponentModel.DataAnnotations;
 
 namespace RealEstateInvestment.Controllers
 {
@@ -12,10 +14,12 @@ namespace RealEstateInvestment.Controllers
     public class AdminStatsController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly ISuperUserService _superUserService;
 
-        public AdminStatsController(AppDbContext context)
+        public AdminStatsController(ISuperUserService superUserService, AppDbContext context)
         {
             _context = context;
+            _superUserService = superUserService;
         }
 
         [HttpGet]
@@ -119,30 +123,34 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("superuser")]
         public async Task<IActionResult> GetSuperUserData()
         {
-            var superUser = await _context.Users
-                .Include(u => u.Investments)
-                .ThenInclude(i => i.Property)
-                .FirstOrDefaultAsync(u => u.Role == "superuser");
-
+            var superUserId = _superUserService.GetSuperUserId();
+            var superUser = await _context.Users.FindAsync(superUserId);
             if (superUser == null) return NotFound("Superuser not found");
+
+            var investments = await _context.Investments
+                                        .Where(i => i.UserId == superUserId)
+                                        .Include(i => i.Property)
+                                        .Select(i => new
+                                        {
+                                            i.PropertyId,
+                                            PropertyTitle = i.Property.Title,
+                                            i.Shares,
+                                            i.InvestedAmount
+                                        })
+                                        .ToListAsync();
 
             return Ok(new
             {
                 WalletBalance = superUser.WalletBalance,
-                Investments = superUser.Investments.Select(i => new
-                {
-                    i.PropertyId,
-                    PropertyTitle = i.Property.Title,
-                    i.Shares,
-                    i.InvestedAmount
-                })
+                Investments = investments
             });
         }
 
         [HttpPost("superuser/update-balance")]
         public async Task<IActionResult> UpdateSuperUserBalance([FromQuery] decimal delta)
         {
-            var superUser = await _context.Users.FirstOrDefaultAsync(u => u.Role == "superuser");
+            var superUserId = _superUserService.GetSuperUserId();
+            var superUser = await _context.Users.FindAsync(superUserId);
             if (superUser == null) return NotFound("Superuser not found");
 
             superUser.WalletBalance += delta;
@@ -158,24 +166,71 @@ namespace RealEstateInvestment.Controllers
             return Ok(new { superUser.WalletBalance });
         }
 
-
+        [AllowAnonymous]
         [HttpGet("settings/cancel-fee")]
         public IActionResult GetCancelFee()
         {
             var fee = _context.SystemSettings.FirstOrDefault(s => s.Key == "CancelListingFee")?.Value;
             return Ok(fee ?? "0");
         }
-
-        // todo move
-        public async Task<decimal> GetDecimalSetting(AppDbContext context, string key, decimal defaultValue)
+         
+        [HttpGet("settings")]
+        public async Task<IActionResult> GetAllSettings()
         {
-            var setting = await context.SystemSettings.FindAsync(key);
-            if (setting != null && decimal.TryParse(setting.Value, out var value))
-                return value;
+            var settings = await _context.SystemSettings
+                .Select(s => new { s.Key, s.Value })
+                .ToListAsync();
 
-            return defaultValue;
+            return Ok(settings);
         }
          
+        [HttpPut("settings/{key}")]
+        public async Task<IActionResult> UpdateSetting(string key, [FromBody] SystemSettingCurrent updated)
+        {
+            if (updated == null || string.IsNullOrEmpty(updated.Value))
+                return BadRequest("Invalid setting value");
+
+            var setting = await _context.SystemSettings.FindAsync(key);
+            if (setting == null)
+            {
+                // Создаём, если не существует
+                setting = new SystemSetting { Key = key, Value = updated.Value };
+                _context.SystemSettings.Add(setting);
+            }
+            else
+            {
+                setting.Value = updated.Value;
+                _context.SystemSettings.Update(setting);
+            }
+
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add admin guid later
+                Action = "UpdateSetting",
+                Details = $"Setting {key} updated to {updated.Value}"
+            });
+
+            await _context.SaveChangesAsync();
+            return Ok(new { setting.Key, setting.Value });
+        }
+
+        // todo move
+        public class SystemSettingCurrent
+        {
+            public string Value { get; set; }
+        }
+
+
+        // todo move
+        //public async Task<decimal> GetDecimalSetting(AppDbContext context, string key, decimal defaultValue)
+        //{
+        //    var setting = await context.SystemSettings.FindAsync(key);
+        //    if (setting != null && decimal.TryParse(setting.Value, out var value))
+        //        return value;
+
+        //    return defaultValue;
+        //}
+
     }
 
 }

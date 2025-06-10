@@ -325,7 +325,7 @@ namespace RealEstateInvestment.Controllers
             return Ok("Shares purchased successfully.");
         }
 
-        //[AllowAnonymous]
+        [AllowAnonymous]
         [HttpGet("transactions")]
         public async Task<IActionResult> GetRecentTransactions()
         {
@@ -365,7 +365,8 @@ namespace RealEstateInvestment.Controllers
                 return BadRequest($"Insufficient funds for cancellation fee: {fee} USD");
 
             // check superuser
-            var superUser = await _context.Users.FirstOrDefaultAsync(u => u.Role == "superuser");
+            var superUserId = _superUserService.GetSuperUserId();
+            var superUser = await _context.Users.FindAsync(superUserId);
             if (superUser == null)
                 return BadRequest("Superuser not configured");
 
@@ -425,7 +426,7 @@ namespace RealEstateInvestment.Controllers
         //    return Ok(new { offer.ExpirationDate });
         //}
 
-        [HttpPost("share-offers/{id}/extend-to")]
+        [HttpPost("{id}/extend-to")]
         public async Task<IActionResult> ExtendOfferTo(Guid id, [FromQuery] DateTime newDate)
         {
             var offer = await _context.ShareOffers.FindAsync(id);
@@ -444,7 +445,7 @@ namespace RealEstateInvestment.Controllers
             {
                 UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add admin guid later
                 Action = "ExtendOffer",
-                Details = $"date: {newDate.ToShortDateString}offer {id}"
+                Details = $"date: {newDate.ToShortDateString()}offer {id}"
             });
             await _context.SaveChangesAsync();
             return Ok();
