@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using RealEstateInvestment.Data;
@@ -11,9 +12,11 @@ using RealEstateInvestment.Data;
 namespace RealEstateInvestment.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250610113535_AddShareTransaction")]
+    partial class AddShareTransaction
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -477,37 +480,6 @@ namespace RealEstateInvestment.Migrations
                     b.ToTable("ShareOfferBids");
                 });
 
-            modelBuilder.Entity("RealEstateInvestment.Models.ShareTransaction", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("BuyerId")
-                        .HasColumnType("uuid");
-
-                    b.Property<decimal>("PricePerShare")
-                        .HasColumnType("numeric");
-
-                    b.Property<Guid>("PropertyId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("SellerId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("Shares")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("Timestamp")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PropertyId");
-
-                    b.ToTable("ShareTransactions");
-                });
-
             modelBuilder.Entity("RealEstateInvestment.Models.SystemSetting", b =>
                 {
                     b.Property<string>("Key")
@@ -656,17 +628,6 @@ namespace RealEstateInvestment.Migrations
                         .IsRequired();
 
                     b.Navigation("Offer");
-                });
-
-            modelBuilder.Entity("RealEstateInvestment.Models.ShareTransaction", b =>
-                {
-                    b.HasOne("RealEstateInvestment.Models.Property", "Property")
-                        .WithMany()
-                        .HasForeignKey("PropertyId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Property");
                 });
 
             modelBuilder.Entity("RealEstateInvestment.Models.Property", b =>

@@ -310,9 +310,39 @@ namespace RealEstateInvestment.Controllers
                 Details = "sharesToBuy: " + sharesToBuy + "offer " + id
             });
 
+            _context.ShareTransactions.Add(new ShareTransaction
+            {
+                BuyerId = buyer.Id,
+                SellerId = seller.Id,
+                PropertyId = offer.PropertyId,
+                Shares = sharesToBuy,
+                PricePerShare = offer.BuyoutPricePerShare ?? 0,
+                Timestamp = DateTime.UtcNow
+            });
+
             await _context.SaveChangesAsync();
 
             return Ok("Shares purchased successfully.");
+        }
+
+        //[AllowAnonymous]
+        [HttpGet("transactions")]
+        public async Task<IActionResult> GetRecentTransactions()
+        {
+            var transactions = await _context.ShareTransactions
+                .OrderByDescending(t => t.Timestamp)
+                .Take(50)
+                .Include(t => t.Property)
+                .Select(t => new
+                {
+                    t.Timestamp,
+                    t.Shares,
+                    t.PricePerShare,
+                    PropertyTitle = t.Property.Title
+                })
+                .ToListAsync();
+
+            return Ok(transactions);
         }
 
         [HttpPost("{id}/cancel")]
@@ -393,6 +423,31 @@ namespace RealEstateInvestment.Controllers
             });
             await _context.SaveChangesAsync();
             return Ok(new { offer.ExpirationDate });
+        }
+
+        [HttpPost("share-offers/{id}/extend-to")]
+        public async Task<IActionResult> ExtendOfferTo(Guid id, [FromQuery] DateTime newDate)
+        {
+            var offer = await _context.ShareOffers.FindAsync(id);
+            if (offer == null) return NotFound("Offer not found");
+
+            if (!offer.IsActive) return BadRequest("Offer is inactive");
+
+            if (newDate <= DateTime.UtcNow)
+                return BadRequest("New expiration must be in the future");
+
+            if (offer.ExpirationDate >= newDate)
+                return BadRequest("New expiration must be after current expiration date");
+
+            offer.ExpirationDate = newDate;
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add admin guid later
+                Action = "ExtendOffer",
+                Details = $"date: {newDate.ToShortDateString}offer {id}"
+            });
+            await _context.SaveChangesAsync();
+            return Ok();
         }
 
         //[HttpPost("{id}/update-price")]
@@ -483,7 +538,7 @@ namespace RealEstateInvestment.Controllers
             return Ok(bids);
         }
 
-        // Принять предложение
+        // Принять предложение todo удалить метод?
         [HttpPost("bid/{bidId}/accept")]
         public async Task<IActionResult> AcceptBid(Guid bidId, [FromQuery] int sharesToSell)
         {

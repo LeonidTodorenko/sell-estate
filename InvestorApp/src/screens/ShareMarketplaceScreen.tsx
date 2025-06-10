@@ -12,6 +12,7 @@ import { RootStackParamList } from '../navigation/AppNavigator';
 // import { Picker } from '@react-native-picker/picker';
 import DropDownPicker from 'react-native-dropdown-picker';
 
+
 interface ShareOffer {
   id: string;
   sellerId: string;
@@ -48,6 +49,7 @@ const ShareMarketplaceScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const totalSharesForSelected = filteredOffers.reduce((sum, o) => sum + o.sharesForSale, 0);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  
 
 
   const loadOffers = async () => {
@@ -315,7 +317,10 @@ const ShareMarketplaceScreen = () => {
         )}
       </View>
      
-
+        <Button
+          title="View Trade History"
+          onPress={() => navigation.navigate('TradeHistory')}
+        />
       <FlatList
         data={filteredOffers}
         keyExtractor={(item) => item.id}

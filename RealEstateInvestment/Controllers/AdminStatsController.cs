@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RealEstateInvestment.Data;
+using RealEstateInvestment.Models;
 
 namespace RealEstateInvestment.Controllers
 {
@@ -75,11 +76,7 @@ namespace RealEstateInvestment.Controllers
 
             return Ok(summary);
         }
-
-
-
-
-
+         
         [HttpGet("logs")]
         public async Task<IActionResult> GetLogs([FromQuery] string? action, [FromQuery] string? userName, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
         {
@@ -119,6 +116,49 @@ namespace RealEstateInvestment.Controllers
             });
         }
 
+        [HttpGet("superuser")]
+        public async Task<IActionResult> GetSuperUserData()
+        {
+            var superUser = await _context.Users
+                .Include(u => u.Investments)
+                .ThenInclude(i => i.Property)
+                .FirstOrDefaultAsync(u => u.Role == "superuser");
+
+            if (superUser == null) return NotFound("Superuser not found");
+
+            return Ok(new
+            {
+                WalletBalance = superUser.WalletBalance,
+                Investments = superUser.Investments.Select(i => new
+                {
+                    i.PropertyId,
+                    PropertyTitle = i.Property.Title,
+                    i.Shares,
+                    i.InvestedAmount
+                })
+            });
+        }
+
+        [HttpPost("superuser/update-balance")]
+        public async Task<IActionResult> UpdateSuperUserBalance([FromQuery] decimal delta)
+        {
+            var superUser = await _context.Users.FirstOrDefaultAsync(u => u.Role == "superuser");
+            if (superUser == null) return NotFound("Superuser not found");
+
+            superUser.WalletBalance += delta;
+
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = superUser.Id,
+                Action = "UpdateSuperUserBalance",
+                Details = $"Changed by admin. Delta: {delta}"
+            });
+
+            await _context.SaveChangesAsync();
+            return Ok(new { superUser.WalletBalance });
+        }
+
+
         [HttpGet("settings/cancel-fee")]
         public IActionResult GetCancelFee()
         {
@@ -135,8 +175,7 @@ namespace RealEstateInvestment.Controllers
 
             return defaultValue;
         }
-
-
+         
     }
 
 }

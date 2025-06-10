@@ -54,6 +54,10 @@ const AdminDashboardScreen = () => {
       />
     </View>
 
+    <View style={styles.buttonWrapper}> 
+      <Button title="Superuser Info" onPress={() => navigation.navigate('SuperUser')} />
+    </View>
+
     </ScrollView>
     </AdminProtectedScreen>
   );
