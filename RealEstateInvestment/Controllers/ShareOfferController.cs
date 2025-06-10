@@ -407,23 +407,23 @@ namespace RealEstateInvestment.Controllers
             return Ok($"Offer canceled with {fee} USD cancellation fee.");
         }
 
-        [HttpPost("{id}/extend")]
-        public async Task<IActionResult> ExtendOffer(Guid id, [FromQuery] int days)
-        {
-            var offer = await _context.ShareOffers.FindAsync(id);
-            if (offer == null || !offer.IsActive)
-                return NotFound("Offer not found or inactive");
+        //[HttpPost("{id}/extend")]
+        //public async Task<IActionResult> ExtendOffer(Guid id, [FromQuery] int days)
+        //{
+        //    var offer = await _context.ShareOffers.FindAsync(id);
+        //    if (offer == null || !offer.IsActive)
+        //        return NotFound("Offer not found or inactive");
 
-            offer.ExpirationDate = offer.ExpirationDate.AddDays(days);
-            _context.ActionLogs.Add(new ActionLog
-            {
-                UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add admin guid later
-                Action = "ExtendOffer",
-                Details = "days: " + days + "offer " + id
-            });
-            await _context.SaveChangesAsync();
-            return Ok(new { offer.ExpirationDate });
-        }
+        //    offer.ExpirationDate = offer.ExpirationDate.AddDays(days);
+        //    _context.ActionLogs.Add(new ActionLog
+        //    {
+        //        UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add admin guid later
+        //        Action = "ExtendOffer",
+        //        Details = "days: " + days + "offer " + id
+        //    });
+        //    await _context.SaveChangesAsync();
+        //    return Ok(new { offer.ExpirationDate });
+        //}
 
         [HttpPost("share-offers/{id}/extend-to")]
         public async Task<IActionResult> ExtendOfferTo(Guid id, [FromQuery] DateTime newDate)

@@ -11,6 +11,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 // import { Picker } from '@react-native-picker/picker';
 import DropDownPicker from 'react-native-dropdown-picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 
 interface ShareOffer {
@@ -49,7 +50,10 @@ const ShareMarketplaceScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const totalSharesForSelected = filteredOffers.reduce((sum, o) => sum + o.sharesForSale, 0);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedOfferForExtension, setSelectedOfferForExtension] = useState<ShareOffer | null>(null);
+  const [extensionDate, setExtensionDate] = useState<Date | null>(null);
+
 
 
   const loadOffers = async () => {
@@ -257,15 +261,15 @@ const ShareMarketplaceScreen = () => {
     }
   };
 
-  const extendOffer = async (id: string, days: number) => {
-    try {
-      await api.post(`/share-offers/${id}/extend?days=${days}`);
-      Alert.alert('Offer extended');
-      loadOffers();
-    } catch {
-      Alert.alert('Error', 'Failed to extend offer');
-    }
-  };
+  // const extendOffer = async (id: string, days: number) => {
+  //   try {
+  //     await api.post(`/share-offers/${id}/extend?days=${days}`);
+  //     Alert.alert('Offer extended');
+  //     loadOffers();
+  //   } catch {
+  //     Alert.alert('Error', 'Failed to extend offer');
+  //   }
+  // };
 
   useEffect(() => {
     loadUserId();
@@ -328,7 +332,10 @@ const ShareMarketplaceScreen = () => {
         onRefresh={loadOffers}
         ListEmptyComponent={<Text>No matching offers</Text>}
         renderItem={({ item }) => (
-          <View style={styles.card}>
+          <View style={[
+              styles.card,
+              !item.isActive || new Date(item.expirationDate) <= new Date() ? { borderColor: 'red' } : null
+            ]}>
             <TouchableOpacity onPress={() => navigation.navigate('PropertyDetail', { propertyId: item.propertyId })}>
               <Text style={[styles.text, { color: '#007AFF', textDecorationLine: 'underline' }]}>
                 Property: {item.propertyTitle}
@@ -361,7 +368,12 @@ const ShareMarketplaceScreen = () => {
                 <View style={{ height: 10 }} />
                 <Button title="Cancel Listing" onPress={() => confirmCancelOffer(item.id)} />
                 <View style={{ height: 10 }} />
-                <Button title="Extend 7 Days" onPress={() => extendOffer(item.id, 7)} />
+                 <Button title="Extend until..." onPress={() => {
+                    setSelectedOfferForExtension(item);
+                    setExtensionDate(new Date(item.expirationDate));
+                    setShowDatePicker(true);
+                  }} />
+                {/* <Button title="Extend 7 Days" onPress={() => extendOffer(item.id, 7)} /> */}
                 {/* <View style={{ height: 10 }} />
                 <Button title="Load Bids" onPress={() => loadBidsForOffer(item.id)} /> */}
               </>
@@ -385,6 +397,47 @@ const ShareMarketplaceScreen = () => {
           </View>
         )}
       />
+
+      {showDatePicker && selectedOfferForExtension && (
+        <DateTimePicker
+          value={extensionDate ?? new Date()}
+          mode="date"
+          display="default"
+          minimumDate={new Date()}
+          onChange={(_, selected) => {
+            setShowDatePicker(false);
+            if (!selected || !selectedOfferForExtension) return;
+
+            const currentExp = new Date(selectedOfferForExtension.expirationDate);
+            if (selected <= currentExp) {
+              Alert.alert('Invalid Date', 'New expiration date must be after current expiration.');
+              return;
+            }
+
+            Alert.alert(
+              'Confirm Extension',
+              `Extend listing until ${selected.toLocaleDateString()}?`,
+              [
+                { text: 'Cancel' },
+                {
+                  text: 'Confirm',
+                  onPress: async () => {
+                    try {
+                      await api.post(`/share-offers/${selectedOfferForExtension.id}/extend-to?newDate=${selected.toISOString()}`);
+                      Alert.alert('Success', 'Offer extended');
+                      loadOffers();
+                    } catch {
+                      Alert.alert('Error', 'Failed to extend offer');
+                    } finally {
+                      setSelectedOfferForExtension(null);
+                    }
+                  }
+                }
+              ]
+            );
+          }}
+        />
+      )}
 
       <Modal visible={bidModalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
