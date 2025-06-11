@@ -35,6 +35,18 @@ namespace RealEstateInvestment.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateProperty([FromBody] Property property)
         {
+            if (property.TotalShares <= 0)
+                return BadRequest(new { message = "TotalShares must be greater than 0" });
+
+            var sharePrice = property.Price / property.TotalShares;
+
+            if (sharePrice < 1000)
+            {
+                return BadRequest(new { message = $"Share price (${sharePrice:F2}) is too low. Must be at least $1000." });
+            }
+
+
+
             property.AvailableShares = property.TotalShares;
             // property.ApplicationDeadline = DateTime.SpecifyKind(property.ApplicationDeadline, DateTimeKind.Utc);
 
