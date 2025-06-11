@@ -138,6 +138,15 @@ namespace RealEstateInvestment.Controllers
             var existing = await _context.Properties.FindAsync(id);
             if (existing == null) return NotFound();
 
+
+            if (updated.TotalShares <= 0)
+                return BadRequest(new { message = "TotalShares must be greater than 0" });
+
+            var sharePrice = updated.Price / updated.TotalShares;
+            if (sharePrice < 1000)
+                return BadRequest(new { message = $"Share price (${sharePrice:F2}) is too low. Must be at least $1000." });
+
+
             existing.Title = updated.Title;
             existing.Location = updated.Location;
             existing.Price = updated.Price;
