@@ -182,8 +182,8 @@ const SellMySharesScreen = () => {
             />
             {selectedProperty && parseFloat(inputStartPrice) > 0 &&
               parseFloat(inputStartPrice) < selectedProperty.averagePrice && (
-              <Text style={styles.warningText}>⚠️ Price is below your average share price</Text>
-            )}
+                <Text style={styles.warningText}>⚠️ Price is below your average share price</Text>
+              )}
 
             <TextInput
               placeholder="Buyout price per share (optional)"

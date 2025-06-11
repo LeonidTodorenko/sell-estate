@@ -17,7 +17,6 @@ namespace RealEstateInvestment.Controllers
     public class UserController : ControllerBase
     {
 
-     
         private readonly AppDbContext _context;
         private readonly EmailService _emailService;
         private readonly IConfiguration _config;

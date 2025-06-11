@@ -509,8 +509,5 @@ namespace RealEstateInvestment.Controllers
 
             // todo Защиту от удаления после дедлайна или финализации - убрать это и на ui
         }
-
-
-
     }
 }

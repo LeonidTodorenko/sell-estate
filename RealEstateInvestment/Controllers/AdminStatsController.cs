@@ -219,18 +219,6 @@ namespace RealEstateInvestment.Controllers
         {
             public string Value { get; set; }
         }
-
-
-        // todo move
-        //public async Task<decimal> GetDecimalSetting(AppDbContext context, string key, decimal defaultValue)
-        //{
-        //    var setting = await context.SystemSettings.FindAsync(key);
-        //    if (setting != null && decimal.TryParse(setting.Value, out var value))
-        //        return value;
-
-        //    return defaultValue;
-        //}
-
+         
     }
-
 }

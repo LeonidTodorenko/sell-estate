@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, Alert, StyleSheet } from 'react-native';
+import { View, Text, Button, Alert, StyleSheet } from 'react-native';
 import api from '../api';
 import StyledInput from '../components/StyledInput';
 

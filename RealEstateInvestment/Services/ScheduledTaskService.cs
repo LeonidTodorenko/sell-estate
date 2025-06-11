@@ -1,6 +1,4 @@
-﻿using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.DependencyInjection;
-using RealEstateInvestment.Models;
+﻿using RealEstateInvestment.Models;
 using RealEstateInvestment.Data;
 using Microsoft.EntityFrameworkCore;
 

@@ -19,23 +19,23 @@ const SuperUserScreen = () => {
       const res = await api.get('/admin/stats/superuser');
       setBalance(res.data.walletBalance);
       setInvestments(res.data.investments);
-    } 
-     catch (error: any) {
-                              let message = 'Failed to load data';
-    
-                                if (error instanceof Error) {
-                                  message = error.message;
-                                  console.error(error.stack);   
-                                } else if (error?.response?.data) {
-                                  message = JSON.stringify(error.response.data);
-                                  console.error(error.response.data);  
-                                } else {
-                                  message = String(error);
-                                  console.error('Raw error:', message); 
-                                }
-    
-                                Alert.alert('Error', 'Failed to load data: ' + message);
-                            } 
+    }
+    catch (error: any) {
+      let message = 'Failed to load data';
+
+      if (error instanceof Error) {
+        message = error.message;
+        console.error(error.stack);
+      } else if (error?.response?.data) {
+        message = JSON.stringify(error.response.data);
+        console.error(error.response.data);
+      } else {
+        message = String(error);
+        console.error('Raw error:', message);
+      }
+
+      Alert.alert('Error', 'Failed to load data: ' + message);
+    }
   };
 
   const updateBalance = async (delta: number) => {
@@ -44,23 +44,23 @@ const SuperUserScreen = () => {
       Alert.alert('Success', 'Balance updated');
       setAmount('');
       loadData();
-    }  
+    }
     catch (error: any) {
-                              let message = 'Failed to update balance';
-    
-                                if (error instanceof Error) {
-                                  message = error.message;
-                                  console.error(error.stack);   
-                                } else if (error?.response?.data) {
-                                  message = JSON.stringify(error.response.data);
-                                  console.error(error.response.data);  
-                                } else {
-                                  message = String(error);
-                                  console.error('Raw error:', message); 
-                                }
-    
-                                Alert.alert('Error', 'Failed to update balance: ' + message);
-                            } 
+      let message = 'Failed to update balance';
+
+      if (error instanceof Error) {
+        message = error.message;
+        console.error(error.stack);
+      } else if (error?.response?.data) {
+        message = JSON.stringify(error.response.data);
+        console.error(error.response.data);
+      } else {
+        message = String(error);
+        console.error('Raw error:', message);
+      }
+
+      Alert.alert('Error', 'Failed to update balance: ' + message);
+    }
   };
 
   useEffect(() => {

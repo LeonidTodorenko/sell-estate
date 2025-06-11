@@ -30,18 +30,18 @@ const AdminSystemSettingsScreen = () => {
       await api.put(`/admin/stats/settings/${key}`, { value: edited[key] });
       Alert.alert('Success', `${key} updated`);
       loadSettings();
-    }  
-     catch (error: any) {
-                     let message = 'Failed to update setting ';
-                          console.error(error);
-                          if (error.response && error.response.data) {
-                            message = JSON.stringify(error.response.data);
-                          } else if (error.message) {
-                            message = error.message;
-                          }
-                          Alert.alert('Error', 'Failed to update setting ' + message);
-                        console.error(message);
-                  }
+    }
+    catch (error: any) {
+      let message = 'Failed to update setting ';
+      console.error(error);
+      if (error.response && error.response.data) {
+        message = JSON.stringify(error.response.data);
+      } else if (error.message) {
+        message = error.message;
+      }
+      Alert.alert('Error', 'Failed to update setting ' + message);
+      console.error(message);
+    }
   };
 
   useEffect(() => {
