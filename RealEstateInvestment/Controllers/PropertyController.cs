@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RealEstateInvestment.Data;
 using RealEstateInvestment.Models;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace RealEstateInvestment.Controllers
 {
@@ -37,6 +38,16 @@ namespace RealEstateInvestment.Controllers
         {
             if (property.TotalShares <= 0)
                 return BadRequest(new { message = "TotalShares must be greater than 0" });
+             
+
+            if (property.AvailableShares < 0)
+                return BadRequest(new { message = "AvailableShares cannot be negative" });
+
+            if (property.AvailableShares > property.TotalShares)
+                return BadRequest(new { message = "AvailableShares cannot exceed TotalShares" });
+
+            if (property.Price <= 0)
+                return BadRequest(new { message = "Price must be positive" });
 
             var sharePrice = property.Price / property.TotalShares;
 
@@ -141,6 +152,15 @@ namespace RealEstateInvestment.Controllers
 
             if (updated.TotalShares <= 0)
                 return BadRequest(new { message = "TotalShares must be greater than 0" });
+
+            if (updated.AvailableShares < 0)
+                return BadRequest(new { message = "AvailableShares cannot be negative" });
+
+            if (updated.AvailableShares > updated.TotalShares)
+                return BadRequest(new { message = "AvailableShares cannot exceed TotalShares" });
+
+            if (updated.Price <= 0)
+                return BadRequest(new { message = "Price must be positive" });
 
             var sharePrice = updated.Price / updated.TotalShares;
             if (sharePrice < 1000)
