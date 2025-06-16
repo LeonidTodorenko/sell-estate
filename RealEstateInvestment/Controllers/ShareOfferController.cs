@@ -163,72 +163,94 @@ namespace RealEstateInvestment.Controllers
         [HttpPost("sell-to-platform")]
         public async Task<IActionResult> SellToPlatform([FromBody] SellToPlatformRequest request)
         {
-            var investment = await _context.Investments
+            var investments = await _context.Investments
                 .Include(i => i.Property)
                 .Include(i => i.User)
-                .FirstOrDefaultAsync(i => i.Id == request.InvestmentId && i.UserId == request.UserId);
+                .Where(i => i.UserId == request.UserId && i.PropertyId == request.PropertyId)
+                .ToListAsync();
 
-            if (investment == null || investment.Shares < request.SharesToSell)
-                return BadRequest("Invalid investment or not enough shares");
+            if (!investments.Any())
+                return BadRequest("No investments found for this property");
 
-            var pricePerShare = investment.Property.BuybackPricePerShare;
-            if (pricePerShare == null) return BadRequest("No buyback price available");
+            var property = investments.First().Property;
+            var user = investments.First().User;
 
-            var amount = pricePerShare.Value * request.SharesToSell;
+            if (property.BuybackPricePerShare == null)
+                return BadRequest("No buyback price available");
+
+            var pricePerShare = property.BuybackPricePerShare.Value;
+            var totalSharesToSell = investments.Sum(i => i.Shares);
+            var amount = pricePerShare * totalSharesToSell;
 
             var superUserId = _superUserService.GetSuperUserId();
             var superUser = await _context.Users.FindAsync(superUserId);
-            if (superUser == null) return BadRequest("Super user not found");
+            if (superUser == null)
+                return BadRequest("Super user not found");
 
             if (superUser.WalletBalance < amount)
                 return BadRequest("Platform has insufficient funds");
-             
-            investment.InvestedAmount -= (investment.InvestedAmount / investment.Shares) * request.SharesToSell;
-            investment.User.WalletBalance += amount;
-            investment.Shares -= request.SharesToSell;
 
+            int remainingShares = totalSharesToSell;
+            decimal totalInvestedRemoved = 0;
+
+            foreach (var investment in investments.ToList())
+            {
+                int sharesToRemove = Math.Min(remainingShares, investment.Shares);
+                decimal investedPortion = (investment.InvestedAmount / investment.Shares) * sharesToRemove;
+
+                investment.Shares -= sharesToRemove;
+                investment.InvestedAmount -= investedPortion;
+                totalInvestedRemoved += investedPortion;
+
+                remainingShares -= sharesToRemove;
+
+                if (investment.Shares == 0)
+                    _context.Investments.Remove(investment);
+
+                if (remainingShares == 0)
+                    break;
+            }
+
+            user.WalletBalance += amount;
             superUser.WalletBalance -= amount;
 
-            var existing = await _context.Investments.FirstOrDefaultAsync(i => i.UserId == superUserId && i.PropertyId == investment.PropertyId);
+            var superUserInvestment = await _context.Investments
+                .FirstOrDefaultAsync(i => i.UserId == superUserId && i.PropertyId == property.Id);
 
-            if (existing == null)
+            if (superUserInvestment == null)
             {
-                existing = new Investment
+                _context.Investments.Add(new Investment
                 {
                     Id = Guid.NewGuid(),
                     UserId = superUserId,
-                    PropertyId = investment.PropertyId,
-                    Shares = request.SharesToSell,
+                    PropertyId = property.Id,
+                    Shares = totalSharesToSell,
                     InvestedAmount = amount,
                     CreatedAt = DateTime.UtcNow
-                };
-                _context.Investments.Add(existing);
+                });
             }
             else
             {
-                existing.Shares += request.SharesToSell;
-                existing.InvestedAmount += amount;
+                superUserInvestment.Shares += totalSharesToSell;
+                superUserInvestment.InvestedAmount += amount;
             }
-
-            if (investment.Shares == 0)
-                _context.Investments.Remove(investment);
 
             _context.ActionLogs.Add(new ActionLog
             {
-                UserId = request.UserId, // todo add admin guid later
+                UserId = request.UserId,
                 Action = "SellToPlatform",
-                Details = "request.SharesToSell: " + request.SharesToSell
+                Details = $"Sold {totalSharesToSell} shares for {amount:F2} USD from property '{property.Title}'"
             });
 
             await _context.SaveChangesAsync();
-            return Ok(new { amount });
+            return Ok(new { shares = totalSharesToSell, amount });
         }
+
 
         public class SellToPlatformRequest
         {
-            public Guid InvestmentId { get; set; }
             public Guid UserId { get; set; }
-            public int SharesToSell { get; set; }
+            public Guid PropertyId { get; set; }
         }
 
         [HttpGet("user/{id}/with-property")]

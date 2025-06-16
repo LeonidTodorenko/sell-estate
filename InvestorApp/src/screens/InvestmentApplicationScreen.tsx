@@ -3,9 +3,17 @@ import { View, Text, FlatList, StyleSheet, Alert } from 'react-native';
 import api from '../api';
 import { useIsFocused } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { TouchableOpacity } from 'react-native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/AppNavigator';
+import { useNavigation } from '@react-navigation/native';
+import { RouteProp, useRoute } from '@react-navigation/native';
+import { useCallback } from 'react';
+
 
 interface InvestmentApplication {
   id: string;
+  propertyTitle: string;
   propertyId: string;
   requestedAmount: number;
   requestedShares: number;
@@ -20,33 +28,50 @@ interface InvestmentApplication {
 export default function InvestmentApplicationScreen() {
   const [applications, setApplications] = useState<InvestmentApplication[]>([]);
   const isFocused = useIsFocused();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const route = useRoute<RouteProp<RootStackParamList, 'InvestmentApplications'>>();
+  const propertyId = route.params?.propertyId;
 
-  const fetchApplications = async () => {
+  const fetchApplications =  useCallback(async () => {
     try {
       const stored = await AsyncStorage.getItem('user');
       const user = stored ? JSON.parse(stored) : null;
       if (!user) return;
 
       const response = await api.get(`/applications/user/${user.userId}`);
-      setApplications(response.data);
+      if (propertyId) {
+        setApplications(response.data.filter((app: InvestmentApplication) => app.propertyId === propertyId));
+      } else {
+        setApplications(response.data);
+      }
+    //  setApplications(response.data);
     } catch (err) {
       Alert.alert('Error', 'Failed to load applications');
     }
-  };
+}, [propertyId]);
 
   useEffect(() => {
     if (isFocused) fetchApplications();
-  }, [isFocused]);
+  }, [isFocused, fetchApplications]);
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>My Applications</Text>
+      {/* <Text style={styles.title}>My Applications</Text> */}
+            <Text style={styles.title}>
+              {propertyId ? 'Applications for Property' : 'My Applications'}
+            </Text>
       <FlatList
         data={applications}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <View style={styles.card}>
-            <Text style={styles.text}>Property ID: {item.propertyId}</Text>
+      
+             <TouchableOpacity onPress={() => navigation.navigate('PropertyDetail', { propertyId: item.propertyId })}>
+                <Text style={[styles.text, { color: '#0070c0', fontWeight: 'bold' }]}>
+                  {item.propertyTitle}
+                </Text>
+              </TouchableOpacity>
+           
             <Text style={styles.text}>Amount: ${item.requestedAmount}</Text>
             <Text style={styles.text}>Shares: {item.requestedShares}</Text>
             <Text style={styles.text}>Step: {item.stepNumber}</Text>

@@ -77,7 +77,7 @@ export type RootStackParamList = {
   Inbox: undefined;
   AdminMessages: undefined;
   ShareMarketplaces: undefined;
-  InvestmentApplications: undefined;
+  InvestmentApplications: { propertyId: string };
   AdminSystemSettings: undefined;
   SellMyShares: { propertyId: string; propertyName: string };
   TradeHistory: undefined;

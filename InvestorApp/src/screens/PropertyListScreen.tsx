@@ -144,15 +144,6 @@ const PropertyListScreen = () => {
               }
             />
             <View style={{ height: 10 }} />
-            <Button
-              title="Sell My Shares"
-              onPress={() =>
-                navigation.navigate('SellMyShares', {
-                  propertyId: item.id,
-                  propertyName: item.title,
-                })
-              }
-            />
           </View>
         )}
       />

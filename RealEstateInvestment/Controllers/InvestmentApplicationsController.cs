@@ -110,16 +110,44 @@ namespace RealEstateInvestment.Controllers
             return Ok(new { message = "Application submitted" });
         }
 
+        //[HttpGet("user/{userId}")]
+        //[Authorize(Roles = "investor")]
+        //public async Task<IActionResult> GetUserApplications(Guid userId)
+        //{
+        //    var apps = await _context.InvestmentApplications
+        //        .Where(a => a.UserId == userId)
+        //        .OrderByDescending(a => a.CreatedAt)
+        //        .ToListAsync();
+        //    return Ok(apps);
+        //}
+
         [HttpGet("user/{userId}")]
-        [Authorize(Roles = "investor")]
         public async Task<IActionResult> GetUserApplications(Guid userId)
         {
-            var apps = await _context.InvestmentApplications
-                .Where(a => a.UserId == userId)
-                .OrderByDescending(a => a.CreatedAt)
-                .ToListAsync();
+            var apps = await (
+                from app in _context.InvestmentApplications
+                join p in _context.Properties on app.PropertyId equals p.Id
+                where app.UserId == userId
+                orderby app.CreatedAt descending
+                select new
+                {
+                    app.Id,
+                    app.PropertyId,
+                    PropertyTitle = p.Title,
+                    app.RequestedAmount,
+                    app.RequestedShares,
+                    app.ApprovedAmount,
+                    app.ApprovedShares,
+                    app.Status,
+                    app.IsPriority,
+                    app.StepNumber,
+                    app.CreatedAt
+                }
+            ).ToListAsync();
+
             return Ok(apps);
         }
+
 
         [HttpGet("property/{propertyId}")]
         [Authorize(Roles = "admin")]

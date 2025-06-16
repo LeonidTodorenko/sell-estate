@@ -102,6 +102,15 @@ const InvestmentsScreen = () => {
             )}
              <Button title="📄 View Payment Plan" onPress={() => navigation.navigate('PaymentPlan', { propertyId: item.propertyId, readonly: true })} />
                <View style={{ height: 10 }} />
+               <Button  title="💸 Sell My Shares"  onPress={() =>    navigation.navigate('SellMyShares', {      propertyId: item.propertyId,      propertyName: item.propertyTitle,    })  }/>
+                <View style={{ height: 10 }} />
+                <Button
+                    title="📄 My Applications"
+                    onPress={() =>
+                      navigation.navigate('InvestmentApplications', { propertyId: item.propertyId })
+                    }
+                  />
+                   <View style={{ height: 10 }} />
             <Text
               style={styles.link}
               onPress={() => navigation.navigate('PropertyDetail', { propertyId: item.propertyId })}

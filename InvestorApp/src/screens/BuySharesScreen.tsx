@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text,  Button, StyleSheet, Alert } from 'react-native';
+import { View, Text, Button, StyleSheet, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import api from '../api';
@@ -13,7 +13,7 @@ const BuySharesScreen = () => {
   const navigation = useNavigation();
   const propertyId = route.params.propertyId;
 
-  const [amount, setAmount] = useState('');
+  const [shares, setShares] = useState('');
   const [sharePrice, setSharePrice] = useState<number | null>(null);
   const [pinOrPassword, setPinOrPassword] = useState('');
 
@@ -36,19 +36,16 @@ const BuySharesScreen = () => {
   }, [propertyId]);
 
   const handleBuy = async () => {
-    const parsed = parseFloat(amount);
-    if (!parsed || parsed <= 0) return Alert.alert('Invalid', 'Enter valid amount');
-
-    if (sharePrice && parsed % sharePrice !== 0) {
-      return Alert.alert('Invalid amount', `Investment must be a multiple of ${sharePrice.toFixed(2)} USD`);
+    const parsedShares = parseInt(shares, 10);
+    if (!parsedShares || parsedShares <= 0) {
+      return Alert.alert('Validation', 'Enter a valid number of shares (whole number > 0)');
     }
-
-    const requestedShares = Math.round(parsed / sharePrice!);
 
     const stored = await AsyncStorage.getItem('user');
     if (!stored) return Alert.alert('Error', 'No user found');
 
     const user = JSON.parse(stored);
+    const requestedAmount = sharePrice! * parsedShares;
 
     if (!pinOrPassword) {
       return Alert.alert('Validation', 'Enter PIN or password');
@@ -58,27 +55,27 @@ const BuySharesScreen = () => {
       await api.post('/investments/apply', {
         userId: user.userId,
         propertyId,
-        requestedShares,
-        requestedAmount: parsed,
+        requestedShares: parsedShares,
+        requestedAmount,
         pinOrPassword,
       });
 
       Alert.alert('Success', 'Investment submitted');
       navigation.goBack();
+    } catch (error: any) {
+      let message = 'Failed to invest ';
+      console.error(error);
+      if (error.response && error.response.data) {
+        message = JSON.stringify(error.response.data);
+      } else if (error.message) {
+        message = error.message;
+      }
+      Alert.alert('Error', message);
     }
-       catch (error: any) {
-                 let message = 'Failed to invest ';
-                      console.error(error);
-                      if (error.response && error.response.data) {
-                        message = JSON.stringify(error.response.data);
-                      } else if (error.message) {
-                        message = error.message;
-                      }
-                      Alert.alert('Error', 'Failed to invest ' + message);
-                    console.error(message);
-              }
-    
   };
+
+  const parsedShares = parseInt(shares, 10);
+  const calculatedAmount = sharePrice && parsedShares > 0 ? (parsedShares * sharePrice).toFixed(2) : '0.00';
 
   return (
     <View style={styles.container}>
@@ -86,10 +83,15 @@ const BuySharesScreen = () => {
       {sharePrice && <Text>Price per share: {sharePrice.toFixed(2)} USD</Text>}
       <StyledInput
         style={styles.input}
-        placeholder="Amount to invest"
+        placeholder="Shares"
         keyboardType="numeric"
-        value={amount}
-        onChangeText={setAmount}
+        value={shares}
+        onChangeText={setShares}
+      />
+      <StyledInput
+        style={[styles.input, { backgroundColor: '#eee' }]}
+        value={`${calculatedAmount} USD`}
+        editable={false}
       />
       <StyledInput
         style={styles.input}

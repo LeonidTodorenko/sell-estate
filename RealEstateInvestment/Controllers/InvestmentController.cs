@@ -143,7 +143,7 @@ namespace RealEstateInvestment.Controllers
             if (step.EventDate == minEventDate)
             {
                 user.WalletBalance -= expectedAmount;
-
+                property.AvailableShares -= req.RequestedShares;
                 var wasPrior = false;
                 // Если сумма >= нужной для текущего этапа — пользователь становится приоритетным
                 if (expectedAmount >= step.Total && property.PriorityInvestorId == null)

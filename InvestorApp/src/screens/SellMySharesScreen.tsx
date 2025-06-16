@@ -57,22 +57,21 @@ const SellMySharesScreen = () => {
 
     Alert.alert(
       'Confirm Sale',
-      `Sell ${inv.shares} shares of ${inv.propertyTitle} for $${(inv.buybackPricePerShare ?? 0 * inv.shares).toFixed(2)}?`,
+      `Sell ${inv.shares} shares of ${inv.propertyTitle} for $${((inv.buybackPricePerShare ?? 0) * inv.shares).toFixed(2)}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Sell',
           onPress: async () => {
             try {
-              const res = await api.get(`/share-offers/user/${userId}/with-property`);
-              const userInvestments = res.data.filter((x: any) => x.propertyId === inv.propertyId);
-              for (const i of userInvestments) {
+              // const res = await api.get(`/share-offers/user/${userId}/with-property`);
+              // const userInvestments = res.data.filter((x: any) => x.propertyId === inv.propertyId);
+              // for (const i of userInvestments) {
                 await api.post('/share-offers/sell-to-platform', {
-                  investmentId: i.id,
-                  userId: userId,
-                  sharesToSell: i.shares,
+                 userId,
+                 propertyId: inv.propertyId,
                 });
-              }
+              // }
               Alert.alert('Success', 'Shares sold to platform');
               await fetchBuybackPrices(userId);
             } catch {

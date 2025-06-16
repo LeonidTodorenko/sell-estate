@@ -226,6 +226,7 @@ namespace RealEstateInvestment.Services
                             if (user != null)
                             {
                                 user.WalletBalance += app.RequestedAmount;
+                                property.AvailableShares += app.RequestedShares;
 
                                 app.Status = "rejected";
                                 property.PriorityInvestorId = null; // todo сбрасывает в рамках логики тестов
