@@ -17,5 +17,4 @@ namespace RealEstateInvestment.Models
 
         public DateTime ExpiresAt { get; set; } = DateTime.UtcNow.AddHours(24);  
     }
-
 }

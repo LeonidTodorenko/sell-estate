@@ -16,6 +16,38 @@ const BuySharesScreen = () => {
   const [shares, setShares] = useState('');
   const [sharePrice, setSharePrice] = useState<number | null>(null);
   const [pinOrPassword, setPinOrPassword] = useState('');
+  const [isFirstStep, setIsFirstStep] = useState(false);
+
+  useEffect(() => {
+    const checkIfFirstStep = async () => {
+      try {
+        const res = await api.get(`/properties/${propertyId}/payment-plans`);
+        const plans = res.data;
+
+        const now = new Date();
+        const active = plans.find((p: any) => new Date(p.eventDate) <= now && now <= new Date(p.dueDate));
+        const earliest = plans.reduce((min: any, p: any) => {
+          return new Date(p.eventDate) < new Date(min.eventDate) ? p : min;
+        }, plans[0]);
+
+        if (active && active.eventDate === earliest.eventDate) {
+          setIsFirstStep(true);
+        }
+      } catch (error: any) {
+              let message = 'Failed to check step ';
+                          console.error(error);
+                          if (error.response && error.response.data) {
+                            message = JSON.stringify(error.response.data);
+                          } else if (error.message) {
+                            message = error.message;
+                          }
+                          Alert.alert('Error', 'Failed to check step ' + message);
+                        console.error(message);
+      }
+    };
+
+    checkIfFirstStep();
+  }, [propertyId]);
 
   useEffect(() => {
     const loadProperty = async () => {
@@ -40,16 +72,35 @@ const BuySharesScreen = () => {
     if (!parsedShares || parsedShares <= 0) {
       return Alert.alert('Validation', 'Enter a valid number of shares (whole number > 0)');
     }
-
-    const stored = await AsyncStorage.getItem('user');
-    if (!stored) return Alert.alert('Error', 'No user found');
-
-    const user = JSON.parse(stored);
+ 
     const requestedAmount = sharePrice! * parsedShares;
 
     if (!pinOrPassword) {
       return Alert.alert('Validation', 'Enter PIN or password');
     }
+
+    if (isFirstStep) {
+      Alert.alert(
+        'Warning',
+        'You submit an investment request - it will be reviewed and confirmed later. The funds are temporarily debited.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Ок',
+            onPress: () => executeBuy(parsedShares, requestedAmount)
+          },
+        ]
+      );
+    } else {
+      executeBuy(parsedShares, requestedAmount);
+    }
+  };
+
+  const executeBuy = async (parsedShares: number, requestedAmount: number) => {
+          const stored = await AsyncStorage.getItem('user');
+      if (!stored) return Alert.alert('Error', 'No user found');
+
+      const user = JSON.parse(stored);
 
     try {
       await api.post('/investments/apply', {
@@ -64,7 +115,6 @@ const BuySharesScreen = () => {
       navigation.goBack();
     } catch (error: any) {
       let message = 'Failed to invest ';
-      console.error(error);
       if (error.response && error.response.data) {
         message = JSON.stringify(error.response.data);
       } else if (error.message) {
@@ -73,6 +123,7 @@ const BuySharesScreen = () => {
       Alert.alert('Error', message);
     }
   };
+
 
   const parsedShares = parseInt(shares, 10);
   const calculatedAmount = sharePrice && parsedShares > 0 ? (parsedShares * sharePrice).toFixed(2) : '0.00';

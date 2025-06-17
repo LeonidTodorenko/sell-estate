@@ -18,5 +18,4 @@ namespace RealEstateInvestment.Models
 
         public bool IsRead { get; set; } = false;
     }
-
 }

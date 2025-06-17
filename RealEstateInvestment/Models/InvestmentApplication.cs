@@ -31,5 +31,4 @@ namespace RealEstateInvestment.Models
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
-    
 }
