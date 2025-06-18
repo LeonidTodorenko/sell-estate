@@ -15,6 +15,8 @@ interface Investment {
   totalShares: number;
   totalInvested: number;
   ownershipPercent: number;
+  confirmedShares: number;
+  confirmedApplications: number;
 }
 
 interface PropertyImage {
@@ -73,6 +75,9 @@ const InvestmentsScreen = () => {
             <Text style={styles.name}>🏠 {item.propertyTitle}</Text>
             <Text>💰 Invested: {item.totalInvested} USD</Text>
             <Text>📊 Shares: {item.totalShares}</Text>
+            <Text style={{ color: 'gray' }}>
+              ✔️ Confirmed: {item.confirmedApplications} applications, {item.confirmedShares} shares
+            </Text>
             <Text>📈 Ownership: {item.ownershipPercent}%</Text>
             {imagesMap[item.propertyId] && imagesMap[item.propertyId].length > 0 && (
               <View style={styles.carouselContainer}>

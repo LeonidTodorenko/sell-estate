@@ -10,7 +10,6 @@ import InvestmentsScreen from '../screens/InvestmentsScreen';
 import PropertyListScreen from '../screens/PropertyListScreen';
 import BuySharesScreen from '../screens/BuySharesScreen';
 import WithdrawScreen from '../screens/WithdrawScreen';
-import MyInvestmentsScreen from '../screens/MyInvestmentsScreen';
 import MyPropertiesScreen from '../screens/MyPropertiesScreen';
 import MyWithdrawalsScreen from '../screens/MyWithdrawalsScreen';
 import AdminWithdrawalsScreen from '../screens/AdminWithdrawalsScreen';
@@ -51,7 +50,6 @@ export type RootStackParamList = {
   Properties: undefined;
   BuyShares: { propertyId: string; propertyName: string };
   Withdraw: undefined;
-  MyInvestments: undefined;
   MyProperties: undefined;
   MyWithdrawals: undefined;
   AdminWithdrawals: undefined;
@@ -97,7 +95,6 @@ export default function AppNavigator() {
         <Stack.Screen name="Properties" component={PropertyListScreen} options={{ title: 'Properties' }} />
         <Stack.Screen name="BuyShares" component={BuySharesScreen} options={{ title: 'Buy Shares' }} />
         <Stack.Screen name="Withdraw" component={WithdrawScreen} options={{ title: 'Withdraw Funds' }} />
-        <Stack.Screen name="MyInvestments" component={MyInvestmentsScreen} options={{ title: 'My Stakes' }} />
         <Stack.Screen name="MyProperties" component={MyPropertiesScreen} options={{ title: 'My Properties' }} />
         <Stack.Screen name="MyWithdrawals" component={MyWithdrawalsScreen} options={{ title: 'My Withdrawals' }} />
         <Stack.Screen name="AdminWithdrawals" component={AdminWithdrawalsScreen} options={{ title: 'Withdrawal Admin' }} />

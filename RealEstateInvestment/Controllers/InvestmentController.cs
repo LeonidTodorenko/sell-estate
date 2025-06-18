@@ -428,23 +428,66 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("with-aggregated/{userId}")]
         public async Task<IActionResult> GetUserAggregatedInvestments(Guid userId)
         {
-            var result = await (
-                from i in _context.Investments
-                join p in _context.Properties on i.PropertyId equals p.Id
-                where i.UserId == userId
-                group new { i, p } by new { i.PropertyId, p.Title, p.Price } into g
-                select new
-                {
-                    PropertyId = g.Key.PropertyId,
-                    PropertyTitle = g.Key.Title,
-                    TotalShares = g.Sum(x => x.i.Shares),
-                    TotalInvested = g.Sum(x => x.i.InvestedAmount),
-                    FirstInvestmentDate = g.Min(x => x.i.CreatedAt),
-                    OwnershipPercent = Math.Round(g.Sum(x => x.i.InvestedAmount) / g.Key.Price * 100, 2)
-                }
-            ).ToListAsync();
+            var confirmed = await (
+                    from i in _context.Investments
+                    join p in _context.Properties on i.PropertyId equals p.Id
+                    where i.UserId == userId
+                    group new { i, p } by new { i.PropertyId, p.Title, p.Price } into g
+                    select new
+                    {
+                        PropertyId = g.Key.PropertyId,
+                        PropertyTitle = g.Key.Title,
+                        ConfirmedShares = g.Sum(x => x.i.Shares),
+                        ConfirmedAmount = g.Sum(x => x.i.InvestedAmount),
+                        OwnershipPercent = Math.Round(g.Sum(x => x.i.InvestedAmount) / g.Key.Price * 100, 2),
+                    }
+                ).ToListAsync();
 
-            return Ok(result);
+            var pending = await (
+                    from a in _context.InvestmentApplications
+                    join p in _context.Properties on a.PropertyId equals p.Id
+                    where a.UserId == userId && a.Status == "pending"
+                    group new { a, p } by new { a.PropertyId } into g
+                    select new
+                    {
+                        PropertyId = g.Key.PropertyId,
+                        PendingShares = g.Sum(x => x.a.RequestedShares),
+                        PendingCount = g.Count()
+                    }
+                ).ToListAsync();
+
+            var merged = confirmed.Select(c =>
+            {
+                var p = pending.FirstOrDefault(x => x.PropertyId == c.PropertyId);
+                return new
+                {
+                    c.PropertyId,
+                    c.PropertyTitle,
+                    TotalShares = c.ConfirmedShares + (p?.PendingShares ?? 0),
+                    ConfirmedShares = c.ConfirmedShares,
+                    ConfirmedApplications = (p?.PendingCount ?? 0),
+                    TotalInvested = c.ConfirmedAmount,
+                    c.OwnershipPercent
+                };
+            });
+
+            //var result = await (
+            //    from i in _context.Investments
+            //    join p in _context.Properties on i.PropertyId equals p.Id
+            //    where i.UserId == userId
+            //    group new { i, p } by new { i.PropertyId, p.Title, p.Price } into g
+            //    select new
+            //    {
+            //        PropertyId = g.Key.PropertyId,
+            //        PropertyTitle = g.Key.Title,
+            //        TotalShares = g.Sum(x => x.i.Shares),
+            //        TotalInvested = g.Sum(x => x.i.InvestedAmount),
+            //        FirstInvestmentDate = g.Min(x => x.i.CreatedAt),
+            //        OwnershipPercent = Math.Round(g.Sum(x => x.i.InvestedAmount) / g.Key.Price * 100, 2)
+            //    }
+            //).ToListAsync();
+
+            return Ok(merged);
         }
 
         //   without summing up investments

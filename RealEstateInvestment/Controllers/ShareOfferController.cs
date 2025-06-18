@@ -342,30 +342,72 @@ namespace RealEstateInvestment.Controllers
                 Timestamp = DateTime.UtcNow
             });
 
+            var property = await _context.Properties.FindAsync(offer.PropertyId);
+             
+            if (property == null)
+                return BadRequest("Propery not found");
+
+            _context.Messages.Add(new Message
+            {
+                RecipientId = seller.Id,
+                Title = "Your lot  is sold",
+                Content = $"Item \"{property.Title}\" was sold. Sum: {totalCost:F2} USD."
+            });
+
+            var bidParticipants = await _context.ShareOfferBids
+                .Where(b => b.OfferId == offer.Id && b.BidderId != buyer.Id)
+                .Select(b => b.BidderId)
+                .Distinct()
+                .ToListAsync();
+
+            foreach (var bidderId in bidParticipants)
+            {
+                _context.Messages.Add(new Message
+                {
+                    RecipientId = bidderId,
+                    Title = " Lot is sold",
+                    Content = $"Lot \"{property.Title}\", the item you bid on was sold to another user."
+                });
+            }
+
             await _context.SaveChangesAsync();
 
             return Ok("Shares purchased successfully.");
         }
-
+          
         [AllowAnonymous]
         [HttpGet("transactions")]
-        public async Task<IActionResult> GetRecentTransactions()
+        public async Task<IActionResult> GetRecentTransactions([FromQuery] Guid? propertyId, [FromQuery] DateTime? startDate, [FromQuery] DateTime? endDate)
         {
-            var transactions = await _context.ShareTransactions
-                .OrderByDescending(t => t.Timestamp)
-                .Take(50)
+            var query = _context.ShareTransactions
                 .Include(t => t.Property)
+                .AsQueryable();
+
+            if (propertyId.HasValue)
+                query = query.Where(t => t.PropertyId == propertyId.Value);
+
+            if (startDate.HasValue)
+                query = query.Where(t => t.Timestamp >= startDate.Value);
+
+            if (endDate.HasValue)
+                query = query.Where(t => t.Timestamp <= endDate.Value);
+
+            var result = await query
+                .OrderByDescending(t => t.Timestamp)
+                .Take(200)
                 .Select(t => new
                 {
                     t.Timestamp,
                     t.Shares,
                     t.PricePerShare,
+                    PropertyId = t.PropertyId,
                     PropertyTitle = t.Property.Title
                 })
                 .ToListAsync();
 
-            return Ok(transactions);
+            return Ok(result);
         }
+
 
         [HttpPost("{id}/cancel")]
         public async Task<IActionResult> CancelOffer(Guid id)
@@ -529,6 +571,34 @@ namespace RealEstateInvestment.Controllers
                 Details = $"OfferId: {id}, Price: {request.BidPricePerShare}, Shares: {request.Shares}"
             });
 
+            var property = await _context.Properties.FindAsync(offer.PropertyId);
+            // продавцу
+            _context.Messages.Add(new Message
+            {
+                RecipientId = offer.SellerId,
+                Title = "New bid on your lot",
+                Content = $"User suggested {request.BidPricePerShare:F2} USD for {request.Shares} shares in the lot \"{property.Title}\"."
+            });
+
+            // Оповестить других участников торгов
+            var otherBidders = await _context.ShareOfferBids
+                  .Where(b => b.OfferId == id && b.BidderId != request.BidderId)
+                  .Select(b => b.BidderId)
+                  .Distinct()
+                  .ToListAsync();
+
+            foreach (var userId in otherBidders)
+            {
+                _context.Messages.Add(new Message
+                {
+                    RecipientId = userId,
+                    Title = "New competing bid",
+                    Content = $"A new bid of {request.BidPricePerShare:F2} USD for {request.Shares} shares was placed on lot \"{property?.Title}\". You may want to place a better bid."
+                });
+            }
+
+
+
             await _context.SaveChangesAsync();
             return Ok(bid);
         }
@@ -562,68 +632,68 @@ namespace RealEstateInvestment.Controllers
         }
 
         // Принять предложение todo удалить метод?
-        [HttpPost("bid/{bidId}/accept")]
-        public async Task<IActionResult> AcceptBid(Guid bidId, [FromQuery] int sharesToSell)
-        {
-            var bid = await _context.ShareOfferBids
-                .Include(b => b.Offer)
-                .FirstOrDefaultAsync(b => b.Id == bidId);
+        //[HttpPost("bid/{bidId}/accept")]
+        //public async Task<IActionResult> AcceptBid(Guid bidId, [FromQuery] int sharesToSell)
+        //{
+        //    var bid = await _context.ShareOfferBids
+        //        .Include(b => b.Offer)
+        //        .FirstOrDefaultAsync(b => b.Id == bidId);
 
-            if (bid == null || bid.Offer == null || !bid.Offer.IsActive)
-                return BadRequest("Invalid bid or offer");
+        //    if (bid == null || bid.Offer == null || !bid.Offer.IsActive)
+        //        return BadRequest("Invalid bid or offer");
 
-            if (sharesToSell > bid.Offer.SharesForSale)
-                return BadRequest("Not enough shares in the offer");
+        //    if (sharesToSell > bid.Offer.SharesForSale)
+        //        return BadRequest("Not enough shares in the offer");
 
-            var buyer = await _context.Users.FindAsync(bid.BidderId);
-            var seller = await _context.Users.FindAsync(bid.Offer.SellerId);
-            if (buyer == null || seller == null) return BadRequest();
+        //    var buyer = await _context.Users.FindAsync(bid.BidderId);
+        //    var seller = await _context.Users.FindAsync(bid.Offer.SellerId);
+        //    if (buyer == null || seller == null) return BadRequest();
 
-            var totalCost = bid.BidPricePerShare * sharesToSell;
-            if (buyer.WalletBalance < totalCost) return BadRequest("Insufficient balance");
+        //    var totalCost = bid.BidPricePerShare * sharesToSell;
+        //    if (buyer.WalletBalance < totalCost) return BadRequest("Insufficient balance");
 
-            // Перевод средств
-            buyer.WalletBalance -= totalCost;
-            seller.WalletBalance += totalCost;
+        //    // Перевод средств
+        //    buyer.WalletBalance -= totalCost;
+        //    seller.WalletBalance += totalCost;
 
-            // Обновление оффера
-            bid.Offer.SharesForSale -= sharesToSell;
-            if (bid.Offer.SharesForSale == 0)
-                bid.Offer.IsActive = false;
+        //    // Обновление оффера
+        //    bid.Offer.SharesForSale -= sharesToSell;
+        //    if (bid.Offer.SharesForSale == 0)
+        //        bid.Offer.IsActive = false;
 
-            // Добавление инвестиций
-            var investment = await _context.Investments
-                .FirstOrDefaultAsync(i => i.UserId == buyer.Id && i.PropertyId == bid.Offer.PropertyId);
+        //    // Добавление инвестиций
+        //    var investment = await _context.Investments
+        //        .FirstOrDefaultAsync(i => i.UserId == buyer.Id && i.PropertyId == bid.Offer.PropertyId);
 
-            if (investment == null)
-            {
-                investment = new Investment
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = buyer.Id,
-                    PropertyId = bid.Offer.PropertyId,
-                    Shares = sharesToSell,
-                    InvestedAmount = totalCost,
-                    CreatedAt = DateTime.UtcNow
-                };
-                _context.Investments.Add(investment);
-            }
-            else
-            {
-                investment.Shares += sharesToSell;
-                investment.InvestedAmount += totalCost;
-            }
+        //    if (investment == null)
+        //    {
+        //        investment = new Investment
+        //        {
+        //            Id = Guid.NewGuid(),
+        //            UserId = buyer.Id,
+        //            PropertyId = bid.Offer.PropertyId,
+        //            Shares = sharesToSell,
+        //            InvestedAmount = totalCost,
+        //            CreatedAt = DateTime.UtcNow
+        //        };
+        //        _context.Investments.Add(investment);
+        //    }
+        //    else
+        //    {
+        //        investment.Shares += sharesToSell;
+        //        investment.InvestedAmount += totalCost;
+        //    }
 
-            _context.ActionLogs.Add(new ActionLog
-            {
-                UserId = seller.Id,
-                Action = "AcceptBid",
-                Details = $"BidId: {bidId}, Shares: {sharesToSell}, Price: {bid.BidPricePerShare}"
-            });
+        //    _context.ActionLogs.Add(new ActionLog
+        //    {
+        //        UserId = seller.Id,
+        //        Action = "AcceptBid",
+        //        Details = $"BidId: {bidId}, Shares: {sharesToSell}, Price: {bid.BidPricePerShare}"
+        //    });
 
-            await _context.SaveChangesAsync();
-            return Ok("Bid accepted and transaction completed.");
-        }
+        //    await _context.SaveChangesAsync();
+        //    return Ok("Bid accepted and transaction completed.");
+        //}
 
 
     }
