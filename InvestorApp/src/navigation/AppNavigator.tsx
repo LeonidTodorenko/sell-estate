@@ -40,7 +40,8 @@ import SellMyShareScreen from '../screens/SellMySharesScreen';
 import AdminSystemSettingsScreen from '../screens/AdminSystemSettingsScreen';
 import TradeHistoryScreen from '../screens/TradeHistoryScreen';
 import SuperUserScreen from '../screens/SuperUserScreen';
-
+import UserTransactionsScreen from '../screens/UserTransactionsScreen';
+import PersonalScreen from '../screens/PersonalScreen';
 
 export type RootStackParamList = {
   Login: undefined;
@@ -80,6 +81,8 @@ export type RootStackParamList = {
   SellMyShares: { propertyId: string; propertyName: string };
   TradeHistory: undefined;
   SuperUser: undefined;
+  UserTransactions: undefined;
+  Personal: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -125,6 +128,8 @@ export default function AppNavigator() {
         <Stack.Screen name="AdminSystemSettings" component={AdminSystemSettingsScreen} />
         <Stack.Screen name="TradeHistory" component={TradeHistoryScreen} />
         <Stack.Screen name="SuperUser" component={SuperUserScreen} />
+        <Stack.Screen name="UserTransactions" component={UserTransactionsScreen} />
+        <Stack.Screen name="Personal" component={PersonalScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

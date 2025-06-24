@@ -1,7 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Org.BouncyCastle.Asn1.Ocsp;
 using RealEstateInvestment.Data;
+using RealEstateInvestment.Enums;
 using RealEstateInvestment.Models;
 
 namespace RealEstateInvestment.Controllers
@@ -166,8 +168,28 @@ namespace RealEstateInvestment.Controllers
                 };
                  
                 _context.InvestmentApplications.Add(app);
-                 
-               // step.Paid += expectedAmount;
+
+                _context.ActionLogs.Add(new ActionLog
+                {
+                    UserId = req.UserId,
+                    Action = "ApplicateForInvestment",
+                    Details = "Investment Shares: " + req.RequestedShares + "; InvestedAmount: " + expectedAmount + "; PropertyId: " + req.PropertyId
+                });
+
+                _context.UserTransactions.Add(new UserTransaction
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = req.UserId,
+                    Type = TransactionType.Investment,
+                    Amount = req.RequestedAmount,
+                    Shares = req.RequestedShares,
+                    PropertyId = property.Id,
+                    PropertyTitle = property.Title,
+                    Timestamp = DateTime.UtcNow,
+                    Notes = "Investment"
+                });
+
+                // step.Paid += expectedAmount;
             }
             else
             {
@@ -192,7 +214,20 @@ namespace RealEstateInvestment.Controllers
                     Action = "ApplicateForInvestment",
                     Details = "Apply For Investment Shares: " + req.RequestedShares + "; InvestedAmount: " + expectedAmount + "; PropertyId: " + req.PropertyId
                 });
-              
+
+                _context.UserTransactions.Add(new UserTransaction
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = req.UserId,
+                    Type = TransactionType.Investment,
+                    Amount = expectedAmount,
+                    Shares = req.RequestedShares,
+                    PropertyId = property.Id,
+                    PropertyTitle = property.Title,
+                    Timestamp = DateTime.UtcNow,
+                    Notes = "Apply For Investment Shares"
+                });
+
             }
 
             //var app = new InvestmentApplication

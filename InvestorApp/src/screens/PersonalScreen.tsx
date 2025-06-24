@@ -6,7 +6,7 @@ import { RootStackParamList } from '../navigation/AppNavigator';
 import theme from '../constants/theme';
 import api from '../api';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'Personal'>;
 
 interface User {
   fullName: string;
@@ -16,7 +16,7 @@ interface User {
   id: string;
 }
 
-const ProfileScreen = ({ navigation }: Props) => {
+const PersonalScreen = ({ navigation }: Props) => {
   const [user, setUser] = useState<User | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -64,14 +64,14 @@ const ProfileScreen = ({ navigation }: Props) => {
   if (!user) {
     return (
       <View style={styles.container}>
-        <Text>Loading account...</Text>
+        <Text>Loading profile...</Text>
       </View>
     );
   }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }}>
-      <Text style={styles.title}>Account</Text>
+      <Text style={styles.title}>Profile</Text>
 
       {user.avatarBase64 ? (
         <Image
@@ -87,48 +87,24 @@ const ProfileScreen = ({ navigation }: Props) => {
       <Text>Wallet Balance: {user.walletBalance}</Text>
 
       <View style={styles.buttons}>
-        <Button title="Profile" onPress={() => navigation.navigate('Personal')} />
-        {/* <Button title="Edit Profile" onPress={() => navigation.navigate('EditProfile')} /> */}
+        <Button title="Edit Profile" onPress={() => navigation.navigate('EditProfile')} />
         <View style={{ height: 10 }} />
-        <Button title="Browse Properties" onPress={() => navigation.navigate('Properties')} />
-             <View style={{ height: 10 }} />
-        <Button title="My Investments Applications" onPress={() => navigation.navigate('InvestmentApplications')} />
+        <Button title="Upload KYC" onPress={() => navigation.navigate('UploadKyc')} />
         <View style={{ height: 10 }} />
-        <Button title="My Investments" onPress={() => navigation.navigate('Investments')} />
+        <Button title="Top Up Balance" onPress={() => navigation.navigate('TopUp')} />
         <View style={{ height: 10 }} />
-        <Button title="Withdraw Funds" onPress={() => navigation.navigate('Withdraw')} />
-        <View style={{ height: 10 }} />
-        <Button title="Stake History" onPress={() => navigation.navigate('MyInvestments')} />
-        <View style={{ height: 10 }} />
-        <Button title="My Properties" onPress={() => navigation.navigate('MyProperties')} />
-        <View style={{ height: 10 }} />
-        <Button title="Withdrawal History" onPress={() => navigation.navigate('MyWithdrawals')} />
-        <View style={{ height: 10 }} />
-        {/* <Button title="Upload KYC" onPress={() => navigation.navigate('UploadKyc')} />
-        <View style={{ height: 10 }} /> */}
-        {/* <Button title="Top Up Balance" onPress={() => navigation.navigate('TopUp')} />
-        <View style={{ height: 10 }} /> */}
-        {/* <Button
+        <Button
           title={`Inbox Messages${unreadCount > 0 ? ` (${unreadCount})` : ''}`}
           onPress={() => navigation.navigate('Inbox')}
         />
-        <View style={{ height: 10 }} /> */}
-        {/* <Button title="Change Password" onPress={() => navigation.navigate('ChangePassword')} />
-        <View style={{ height: 10 }} /> */}
-        <Button
-          title="Go to Share Marketplace"
-          onPress={() => navigation.navigate('ShareMarketplaces')}
-        />
-         <View style={{ height: 10 }} />
-        {/* todo подумать <Button
-          title="🔐 Test Password Reset - dunno will remove"
-          onPress={() => navigation.navigate('ResetPassword')}
-        /> */}
-          {/* <Button
+        <View style={{ height: 10 }} />
+        <Button title="Change Password" onPress={() => navigation.navigate('ChangePassword')} />
+        <View style={{ height: 10 }} />
+          <Button
             title="📜 Transaction History"
             onPress={() => navigation.navigate('UserTransactions')}
           />
-        <View style={{ height: 10 }} /> */}
+        <View style={{ height: 10 }} />
         <Button title="Logout" onPress={handleLogout} color="red" />
       </View>
     </ScrollView>
@@ -153,4 +129,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ProfileScreen;
+export default PersonalScreen;

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet } from 'react-native';
+import { View, Text, FlatList, StyleSheet,Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
 
@@ -15,11 +15,14 @@ const MyPropertiesScreen = () => {
 
   useEffect(() => {
     const loadData = async () => {
-      const stored = await AsyncStorage.getItem('user');
-      if (!stored) return;
+       
+        const stored = await AsyncStorage.getItem('user');
+      if (!stored) {return Alert.alert('Error', 'No user found');}
 
       const user = JSON.parse(stored);
-      const response = await api.get(`/investment/my-properties/${user.userId}`);
+ 
+      const response = await api.get(`/properties/my-properties/${user.userId}`);
+      
       setProperties(response.data);
     };
 

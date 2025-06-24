@@ -8,6 +8,8 @@ using RealEstateInvestment.Services;
 using Newtonsoft.Json;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authorization;
+using RealEstateInvestment.Enums;
+using Org.BouncyCastle.Asn1.Ocsp;
 
 namespace RealEstateInvestment.Controllers
 { 
@@ -170,6 +172,16 @@ namespace RealEstateInvestment.Controllers
                 Details = $"Wallet topped up on {req.Amount} USD"
             });
 
+            _context.UserTransactions.Add(new UserTransaction
+            {
+                Id = Guid.NewGuid(),
+                UserId = req.UserId,
+                Type = TransactionType.Deposit,
+                Amount = req.Amount,
+                Timestamp = DateTime.UtcNow,
+                Notes = $"Wallet topped up on {req.Amount} USD"
+            });
+
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Balance updated" });
@@ -286,12 +298,48 @@ namespace RealEstateInvestment.Controllers
 
             return Ok(new { message = "Avatar updated" });
         }
-
+         
         // todo move
         public class AvatarRequest
         {
             public string Base64Image { get; set; }
         }
+
+            [HttpGet("transactions/user/{userId}")]
+            public async Task<IActionResult> GetUserTransactions(Guid userId,
+                                                                [FromQuery] TransactionType? type,
+                                                                [FromQuery] DateTime? from,
+                                                                [FromQuery] DateTime? to)
+            {
+                var query = _context.UserTransactions
+                    .Where(t => t.UserId == userId);
+
+            if (type.HasValue)
+                query = query.Where(t => t.Type == type.Value);
+
+            if (from.HasValue)
+                    query = query.Where(t => t.Timestamp >= from.Value);
+
+                if (to.HasValue)
+                    query = query.Where(t => t.Timestamp <= to.Value);
+
+            var list = await query
+                          .OrderByDescending(t => t.Timestamp)
+                          .Select(t => new
+                          {
+                              t.Id,
+                              t.Type,
+                              t.Amount,
+                              t.Shares,
+                              t.PropertyId,
+                              t.PropertyTitle,
+                              t.Timestamp,
+                              t.Notes
+                          })
+                          .ToListAsync();
+
+            return Ok(list);
+            }
 
         // google
         //[HttpPost("register")]
@@ -334,7 +382,7 @@ namespace RealEstateInvestment.Controllers
         //        CreatedAt = DateTime.UtcNow,
         //        ExpiresAt = DateTime.UtcNow.AddHours(24)
         //    });
-             
+
         //    var confirmUrl = $"https://sell-estate.onrender.com/api/user/confirm-email?token={token}"; // todo set to add conf- frontend-URL  
 
         //    await _emailService.SendEmailAsync(user.Email, "Confirm your email",

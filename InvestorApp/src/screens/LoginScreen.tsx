@@ -74,7 +74,7 @@ const LoginScreen = ({ navigation }: Props) => {
         <Text style={styles.title}>Login to real-estate app</Text>
         <StyledInput
           style={styles.input}
-          holder="Email"
+          placeholder="Email"
           value={email}
           autoCapitalize="none"
           keyboardType="email-address"
@@ -132,6 +132,42 @@ const LoginScreen = ({ navigation }: Props) => {
           ➤ Login as Test User
         </Text>
 
+          <Text onPress={async () => {
+          try {
+
+            const response = await api.post('/auth/login', {
+              email: 'user2@example.com',
+              password: 'securepassword',
+            });
+
+            await AsyncStorage.setItem('user', JSON.stringify(response.data));
+            navigation.navigate('Profile');
+
+          } catch (err) {
+            Alert.alert('Error', 'Failed to log in as user2@example.com');
+          }
+        }} style={styles.userLink2}>
+          ➤ Login as Test User2
+        </Text>
+
+        <Text onPress={async () => {
+          try {
+
+            const response = await api.post('/auth/login', {
+              email: 'user3@example.com',
+              password: 'securepassword',
+            });
+
+            await AsyncStorage.setItem('user', JSON.stringify(response.data));
+            navigation.navigate('Profile');
+
+          } catch (err) {
+            Alert.alert('Error', 'Failed to log in as user3@example.com');
+          }
+        }} style={styles.userLink3}>
+          ➤ Login as Test User3
+        </Text>
+
         {/* <Button title="Test API" onPress={testApi} color="orange" /> */}
       </View>
     </ImageBackground>
@@ -170,6 +206,18 @@ const styles = StyleSheet.create({
   userLink: {
     marginTop: 10,
     color: 'red',
+    textAlign: 'center',
+    fontWeight: 'bold',
+  },
+  userLink2: {
+    marginTop: 10,
+    color: 'black',
+    textAlign: 'center',
+    fontWeight: 'bold',
+  },
+   userLink3: {
+    marginTop: 10,
+    color: 'orange',
     textAlign: 'center',
     fontWeight: 'bold',
   },

@@ -1,7 +1,11 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Org.BouncyCastle.Asn1.Ocsp;
+using Org.BouncyCastle.Ocsp;
+using Org.BouncyCastle.Utilities;
 using RealEstateInvestment.Data;
+using RealEstateInvestment.Enums;
 using RealEstateInvestment.Models;
 using RealEstateInvestment.Services;
 
@@ -235,13 +239,26 @@ namespace RealEstateInvestment.Controllers
                 superUserInvestment.InvestedAmount += amount;
             }
 
+            _context.UserTransactions.Add(new UserTransaction
+            {
+                Id = Guid.NewGuid(),
+                UserId = request.UserId,
+                Type = TransactionType.Buyback,
+                Amount = amount,
+                Shares = totalSharesToSell,
+                PropertyId = property.Id,
+                PropertyTitle = property.Title,
+                Timestamp = DateTime.UtcNow,
+                Notes = "Sell to platform"
+            });
+             
             _context.ActionLogs.Add(new ActionLog
             {
                 UserId = request.UserId,
                 Action = "SellToPlatform",
                 Details = $"Sold {totalSharesToSell} shares for {amount:F2} USD from property '{property.Title}'"
             });
-
+             
             await _context.SaveChangesAsync();
             return Ok(new { shares = totalSharesToSell, amount });
         }
@@ -352,6 +369,30 @@ namespace RealEstateInvestment.Controllers
                 RecipientId = seller.Id,
                 Title = "Your lot  is sold",
                 Content = $"Item \"{property.Title}\" was sold. Sum: {totalCost:F2} USD."
+            });
+            _context.UserTransactions.Add(new UserTransaction
+            {
+                Id = Guid.NewGuid(),
+                UserId = seller.Id,
+                Type = TransactionType.ShareMarketSell,
+                Amount = totalCost,
+                Shares = sharesToBuy,
+                PropertyId = property.Id,
+                PropertyTitle = property.Title,
+                Timestamp = DateTime.UtcNow,
+                Notes = "Lot  is sold"
+            });
+            _context.UserTransactions.Add(new UserTransaction
+            {
+                Id = Guid.NewGuid(),
+                UserId = buyer.Id,
+                Type = TransactionType.ShareMarketBuy,
+                Amount = totalCost,
+                Shares = sharesToBuy,
+                PropertyId = property.Id,
+                PropertyTitle = property.Title,
+                Timestamp = DateTime.UtcNow,
+                Notes = "Lot buy"
             });
 
             var bidParticipants = await _context.ShareOfferBids

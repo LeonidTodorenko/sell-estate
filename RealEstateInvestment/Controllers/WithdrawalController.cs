@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RealEstateInvestment.Data;
+using RealEstateInvestment.Enums;
 using RealEstateInvestment.Models;
 
 namespace RealEstateInvestment.Controllers
@@ -36,6 +37,17 @@ namespace RealEstateInvestment.Controllers
                 Action = "RequestWithdrawal",
                 Details = "New request withdrawal amount: " + request.Amount
             });
+            _context.UserTransactions.Add(new UserTransaction
+            {
+                Id = Guid.NewGuid(),
+                UserId = request.UserId,
+                Type = TransactionType.Withdrawal,
+                Amount = request.Amount,
+                
+                Timestamp = DateTime.UtcNow,
+                Notes = "Request withdrawal"
+            });
+
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Withdrawal request submitted" });
@@ -55,7 +67,21 @@ namespace RealEstateInvestment.Controllers
                 Action = "ApproveWithdrawal",
                 Details = "Request approved on id:" + id.ToString()
             });
+
+            _context.UserTransactions.Add(new UserTransaction
+            {
+                Id = Guid.NewGuid(),
+                UserId = request.UserId,
+                Type = TransactionType.Withdrawal,
+                Amount = request.Amount,
+ 
+                Timestamp = DateTime.UtcNow,
+                Notes = "Withdrawal request  approved "
+            });
+
             await _context.SaveChangesAsync();
+
+       
 
             return Ok(new { message = "Conclusion approved" });
         }
@@ -80,6 +106,17 @@ namespace RealEstateInvestment.Controllers
                 Action = "RejectWithdrawal",
                 Details = "Request rejected on id:" + id.ToString()
             });
+            _context.UserTransactions.Add(new UserTransaction
+            {
+                Id = Guid.NewGuid(),
+                UserId = request.UserId,
+                Type = TransactionType.Withdrawal,
+                Amount = request.Amount,
+       
+                Timestamp = DateTime.UtcNow,
+                Notes = "Request rejected"
+            });
+
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Conclusion rejected" });

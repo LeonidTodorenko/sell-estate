@@ -26,6 +26,7 @@ namespace RealEstateInvestment.Data
         public DbSet<ShareOfferBid> ShareOfferBids { get; set; }
         public DbSet<SystemSetting> SystemSettings { get; set; }
         public DbSet<ShareTransaction> ShareTransactions { get; set; }
+        public DbSet<UserTransaction> UserTransactions { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

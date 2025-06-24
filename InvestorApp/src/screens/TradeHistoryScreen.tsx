@@ -57,10 +57,12 @@ const TradeHistoryScreen = () => {
 
   const uniqueProperties = [...new Set(trades.map(t => t.propertyTitle))];
 
+  const sortedTrades = [...filteredTrades].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
   const chartData = {
-    labels: filteredTrades.map(t => new Date(t.timestamp).toLocaleDateString()),
+    labels: sortedTrades.map(t => new Date(t.timestamp).toLocaleDateString()),
     datasets: [{
-      data: filteredTrades.map(t => t.pricePerShare),
+      data: sortedTrades.map(t => t.pricePerShare),
       color: () => '#0080FF',
       strokeWidth: 2,
     }]

@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { View,Modal,  Text, TextInput, Button, ScrollView, StyleSheet, Alert } from 'react-native';
+import { View,Modal,  Text, Button, ScrollView, StyleSheet, Alert } from 'react-native';
 import StyledInput from '../components/StyledInput';
 import api from '../api';
 
 export interface NewPaymentPlan {
   milestone: string;
   dueDate: string;
+  eventDate: string;
   installmentCode: string;
   percentage: number;
   amountDue: number;
@@ -29,7 +30,7 @@ const AddPaymentPlanModal = ({ visible, onClose, propertyId, onAdded }: AddPayme
   };
 
   const handleSave = async () => {
-    if (!plan.milestone || !plan.dueDate || !plan.installmentCode) {
+    if (!plan.milestone || !plan.dueDate || !plan.eventDate || !plan.installmentCode) {
       Alert.alert('Error', 'Please fill required fields.');
       return;
     }
@@ -38,6 +39,7 @@ const AddPaymentPlanModal = ({ visible, onClose, propertyId, onAdded }: AddPayme
       ...plan,
       total: (plan.amountDue || 0) + (plan.vat || 0),
       dueDate: new Date(plan.dueDate).toISOString(),
+      eventDate: new Date(plan.eventDate).toISOString(),
     };
 
     try {
@@ -62,6 +64,24 @@ const AddPaymentPlanModal = ({ visible, onClose, propertyId, onAdded }: AddPayme
           style={styles.input}
           value={plan.milestone}
           onChangeText={(text) => setPlan(p => ({ ...p, milestone: text }))}
+        />
+
+        <StyledInput
+          placeholder="Event Date (YYYYMMDD)"
+          style={styles.input}
+          keyboardType="numeric"
+          value={plan.eventDate}
+          onChangeText={(text) => {
+            const numbersOnly = text.replace(/\D/g, '');
+            let formatted = numbersOnly;
+            if (numbersOnly.length > 4) {
+              formatted = numbersOnly.slice(0, 4) + '-' + numbersOnly.slice(4);
+            }
+            if (numbersOnly.length > 6) {
+              formatted = numbersOnly.slice(0, 4) + '-' + numbersOnly.slice(4, 6) + '-' + numbersOnly.slice(6, 8);
+            }
+            setPlan(p => ({ ...p, eventDate: formatted }));
+          }}
         />
 
         <StyledInput
