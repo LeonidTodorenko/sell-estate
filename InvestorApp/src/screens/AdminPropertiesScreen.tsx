@@ -27,6 +27,7 @@ interface Property {
   title: string;
   location: string;
   price: number;
+  realPrice : number;
   totalShares: number;
   availableShares: number;
   status: string;
@@ -181,6 +182,9 @@ const AdminPropertiesScreen = () => {
           <Text>🏠 {item.title}</Text>
           <Text>📍 {item.location}</Text>
           <Text>💰 {item.price} USD</Text>
+          {item.realPrice && (
+           <Text>💰 Real price: {item.realPrice} USD</Text>
+           )}
           <Text>📊 {item.availableShares}/{item.totalShares} Shares</Text>
           <Text>💵 Upfront Payment: {item.upfrontPayment}</Text>
           <Text>🗓 Deadline: {new Date(item.applicationDeadline).toLocaleDateString()}</Text>

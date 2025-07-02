@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, TextInput, Button } from 'react-native';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, Button } from 'react-native';
 import api from '../api';
 import StyledInput from '../components/StyledInput';
 

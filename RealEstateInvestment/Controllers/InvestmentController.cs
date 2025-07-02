@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Org.BouncyCastle.Asn1.Ocsp;
+using Org.BouncyCastle.Utilities;
 using RealEstateInvestment.Data;
 using RealEstateInvestment.Enums;
 using RealEstateInvestment.Models;
@@ -114,14 +115,14 @@ namespace RealEstateInvestment.Controllers
                 if (req.PinOrPassword != user.PasswordHash) // TODO: hash
                     return BadRequest(new { message = "Invalid password" });
             }
-             
+
 
             // Проверка, что есть активный этап
             var now = DateTime.UtcNow;
             var step = property.PaymentPlans?
                 .FirstOrDefault(p => p.EventDate <= now && now <= p.DueDate);
-             if (step == null)
-                 return BadRequest(new { message = "No active payment step" }); // todo убрать потом
+            if (step == null)
+                return BadRequest(new { message = "No active payment step" }); // todo убрать потом
 
             //if (DateTime.UtcNow > property.ApplicationDeadline)
             //    return BadRequest(new { message = "The application deadline has expired" });
@@ -139,8 +140,8 @@ namespace RealEstateInvestment.Controllers
             // Если это первый шаг — сохраняем как заявку
             var minEventDate = property.PaymentPlans.Min(p => p.EventDate);
 
-            if (DateTime.UtcNow < minEventDate )
-              return BadRequest(new { message = "The application date in not started yet, please try again later." });
+            if (DateTime.UtcNow < minEventDate)
+                return BadRequest(new { message = "The application date in not started yet, please try again later." });
 
             if (step.EventDate == minEventDate)
             {
@@ -166,7 +167,7 @@ namespace RealEstateInvestment.Controllers
                     Status = "pending",
                     CreatedAt = now
                 };
-                 
+
                 _context.InvestmentApplications.Add(app);
 
                 _context.ActionLogs.Add(new ActionLog
@@ -388,7 +389,7 @@ namespace RealEstateInvestment.Controllers
 
             return Ok(investments);
         }
-         
+
         [HttpGet("all")]
         public async Task<IActionResult> GetAllInvestments()
         {
@@ -463,10 +464,23 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("with-aggregated/{userId}")]
         public async Task<IActionResult> GetUserAggregatedInvestments(Guid userId)
         {
+
+            var onMarket = await (
+                   from o in _context.ShareOffers
+                   where o.SellerId == userId && o.IsActive
+                   group o by o.PropertyId into g
+                   select new
+                   {
+                       PropertyId = g.Key,
+                       MarketShares = g.Sum(x => x.SharesForSale)
+                   }
+               ).ToListAsync();
+
+
             var confirmed = await (
                     from i in _context.Investments
                     join p in _context.Properties on i.PropertyId equals p.Id
-                    where i.UserId == userId
+                    where i.UserId == userId && i.Shares > 0
                     group new { i, p } by new { i.PropertyId, p.Title, p.Price } into g
                     select new
                     {
@@ -481,7 +495,7 @@ namespace RealEstateInvestment.Controllers
             var pending = await (
                     from a in _context.InvestmentApplications
                     join p in _context.Properties on a.PropertyId equals p.Id
-                    where a.UserId == userId && a.Status == "pending"
+                    where a.UserId == userId && a.Status == "pending" && a.RequestedShares > 0
                     group new { a, p } by new { a.PropertyId } into g
                     select new
                     {
@@ -494,6 +508,8 @@ namespace RealEstateInvestment.Controllers
             var merged = confirmed.Select(c =>
             {
                 var p = pending.FirstOrDefault(x => x.PropertyId == c.PropertyId);
+                var m = onMarket.FirstOrDefault(x => x.PropertyId == c.PropertyId);
+
                 return new
                 {
                     c.PropertyId,
@@ -501,26 +517,11 @@ namespace RealEstateInvestment.Controllers
                     TotalShares = c.ConfirmedShares + (p?.PendingShares ?? 0),
                     ConfirmedShares = c.ConfirmedShares,
                     ConfirmedApplications = (p?.PendingCount ?? 0),
+                    MarketShares = m?.MarketShares ?? 0,
                     TotalInvested = c.ConfirmedAmount,
                     c.OwnershipPercent
                 };
             });
-
-            //var result = await (
-            //    from i in _context.Investments
-            //    join p in _context.Properties on i.PropertyId equals p.Id
-            //    where i.UserId == userId
-            //    group new { i, p } by new { i.PropertyId, p.Title, p.Price } into g
-            //    select new
-            //    {
-            //        PropertyId = g.Key.PropertyId,
-            //        PropertyTitle = g.Key.Title,
-            //        TotalShares = g.Sum(x => x.i.Shares),
-            //        TotalInvested = g.Sum(x => x.i.InvestedAmount),
-            //        FirstInvestmentDate = g.Min(x => x.i.CreatedAt),
-            //        OwnershipPercent = Math.Round(g.Sum(x => x.i.InvestedAmount) / g.Key.Price * 100, 2)
-            //    }
-            //).ToListAsync();
 
             return Ok(merged);
         }

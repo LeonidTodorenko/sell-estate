@@ -19,6 +19,7 @@ interface User {
 const ProfileScreen = ({ navigation }: Props) => {
   const [user, setUser] = useState<User | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  
 
   useEffect(() => {
     const loadUser = async () => {

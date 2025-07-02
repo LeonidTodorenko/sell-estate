@@ -14,6 +14,7 @@ interface Investment {
   propertyTitle: string;
   totalShares: number;
   totalInvested: number;
+  marketShares: number;
   ownershipPercent: number;
   confirmedShares: number;
   confirmedApplications: number;
@@ -74,10 +75,13 @@ const InvestmentsScreen = () => {
           <View style={styles.card}>
             <Text style={styles.name}>🏠 {item.propertyTitle}</Text>
             <Text>💰 Invested: {item.totalInvested} USD</Text>
-            <Text>📊 Shares: {item.totalShares}</Text>
-            <Text style={{ color: 'gray' }}>
-              ✔️ Confirmed: {item.confirmedApplications} applications, {item.confirmedShares} shares
-            </Text>
+            <Text>📊 Shares: {item.totalShares} <Text style={{ color: 'gray' }}>( {item.confirmedApplications} applications, {item.confirmedShares}  сonfirmed shares) </Text></Text> 
+            {item.marketShares > 0 && (
+              <Text style={{ color: 'orange' }}>⚠️ {item.marketShares} shares are currently listed for sale</Text>
+            )}
+            {/* <Text style={{ color: 'gray' }}>
+              ✔️ Confirmed: {item.confirmedApplications} applications, {item.confirmedShares}  сonfirmed shares
+            </Text> */}
             <Text>📈 Ownership: {item.ownershipPercent}%</Text>
             {imagesMap[item.propertyId] && imagesMap[item.propertyId].length > 0 && (
               <View style={styles.carouselContainer}>

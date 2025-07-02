@@ -31,6 +31,7 @@ interface Property {
   title: string;
   images?: PropertyImage[];
   priorityInvestorId?: string;
+  hasPaymentPlan?: boolean;
 }
 
 interface UserMap {
@@ -49,13 +50,20 @@ const PropertyListScreen = () => {
     const loadProperties = async () => {
       try {
         const res = await api.get('/properties');
-        const propertiesWithImages = await Promise.all(
+        const propertiesWithExtras = await Promise.all(
           res.data.map(async (p: Property) => {
-            const imgRes = await api.get(`/properties/${p.id}/images`);
-            return { ...p, images: imgRes.data };
+            const [imgRes, paymentPlanRes] = await Promise.all([
+              api.get(`/properties/${p.id}/images`),
+              api.get(`/properties/${p.id}/payment-plan`),
+            ]);
+            return {
+              ...p,
+              images: imgRes.data,
+              hasPaymentPlan: paymentPlanRes.data && paymentPlanRes.data.length > 0,
+            };
           })
         );
-        setProperties(propertiesWithImages);
+        setProperties(propertiesWithExtras);
 
         const userResponses = await api.get('/properties/with-stats');
         const userIds = userResponses.data.filter((p: Property) => p.priorityInvestorId).map((p: Property) => p.priorityInvestorId);
@@ -135,7 +143,8 @@ const PropertyListScreen = () => {
             <Button title="📄 View Payment Plan" onPress={() => navigation.navigate('PaymentPlan', { propertyId: item.id, readonly: true })} />
             <View style={{ height: 10 }} />
             <Button
-              title="Invest"
+              title={item.hasPaymentPlan ? "Invest" : "Object not active"}
+              disabled={!item.hasPaymentPlan}
               onPress={() =>
                 navigation.navigate('BuyShares', {
                   propertyId: item.id,
@@ -143,6 +152,9 @@ const PropertyListScreen = () => {
                 })
               }
             />
+            {/* {!item.hasPaymentPlan && (
+              <Text style={{ color: 'red', marginTop: 5 }}>Object not active</Text>
+            )} */}
             <View style={{ height: 10 }} />
           </View>
         )}

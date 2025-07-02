@@ -16,6 +16,8 @@ namespace RealEstateInvestment.Models
         [Required]
         public decimal Price { get; set; }
 
+        public decimal? RealPrice { get; set; }
+
         [Required]
         public int TotalShares { get; set; }
 

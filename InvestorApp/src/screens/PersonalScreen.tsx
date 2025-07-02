@@ -5,6 +5,8 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import theme from '../constants/theme';
 import api from '../api';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback } from 'react';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Personal'>;
 
@@ -19,6 +21,39 @@ interface User {
 const PersonalScreen = ({ navigation }: Props) => {
   const [user, setUser] = useState<User | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  
+  useFocusEffect(
+    useCallback(() => {
+        const fetchAndRefresh = async () => {
+          try {
+            const stored = await AsyncStorage.getItem('user');
+            if (stored) {
+              const parsed = JSON.parse(stored);
+              setUser(parsed);
+              try {
+                  const res = await api.get(`/users/${parsed.userId}`);
+                  const updatedUser = res.data;
+                  setUser(updatedUser);
+                  await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+                  fetchUnreadCount(parsed.userId);
+                } catch (error: any) {
+                  let message = error.message || 'Failed to refresh user';
+                  Alert.alert('Error', message);
+                }
+            } else {
+              // todo add console log Alert.alert('No session', 'Please log in again');
+          navigation.replace('Login');
+            }
+          } catch (error: any) {
+             let message = error.message || 'Unexpected error loading user';
+            Alert.alert('Error', 'Failed to load or refresh user' + message);
+          }
+        };
+
+        fetchAndRefresh();
+      }, [navigation])
+  );
+
 
   useEffect(() => {
     const loadUser = async () => {
@@ -68,6 +103,9 @@ const PersonalScreen = ({ navigation }: Props) => {
       </View>
     );
   }
+
+
+
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }}>

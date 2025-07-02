@@ -205,6 +205,36 @@ namespace RealEstateInvestment.Controllers
             return Ok(user);
         }
 
+        [HttpGet("{userId}/total-assets")]
+        public async Task<IActionResult> GetTotalAssets(Guid userId)
+        {
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null) return NotFound(new { message = "User not found" });
+
+            var totalInvested = await (
+                from i in _context.Investments
+                join p in _context.Properties on i.PropertyId equals p.Id
+                where i.UserId == userId && i.Shares > 0
+                select new
+                {
+                    i.Shares,
+                    p.Price,
+                    ShareValue = p.Price / p.TotalShares  
+                }
+            ).ToListAsync();
+
+            decimal investmentValue = totalInvested.Sum(x => x.ShareValue * x.Shares);
+            decimal wallet = user.WalletBalance;
+
+            return Ok(new
+            {
+                walletBalance = wallet,
+                investmentValue,
+                totalAssets = wallet + investmentValue
+            });
+        }
+
+
 
         // todo move
         public class UpdateProfileRequest

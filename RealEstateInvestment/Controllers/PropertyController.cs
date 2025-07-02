@@ -36,19 +36,26 @@ namespace RealEstateInvestment.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateProperty([FromBody] Property property)
         {
-            if (property.TotalShares <= 0)
-                return BadRequest(new { message = "TotalShares must be greater than 0" });
+            //if (property.TotalShares <= 0)
+            //    return BadRequest(new { message = "TotalShares must be greater than 0" });
              
 
-            if (property.AvailableShares < 0)
-                return BadRequest(new { message = "AvailableShares cannot be negative" });
+            //if (property.AvailableShares < 0)
+            //    return BadRequest(new { message = "AvailableShares cannot be negative" });
 
-            if (property.AvailableShares > property.TotalShares)
-                return BadRequest(new { message = "AvailableShares cannot exceed TotalShares" });
+            //if (property.AvailableShares > property.TotalShares)
+            //    return BadRequest(new { message = "AvailableShares cannot exceed TotalShares" });
 
             if (property.Price <= 0)
                 return BadRequest(new { message = "Price must be positive" });
 
+            // totalShares считается автоматически: округляется вверх
+            property.TotalShares = (int)Math.Ceiling(property.Price / 1000m);
+            property.AvailableShares = property.TotalShares;
+
+            property.RealPrice = property.Price; // сохраняем оригинальную цену
+            property.Price = property.TotalShares * 1000; // округляем до ближайшего 1000
+             
             var sharePrice = property.Price / property.TotalShares;
 
             if (sharePrice < 1000)
@@ -68,7 +75,7 @@ namespace RealEstateInvestment.Controllers
                 {
                     UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add admin guid later
                     Action = "CreateProperty",
-                    Details = "Property created: " + property.Title
+                    Details = $"Created: {property.Title} with shares: {property.TotalShares}"
                  });
                 await _context.SaveChangesAsync();
             }
