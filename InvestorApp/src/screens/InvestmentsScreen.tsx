@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, {  useState, useCallback } from 'react';
 import { View, Text, FlatList, StyleSheet, Alert, Image, TouchableOpacity,Button } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
@@ -8,6 +8,7 @@ import { RootStackParamList } from '../navigation/AppNavigator';
 import { useLoading } from '../contexts/LoadingContext';
 import Swiper from 'react-native-swiper';
 import Modal from 'react-native-modal';
+import { useFocusEffect } from '@react-navigation/native';
 
 interface Investment {
   propertyId: string;
@@ -62,9 +63,15 @@ const InvestmentsScreen = () => {
     }
   }, [setLoading]);
 
-  useEffect(() => {
+  // useEffect(() => {
+  //   loadInvestments();
+  // }, [loadInvestments]);
+
+  useFocusEffect(
+  useCallback(() => {
     loadInvestments();
-  }, [loadInvestments]);
+  }, [loadInvestments])
+);
 
   return (
     <View style={styles.container}>

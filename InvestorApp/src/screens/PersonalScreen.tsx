@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { View, Text, Button, StyleSheet, Alert, Image, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -21,7 +21,21 @@ interface User {
 const PersonalScreen = ({ navigation }: Props) => {
   const [user, setUser] = useState<User | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
-  
+  const [investmentValue, setInvestmentValue] = useState<number | null>(null);
+  const [totalAssets, setTotalAssets] = useState<number | null>(null);
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
+
+  const fetchTotalAssets = async (userId: string) => {
+  try {
+    const res = await api.get(`/users/${userId}/total-assets`);
+    setTotalAssets(res.data.totalAssets);
+        setInvestmentValue(res.data.investmentValue);
+        setWalletBalance(res.data.walletBalance);
+  } catch (error: any) {
+    console.error('Failed to fetch total assets', error);
+  }
+};
+
   useFocusEffect(
     useCallback(() => {
         const fetchAndRefresh = async () => {
@@ -30,10 +44,8 @@ const PersonalScreen = ({ navigation }: Props) => {
             if (stored) {
               const parsed = JSON.parse(stored);
               setUser(parsed);
-              
-                   
                   fetchUnreadCount(parsed.userId);
-                
+                      fetchTotalAssets(parsed.userId);
             } else {
               // todo add console log Alert.alert('No session', 'Please log in again');
           navigation.replace('Login');
@@ -117,7 +129,13 @@ const PersonalScreen = ({ navigation }: Props) => {
 
       <Text>Full Name: {user.fullName}</Text>
       <Text>Email: {user.email}</Text>
-      <Text>Wallet Balance: {user.walletBalance}</Text>
+      <Text>Wallet Balance: {walletBalance}</Text>
+        {investmentValue !== null && (
+              <Text>Investment Value: {investmentValue.toFixed(2)}</Text>
+            )}
+            {totalAssets !== null && (
+              <Text>Total Assets: {totalAssets.toFixed(2)}</Text>
+            )}
 
       <View style={styles.buttons}>
         <Button title="Edit Profile" onPress={() => navigation.navigate('EditProfile')} />

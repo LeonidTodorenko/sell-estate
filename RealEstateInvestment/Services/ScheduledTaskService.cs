@@ -161,6 +161,8 @@ namespace RealEstateInvestment.Services
                     {
                         foreach (var app in applications)
                         {
+                            if (app.Status == "accepted")
+                                continue;
 
                             // todo пока проверку убрали if (totalAllocated + app.RequestedAmount <= step.Total)
                             {

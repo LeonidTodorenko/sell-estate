@@ -8,6 +8,7 @@ import {
   Image,
   TouchableOpacity,
   Modal,
+  Alert,
 } from 'react-native';
 import Swiper from 'react-native-swiper';
 import api from '../api';
@@ -50,11 +51,12 @@ const PropertyListScreen = () => {
     const loadProperties = async () => {
       try {
         const res = await api.get('/properties');
+        
         const propertiesWithExtras = await Promise.all(
           res.data.map(async (p: Property) => {
             const [imgRes, paymentPlanRes] = await Promise.all([
               api.get(`/properties/${p.id}/images`),
-              api.get(`/properties/${p.id}/payment-plan`),
+              api.get(`/properties/${p.id}/payment-plans`),
             ]);
             return {
               ...p,
@@ -79,9 +81,19 @@ const PropertyListScreen = () => {
         }
 
         setUserMap(map);
-      } catch (error) {
-        console.error('Failed to load properties', error);
       }
+       catch (error: any) {
+                   let message = 'Failed to load properties ';
+                        console.error(error);
+                        if (error.response && error.response.data) {
+                          message = JSON.stringify(error.response.data);
+                        } else if (error.message) {
+                          message = error.message;
+                        }
+                        Alert.alert('Error', 'Failed to load properties ' + message);
+                      console.error(message);
+                }
+     
     };
 
     loadProperties();

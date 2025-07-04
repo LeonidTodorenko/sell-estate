@@ -56,18 +56,18 @@ const PropertyFormScreen = ({ route, navigation }: Props) => {
   useFocusEffect(initializeForm);
 
   const handleSubmit = async () => {
-    if (!title || !location || !price || !totalShares) {
+    if (!title || !location || !price ) {
       Alert.alert('Validation', 'Please fill all required fields');
       return;
     }
 
-    const payload = {
+    let  payload: any = {
       title,
       location,
       price: parseFloat(price),
-      totalShares: parseInt(totalShares),
-      availableShares: parseInt(availableShares),
-      upfrontPayment: parseFloat(upfrontPayment) || 0,
+      //totalShares: totalShares != null ? parseInt(totalShares, 10) : 0,
+      //availableShares: availableShares != null ? parseInt(availableShares, 10) : 0,
+      upfrontPayment: upfrontPayment != null ?  parseFloat(upfrontPayment) || 0  : 0,
       applicationDeadline: new Date(deadline).toISOString(),
       listingType,
       buybackPricePerShare: parseFloat(buybackPricePerShare),
@@ -76,8 +76,14 @@ const PropertyFormScreen = ({ route, navigation }: Props) => {
       expectedCompletionDate: new Date(completionDate).toISOString(),
       monthlyRentalIncome: parseFloat(monthlyRentalIncome) || 0,
       lastPayoutDate: new Date(lastPayoutDate).toISOString(),
-      realPrice: parseFloat(realPrice) || parseFloat(price),
+      //realPrice: parseFloat(realPrice) || parseFloat(price),
     };
+
+    if (existing?.id) {
+      payload.totalShares = parseInt(totalShares, 10);
+      payload.availableShares = parseInt(availableShares, 10);
+      payload.realPrice = parseFloat(realPrice) || parseFloat(price);
+    }
 
     try {
       if (existing?.id) {
