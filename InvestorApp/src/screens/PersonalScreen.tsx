@@ -30,16 +30,10 @@ const PersonalScreen = ({ navigation }: Props) => {
             if (stored) {
               const parsed = JSON.parse(stored);
               setUser(parsed);
-              try {
-                  const res = await api.get(`/users/${parsed.userId}`);
-                  const updatedUser = res.data;
-                  setUser(updatedUser);
-                  await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+              
+                   
                   fetchUnreadCount(parsed.userId);
-                } catch (error: any) {
-                  let message = error.message || 'Failed to refresh user';
-                  Alert.alert('Error', message);
-                }
+                
             } else {
               // todo add console log Alert.alert('No session', 'Please log in again');
           navigation.replace('Login');
@@ -55,26 +49,27 @@ const PersonalScreen = ({ navigation }: Props) => {
   );
 
 
-  useEffect(() => {
-    const loadUser = async () => {
-      try {
-        const stored = await AsyncStorage.getItem('user');
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          setUser(parsed);
-          fetchUnreadCount(parsed.userId);
-        } else {
-          Alert.alert('No session', 'Please log in again');
-          navigation.replace('Login');
-        }
-      } catch (error: any) {
-        let message = error.message || 'Unexpected error loading user';
-        Alert.alert('Error', 'Failed to get user: ' + message);
-      }
-    };
+  // useEffect(() => {
+  //   const loadUser = async () => {
+  //     try {
+  //       const stored = await AsyncStorage.getItem('user');
+  //       if (stored) {
+  //         const parsed = JSON.parse(stored);
+  //         setUser(parsed);
+  //         fetchUnreadCount(parsed.userId);
+          
+  //       } else {
+  //         Alert.alert('No session', 'Please log in again');
+  //         navigation.replace('Login');
+  //       }
+  //     } catch (error: any) {
+  //       let message = error.message || 'Unexpected error loading user';
+  //       Alert.alert('Error', 'Failed to get user: ' + message);
+  //     }
+  //   };
 
-    loadUser();
-  }, [navigation]);
+  //   loadUser();
+  // }, [navigation]);
 
   const fetchUnreadCount = async (userId: string) => {
     try {

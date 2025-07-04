@@ -204,7 +204,7 @@ namespace RealEstateInvestment.Controllers
 
             return Ok(user);
         }
-
+         
         [HttpGet("{userId}/total-assets")]
         public async Task<IActionResult> GetTotalAssets(Guid userId)
         {
@@ -233,9 +233,7 @@ namespace RealEstateInvestment.Controllers
                 totalAssets = wallet + investmentValue
             });
         }
-
-
-
+         
         // todo move
         public class UpdateProfileRequest
         {

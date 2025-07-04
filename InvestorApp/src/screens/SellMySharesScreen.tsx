@@ -121,9 +121,17 @@ const SellMySharesScreen = () => {
       Alert.alert('Success', 'Offer listed on marketplace');
       setModalVisible(false);
       await fetchBuybackPrices(userId);
-    } catch {
-      Alert.alert('Error', 'Failed to create offer');
-    }
+    }  
+    catch (error: any) {
+          let message = 'Failed to create offer ';
+          console.error(error);
+          if (error.response && error.response.data) {
+            message = JSON.stringify(error.response.data);
+          } else if (error.message) {
+            message = error.message;
+          }
+          Alert.alert('Error', 'Failed to create offer ' + message);
+        }
   };
 
   return (

@@ -5,6 +5,8 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import theme from '../constants/theme';
 import api from '../api';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback } from 'react';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
 
@@ -19,28 +21,65 @@ interface User {
 const ProfileScreen = ({ navigation }: Props) => {
   const [user, setUser] = useState<User | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
-  
+const [investmentValue, setInvestmentValue] = useState<number | null>(null);
+const [totalAssets, setTotalAssets] = useState<number | null>(null);
+const [walletBalance, setWalletBalance] = useState<number | null>(null);
 
-  useEffect(() => {
-    const loadUser = async () => {
-      try {
-        const stored = await AsyncStorage.getItem('user');
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          setUser(parsed);
-          fetchUnreadCount(parsed.userId);
-        } else {
-          Alert.alert('No session', 'Please log in again');
-          navigation.replace('Login');
-        }
-      } catch (error: any) {
-        let message = error.message || 'Unexpected error loading user';
-        Alert.alert('Error', 'Failed to get user: ' + message);
-      }
-    };
+const fetchTotalAssets = async (userId: string) => {
+  try {
+    const res = await api.get(`/users/${userId}/total-assets`);
+    setTotalAssets(res.data.totalAssets);
+        setInvestmentValue(res.data.investmentValue);
+        setWalletBalance(res.data.walletBalance);
+  } catch (error: any) {
+    console.error('Failed to fetch total assets', error);
+  }
+};
 
-    loadUser();
-  }, [navigation]);
+ useFocusEffect(
+    useCallback(() => {
+        const fetchAndRefresh = async () => {
+          try {
+            const stored = await AsyncStorage.getItem('user');
+            if (stored) {
+              const parsed = JSON.parse(stored);
+              setUser(parsed);
+                  fetchUnreadCount(parsed.userId);
+                      fetchTotalAssets(parsed.userId);
+            } else {
+              // todo add console log Alert.alert('No session', 'Please log in again');
+              navigation.replace('Login');
+            }
+          } catch (error: any) {
+             let message = error.message || 'Unexpected error loading user';
+            Alert.alert('Error', 'Failed to get user ' + message);
+          }
+        };
+
+        fetchAndRefresh();
+      }, [navigation])
+  );
+  // useEffect(() => {
+  //   const loadUser = async () => {
+  //     try {
+  //       const stored = await AsyncStorage.getItem('user');
+  //       if (stored) {
+  //         const parsed = JSON.parse(stored);
+  //         setUser(parsed);
+  //         fetchUnreadCount(parsed.userId);
+  //          fetchTotalAssets(parsed.userId); 
+  //       } else {
+  //         Alert.alert('No session', 'Please log in again');
+  //         navigation.replace('Login');
+  //       }
+  //     } catch (error: any) {
+  //       let message = error.message || 'Unexpected error loading user';
+  //       Alert.alert('Error', 'Failed to get user: ' + message);
+  //     }
+  //   };
+
+  //   loadUser();
+  // }, [navigation]);
 
   const fetchUnreadCount = async (userId: string) => {
     try {
@@ -85,7 +124,13 @@ const ProfileScreen = ({ navigation }: Props) => {
 
       <Text>Full Name: {user.fullName}</Text>
       <Text>Email: {user.email}</Text>
-      <Text>Wallet Balance: {user.walletBalance}</Text>
+      <Text>Wallet Balance: {walletBalance}</Text>
+     {investmentValue !== null && (
+        <Text>Investment Value: {investmentValue.toFixed(2)}</Text>
+      )}
+      {totalAssets !== null && (
+        <Text>Total Assets: {totalAssets.toFixed(2)}</Text>
+      )}
 
       <View style={styles.buttons}>
         <Button title="Profile" onPress={() => navigation.navigate('Personal')} />
