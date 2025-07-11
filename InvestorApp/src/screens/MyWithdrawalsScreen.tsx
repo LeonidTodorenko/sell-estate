@@ -19,7 +19,7 @@ const MyWithdrawalsScreen = () => {
       if (!stored) return;
 
       const user = JSON.parse(stored);
-      const response = await api.get(`/withdrawal/user/${user.userId}`);
+      const response = await api.get(`/withdrawals/user/${user.userId}`);
       setWithdrawals(response.data);
     };
 

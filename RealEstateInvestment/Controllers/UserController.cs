@@ -233,7 +233,71 @@ namespace RealEstateInvestment.Controllers
                 totalAssets = wallet + investmentValue
             });
         }
-         
+
+        [HttpGet("{id}/assets-summary")]
+        public async Task<IActionResult> GetUserAssetSummary(Guid id)
+        {
+            var user = await _context.Users.FindAsync(id);
+            if (user == null)
+                return NotFound("User not found");
+
+            // Получаем подтверждённые инвестиции пользователя
+            var investments = await _context.Investments
+                .Where(i => i.UserId == id)
+                .Include(i => i.Property)
+                .ToListAsync();
+
+            decimal investmentValue = 0;
+
+            foreach (var inv in investments)
+            {
+               // var pricePerShare = inv.Property.BuybackPricePerShare > 0  ? inv.Property.BuybackPricePerShare  : inv.InvestedAmount / inv.Shares;
+                var pricePerShare = inv.Property.BuybackPricePerShare ?? (inv.InvestedAmount / inv.Shares);
+
+                investmentValue += inv.Shares * pricePerShare;
+            }
+
+            // График изменения активов на основе транзакций
+            var transactions = await _context.UserTransactions
+                .Where(t => t.UserId == id)
+                .OrderBy(t => t.Timestamp)
+                .ToListAsync();
+
+            var history = new List<object>();
+            decimal runningTotal = 0;
+
+            foreach (var tx in transactions)
+            {
+                var amount = tx.Type switch
+                {
+                    TransactionType.Deposit => tx.Amount,
+                    TransactionType.ShareMarketSell => tx.Amount,
+                    TransactionType.Investment => -tx.Amount,
+                    TransactionType.Withdrawal => -tx.Amount,
+                    TransactionType.Buyback => -tx.Amount,
+                    TransactionType.ShareMarketBuy => -tx.Amount,
+                    _ => 0
+                };
+
+                runningTotal += amount;
+
+                history.Add(new
+                {
+                    date = tx.Timestamp.ToString("yyyy-MM-dd"),
+                    total = Math.Round(runningTotal, 2)
+                });
+            }
+
+            return Ok(new
+            {
+                walletBalance = user.WalletBalance,
+                investmentValue = Math.Round(investmentValue, 2),
+                totalAssets = Math.Round(user.WalletBalance + investmentValue, 2),
+                assetHistory = history
+            });
+        }
+
+
         // todo move
         public class UpdateProfileRequest
         {
@@ -609,6 +673,18 @@ namespace RealEstateInvestment.Controllers
             await _context.SaveChangesAsync();
             return Ok(new { message = "Password has been reset" });
         }
+
+        [HttpGet("admin-id")]
+        public IActionResult GetAdminId()
+        {
+            // todo подумать как переделать на админа для чата или всем админам пока что хардкод
+            var admin = _context.Users.FirstOrDefault(u => u.Id == new Guid("815d8d09-a124-4b79-b38e-75b598316e9f") ); //_context.Users.FirstOrDefault(u => u.Role == "admin" && !u.IsBlocked);
+            if (admin == null)
+                return NotFound(new { message = "Admin not found" });
+
+            return Ok(new { adminId = admin.Id });
+        }
+
 
     }
 }

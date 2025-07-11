@@ -156,6 +156,8 @@ const PersonalScreen = ({ navigation }: Props) => {
             onPress={() => navigation.navigate('UserTransactions')}
           />
         <View style={{ height: 10 }} />
+          <Button title="Chat with admin" onPress={() => navigation.navigate('Chat')} />
+        <View style={{ height: 10 }} />
         <Button title="Logout" onPress={handleLogout} color="red" />
       </View>
     </ScrollView>

@@ -17,7 +17,7 @@ const WithdrawScreen = () => {
       if (!stored) return Alert.alert('Session error', 'User not found');
 
       const user = JSON.parse(stored);
-      await api.post('/withdrawal', {
+      await api.post('/withdrawals/request', {
         userId: user.userId,
         amount: parseFloat(amount),
       });

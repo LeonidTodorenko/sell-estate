@@ -42,6 +42,10 @@ import TradeHistoryScreen from '../screens/TradeHistoryScreen';
 import SuperUserScreen from '../screens/SuperUserScreen';
 import UserTransactionsScreen from '../screens/UserTransactionsScreen';
 import PersonalScreen from '../screens/PersonalScreen';
+import ChatScreen from '../screens/ChatScreen';
+import AdminChatScreen  from '../screens/AdminChatScreen';
+import MyInvestmentsScreen  from '../screens/MyInvestmentsScreen';
+import MyFinanceScreen  from '../screens/MyFinanceScreen';
 
 export type RootStackParamList = {
   Login: undefined;
@@ -83,6 +87,10 @@ export type RootStackParamList = {
   SuperUser: undefined;
   UserTransactions: undefined;
   Personal: undefined;
+  Chat: undefined;
+  AdminChat: undefined;
+  MyInvestments: undefined;
+  MyFinance: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -113,23 +121,27 @@ export default function AppNavigator() {
         <Stack.Screen name="TopUp" component={TopUpScreen} options={{ title: 'Top Up Balance' }} />
         <Stack.Screen name="PropertyMap" component={PropertyMapScreen} options={{ title: 'Map' }} />
         <Stack.Screen name="UserKycView" component={UserKycViewScreen} options={{ title: 'User Kyc' }} />
-        <Stack.Screen name="AdminKycUpload" component={AdminKycUploadScreen} />
-        <Stack.Screen name="EditProfile" component={EditProfileScreen} />
-        <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
-        <Stack.Screen name="AdminLogs" component={AdminLogsScreen} />
-        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
-        <Stack.Screen name="ResetPassword" component={ResetPasswordScreen } />
-        <Stack.Screen name="PaymentPlan" component={PaymentPlanScreen} />
-        <Stack.Screen name="Inbox" component={InboxScreen} />
-        <Stack.Screen name="AdminMessages" component={AdminMessagesScreen} />
-        <Stack.Screen name="ShareMarketplaces" component={ShareMarketplaceScreen} />
-        <Stack.Screen name="InvestmentApplications" component={InvestmentApplicationScreen} />
-        <Stack.Screen name="SellMyShares" component={SellMyShareScreen} />
-        <Stack.Screen name="AdminSystemSettings" component={AdminSystemSettingsScreen} />
-        <Stack.Screen name="TradeHistory" component={TradeHistoryScreen} />
-        <Stack.Screen name="SuperUser" component={SuperUserScreen} />
-        <Stack.Screen name="UserTransactions" component={UserTransactionsScreen} />
-        <Stack.Screen name="Personal" component={PersonalScreen} />
+        <Stack.Screen name="AdminKycUpload" component={AdminKycUploadScreen} options={{ title: 'Admin Kyc Upload' }} />
+        <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ title: 'Edit Profile ' }} />
+        <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ title: 'Change Password' }} />
+        <Stack.Screen name="AdminLogs" component={AdminLogsScreen} options={{ title: 'Admin Logs' }} />
+        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ title: 'Forgot Password' }} />
+        <Stack.Screen name="ResetPassword" component={ResetPasswordScreen } options={{ title: 'Reset Password' }}/>
+        <Stack.Screen name="PaymentPlan" component={PaymentPlanScreen} options={{ title: 'Payment Plan' }} />
+        <Stack.Screen name="Inbox" component={InboxScreen} options={{ title: 'Inbox' }}/>
+        <Stack.Screen name="AdminMessages" component={AdminMessagesScreen} options={{ title: 'Admin Messages' }}/>
+        <Stack.Screen name="ShareMarketplaces" component={ShareMarketplaceScreen} options={{ title: 'Share Market places' }}/>
+        <Stack.Screen name="InvestmentApplications" component={InvestmentApplicationScreen} options={{ title: 'Investment Applications' }}/>
+        <Stack.Screen name="SellMyShares" component={SellMyShareScreen} options={{ title: 'Sell My Shares' }}/>
+        <Stack.Screen name="AdminSystemSettings" component={AdminSystemSettingsScreen} options={{ title: 'Admin System Settings' }}/>
+        <Stack.Screen name="TradeHistory" component={TradeHistoryScreen} options={{ title: 'Trade History' }} />
+        <Stack.Screen name="SuperUser" component={SuperUserScreen} options={{ title: 'Super User' }} />
+        <Stack.Screen name="UserTransactions" component={UserTransactionsScreen} options={{ title: 'Transactions' }} />
+        <Stack.Screen name="Personal" component={PersonalScreen} options={{ title: 'Personal' }}/>
+        <Stack.Screen name="Chat" component={ChatScreen} options={{ title: 'Chat' }}/>
+        <Stack.Screen name="AdminChat" component={AdminChatScreen} options={{ title: 'Chat' }}/>
+        <Stack.Screen name="MyInvestments" component={MyInvestmentsScreen} options={{ title: 'Stack history' }}/>
+        <Stack.Screen name="MyFinance" component={MyFinanceScreen} options={{ title: 'My Finance' }}/>
       </Stack.Navigator>
     </NavigationContainer>
   );

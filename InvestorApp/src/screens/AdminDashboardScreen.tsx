@@ -44,6 +44,10 @@ const AdminDashboardScreen = () => {
       </View>
 
       <View style={styles.buttonWrapper}>
+        <Button title="User Chats" onPress={() => navigation.navigate('AdminChat')} />
+      </View>
+
+      <View style={styles.buttonWrapper}>
         <Button title="🏠 Admin Logs" onPress={() => navigation.navigate('AdminLogs')} />
       </View>
 

@@ -27,6 +27,7 @@ namespace RealEstateInvestment.Data
         public DbSet<SystemSetting> SystemSettings { get; set; }
         public DbSet<ShareTransaction> ShareTransactions { get; set; }
         public DbSet<UserTransaction> UserTransactions { get; set; }
+        public DbSet<ChatMessage> ChatMessages { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
