@@ -91,11 +91,21 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+//using (var scope = app.Services.CreateScope())
+//{
+//    var superUserService = scope.ServiceProvider.GetRequiredService<ISuperUserService>();
+//    await superUserService.EnsureSuperUserExistsAsync();
+//}
+
 using (var scope = app.Services.CreateScope())
 {
+    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    context.Database.Migrate(); 
+
     var superUserService = scope.ServiceProvider.GetRequiredService<ISuperUserService>();
     await superUserService.EnsureSuperUserExistsAsync();
 }
+
 
 using (var scope = app.Services.CreateScope())
 {
