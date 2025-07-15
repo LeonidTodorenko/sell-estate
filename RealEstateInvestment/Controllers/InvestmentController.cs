@@ -93,6 +93,9 @@ namespace RealEstateInvestment.Controllers
         [HttpPost("apply")]
         public async Task<IActionResult> ApplicateForInvestment([FromBody] InvestmentApplicationWithPin req)
         {
+            if (req.RequestedShares <= 0)
+                return BadRequest(new { message = "RequestedShares must be a positive whole number" });
+
             var user = await _context.Users.FindAsync(req.UserId);
             if (user == null) return NotFound(new { message = "User not found" });
 

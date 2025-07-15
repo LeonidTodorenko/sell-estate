@@ -75,7 +75,7 @@ const InvestmentsScreen = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>My Investments</Text>
+      <Text style={styles.title}>My Investments </Text>
       <FlatList
         data={investments}
         renderItem={({ item }) => (

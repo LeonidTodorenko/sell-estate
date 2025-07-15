@@ -68,11 +68,15 @@ const BuySharesScreen = () => {
   }, [propertyId]);
 
   const handleBuy = async () => {
+    if (!/^\d+$/.test(shares)) {
+      return Alert.alert('Validation', 'Only whole number of shares allowed (1, 2, 3...)');
+    }
+
     const parsedShares = parseInt(shares, 10);
     if (!parsedShares || parsedShares <= 0) {
       return Alert.alert('Validation', 'Enter a valid number of shares (whole number > 0)');
     }
- 
+
     const requestedAmount = sharePrice! * parsedShares;
 
     if (!pinOrPassword) {

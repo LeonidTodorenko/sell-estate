@@ -1,5 +1,5 @@
 import React, {  useState } from 'react';
-import { View, Text, Button, StyleSheet, Alert, Image, ScrollView } from 'react-native';
+import { View, Text,  StyleSheet, Alert, Image, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
@@ -7,6 +7,7 @@ import theme from '../constants/theme';
 import api from '../api';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback } from 'react';
+import Button from '../components/Button';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
 
@@ -145,8 +146,8 @@ const fetchTotalAssets = async (userId: string) => {
         <Button title="Withdraw Funds" onPress={() => navigation.navigate('Withdraw')} />
         <View style={{ height: 10 }} />
          <Button title="My Finance" onPress={() => navigation.navigate('MyFinance')} /> 
-        <View style={{ height: 10 }} />
-        <Button title="Stake History" onPress={() => navigation.navigate('MyInvestments')} /> 
+        {/* <View style={{ height: 10 }} />
+        <Button title="Stake History" onPress={() => navigation.navigate('MyInvestments')} />  */}
         <View style={{ height: 10 }} />
         <Button title="My Properties" onPress={() => navigation.navigate('MyProperties')} />
         <View style={{ height: 10 }} />

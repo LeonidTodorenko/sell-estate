@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, {  useState } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,8 @@ import api from '../api';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback } from 'react';
 
 interface PropertyImage {
   id: string;
@@ -47,7 +49,8 @@ const PropertyListScreen = () => {
   const [imageIndex, setImageIndex] = useState(0);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
-  useEffect(() => {
+useFocusEffect(
+  useCallback(() => {
     const loadProperties = async () => {
       try {
         const res = await api.get('/properties');
@@ -97,7 +100,8 @@ const PropertyListScreen = () => {
     };
 
     loadProperties();
-  }, []);
+  }, [])
+);
 
   return (
     <View style={styles.container}>
