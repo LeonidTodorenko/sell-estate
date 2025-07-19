@@ -39,3 +39,5 @@ yarn.lock
 
 # React build
 /build
+
+**/google-services.json

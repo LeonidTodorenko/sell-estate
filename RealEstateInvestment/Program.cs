@@ -64,6 +64,7 @@ builder.Services.AddScoped<ISuperUserService, SuperUserService>();
 builder.Services.AddHttpClient();
 builder.Services.AddHostedService<ScheduledTaskService>();
 builder.Services.AddScoped<SettingsService>();
+builder.Services.AddScoped<FirebaseNotificationService>();
 //builder.Services.AddSwaggerGen(c =>
 //{
 //    c.IgnoreObsoleteProperties();

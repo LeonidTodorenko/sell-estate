@@ -28,6 +28,7 @@ namespace RealEstateInvestment.Data
         public DbSet<ShareTransaction> ShareTransactions { get; set; }
         public DbSet<UserTransaction> UserTransactions { get; set; }
         public DbSet<ChatMessage> ChatMessages { get; set; }
+        public DbSet<FcmDeviceToken> FcmDeviceTokens { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

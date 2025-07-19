@@ -1,15 +1,28 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import AppNavigator from './src/navigation/AppNavigator';
-import { SafeAreaView, StatusBar, StyleSheet } from 'react-native';
+import { Alert, SafeAreaView, StatusBar, StyleSheet } from 'react-native';
 import theme from './src/constants/theme';
 import { LoadingProvider } from './src/contexts/LoadingContext';
-
+import { requestUserPermission, getFcmToken } from './src/firebase';
+import messaging from '@react-native-firebase/messaging';
 
 //export default function App(): React.JSX.Element {
 //  return <AppNavigator />;
 //}
 
 export default function App() {
+    useEffect(() => {
+    requestUserPermission();
+    getFcmToken();
+
+    const unsubscribe = messaging().onMessage(async remoteMessage => {
+      console.log('Push received in foreground:', remoteMessage);
+      Alert.alert(`New notification: ${remoteMessage.notification?.title}`);
+    });
+
+    return unsubscribe;
+  }, []);
+
   return (
     <LoadingProvider>
     <SafeAreaView style={styles.container}>
@@ -26,122 +39,4 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background,
   },
 });
-
-/*
-import React from 'react';
-import type {PropsWithChildren} from 'react';
-import {
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-} from 'react-native';
-
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
-
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
-
-function Section({children, title}: SectionProps): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-}
-
-function App(): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
-  };
-
  
-  const safePadding = '5%';
-
-  return (
-    <View style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
-      />
-      <ScrollView
-        style={backgroundStyle}>
-        <View style={{paddingRight: safePadding}}>
-          <Header/>
-        </View>
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-            paddingHorizontal: safePadding,
-            paddingBottom: safePadding,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
-  },
-});
-
-export default App;
-*/

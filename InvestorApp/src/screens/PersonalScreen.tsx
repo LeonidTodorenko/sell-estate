@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text,  StyleSheet, Alert, Image, ScrollView } from 'react-native';
+import { View, Text, Button, StyleSheet, Alert, Image, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
@@ -7,7 +7,7 @@ import theme from '../constants/theme';
 import api from '../api';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback } from 'react';
-import Button from '../components/Button';
+
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Personal'>;
 

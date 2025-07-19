@@ -4,6 +4,8 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateInvestment.Data;
 using RealEstateInvestment.Models;
 using RealEstateInvestment.Services;
+using System.Security.Claims;
+using RealEstateInvestment.Helpers;
 
 namespace RealEstateInvestment.Controllers
 {
@@ -46,6 +48,34 @@ namespace RealEstateInvestment.Controllers
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Notification read" });
+        }
+
+        [HttpPost("register-token")]
+        public async Task<IActionResult> RegisterToken([FromBody] TokenRequest request)
+        {
+            var userId = User.GetUserId();  
+            if (userId == Guid.Empty) return Unauthorized();
+             
+            var exists = await _context.FcmDeviceTokens.AnyAsync(t => t.Token == request.Token);
+
+            if (!exists)
+            {
+                _context.FcmDeviceTokens.Add(new FcmDeviceToken
+                {
+                    UserId = userId,
+                    Token = request.Token
+                });
+
+                await _context.SaveChangesAsync();
+            }
+         
+          
+            return Ok();
+        }
+
+        public class TokenRequest
+        {
+            public string Token { get; set; }
         }
 
         //[HttpGet("test-email")]

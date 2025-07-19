@@ -8,6 +8,7 @@ import { ImageBackground } from 'react-native';
 import loginBackground from '../assets/images/login.jpg';
 import { useLoading } from '../contexts/LoadingContext';
 import StyledInput from '../components/StyledInput';
+import { getFcmToken } from '../firebase';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
@@ -33,6 +34,18 @@ const LoginScreen = ({ navigation }: Props) => {
 
       //const user = response.data;
       // await AsyncStorage.setItem('user', JSON.stringify(user));
+
+      const fcmToken = await getFcmToken();
+      if (fcmToken) {
+        try {
+          await api.post('/notifications/register-token', {
+            token: fcmToken,
+          });
+          console.log('Token registered on backend');
+        } catch (err) {
+          console.warn('Failed to register FCM token', err);
+        }
+      }
 
       navigation.navigate('Profile');
       setLoading(false);

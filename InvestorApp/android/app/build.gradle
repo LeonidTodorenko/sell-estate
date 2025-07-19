@@ -108,6 +108,7 @@ android {
 }
 
 dependencies {
+  
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
 
@@ -116,4 +117,9 @@ dependencies {
     } else {
         implementation jscFlavor
     }
+	
+	 //  Firebase
+    implementation 'com.google.firebase:firebase-messaging:23.4.1'
 }
+
+apply plugin: 'com.google.gms.google-services'

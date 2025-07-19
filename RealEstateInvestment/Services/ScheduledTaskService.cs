@@ -1,18 +1,22 @@
 ﻿using RealEstateInvestment.Models;
 using RealEstateInvestment.Data;
 using Microsoft.EntityFrameworkCore;
-
+//using RealEstateInvestment.Services;
+//using RealEstateInvestment.Helpers;
+ 
 namespace RealEstateInvestment.Services
 {
     public class ScheduledTaskService : BackgroundService
     {
         private readonly IServiceProvider _serviceProvider;
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IFirebaseNotificationService _notificationService;
 
-        public ScheduledTaskService(IServiceProvider serviceProvider, IHttpClientFactory httpClientFactory)
+        public ScheduledTaskService(IServiceProvider serviceProvider, IHttpClientFactory httpClientFactory, IFirebaseNotificationService notificationService)
         {
             _serviceProvider = serviceProvider;
             _httpClientFactory = httpClientFactory;
+            _notificationService = notificationService;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -21,6 +25,22 @@ namespace RealEstateInvestment.Services
             {
                 try
                 {
+                    ////////////////
+                    //using (var scope = _serviceProvider.CreateScope())
+                    //{
+                    //    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                    //    var token = await context.FcmDeviceTokens
+                    //        .Where(t => t.UserId == new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"))
+                    //        .Select(t => t.Token)
+                    //        .FirstOrDefaultAsync();
+
+                    //    if (!string.IsNullOrEmpty(token))
+                    //    {
+                    //        await _notificationService.SendNotificationAsync(token, "New message", "Admin has answered in chat");
+                    //    }
+                    //}
+                    ////////////////////
+
                     //todo отключили пока
                     await RunScheduledProperyStatusTask();
                     await RunExpiredShareOfferProcessing();
