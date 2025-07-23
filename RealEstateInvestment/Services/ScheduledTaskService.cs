@@ -3,20 +3,20 @@ using RealEstateInvestment.Data;
 using Microsoft.EntityFrameworkCore;
 //using RealEstateInvestment.Services;
 //using RealEstateInvestment.Helpers;
- 
+
 namespace RealEstateInvestment.Services
 {
     public class ScheduledTaskService : BackgroundService
     {
         private readonly IServiceProvider _serviceProvider;
         private readonly IHttpClientFactory _httpClientFactory;
-        private readonly IFirebaseNotificationService _notificationService;
 
-        public ScheduledTaskService(IServiceProvider serviceProvider, IHttpClientFactory httpClientFactory, IFirebaseNotificationService notificationService)
+
+        public ScheduledTaskService(IServiceProvider serviceProvider, IHttpClientFactory httpClientFactory) // , IFirebaseNotificationService notificationService
         {
             _serviceProvider = serviceProvider;
             _httpClientFactory = httpClientFactory;
-            _notificationService = notificationService;
+
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -25,21 +25,10 @@ namespace RealEstateInvestment.Services
             {
                 try
                 {
-                    ////////////////
-                    //using (var scope = _serviceProvider.CreateScope())
-                    //{
-                    //    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-                    //    var token = await context.FcmDeviceTokens
-                    //        .Where(t => t.UserId == new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"))
-                    //        .Select(t => t.Token)
-                    //        .FirstOrDefaultAsync();
 
-                    //    if (!string.IsNullOrEmpty(token))
-                    //    {
-                    //        await _notificationService.SendNotificationAsync(token, "New message", "Admin has answered in chat");
-                    //    }
-                    //}
-                    ////////////////////
+
+
+
 
                     //todo отключили пока
                     await RunScheduledProperyStatusTask();
@@ -101,7 +90,7 @@ namespace RealEstateInvestment.Services
                     // Обновление оффера
                     //offer.SharesForSale -= bestBid.Shares;
                     //if (offer.SharesForSale == 0)
-                        offer.IsActive = false;
+                    offer.IsActive = false;
 
                     // Добавление инвестиций
                     var investment = await context.Investments
@@ -140,9 +129,9 @@ namespace RealEstateInvestment.Services
 
         private async Task RunScheduledProperyStatusTask()
         {
-            using (var scope = _serviceProvider.CreateScope())
+            using (IServiceScope scope = _serviceProvider.CreateScope())
             {
-                var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                AppDbContext context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
                 // var client = _httpClientFactory.CreateClient();
 
                 var now = DateTime.UtcNow;
@@ -214,6 +203,9 @@ namespace RealEstateInvestment.Services
                                     Content = $"You were allocated {app.RequestedShares} shares for property {property.Title}.",
                                     RecipientId = app.UserId
                                 });
+
+                                SendFirebase("", "", scope,context, app.UserId);
+                              
 
                                 acceptedAny = true;
 
@@ -307,6 +299,33 @@ namespace RealEstateInvestment.Services
                 }
 
                 await context.SaveChangesAsync();
+            }
+        }
+
+        private async void SendFirebase(string text1, string text2, IServiceScope scope, AppDbContext context, Guid userId)
+        {
+            try
+            {
+                var notificationService = scope.ServiceProvider.GetRequiredService<IFirebaseNotificationService>();
+
+                var tokens = await context.FcmDeviceTokens
+                    .Where(t => t.UserId == userId)
+                    .Select(t => t.Token).ToListAsync();
+
+
+                foreach (var token in tokens)
+                {
+                    await notificationService.SendNotificationAsync(token, $"You were allocated {app.RequestedShares} shares for property {property.Title}.", "Your investment application was approved");
+                }
+            }
+            catch (Exception ex)
+            {
+                context.ActionLogs.Add(new ActionLog
+                {
+                    UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add some guid later
+                    Action = "FirebaseNotificationService send error",
+                    Details = ex.Message,
+                });
             }
         }
     }

@@ -41,3 +41,4 @@ yarn.lock
 /build
 
 **/google-services.json
+**/firebase-service-account.json

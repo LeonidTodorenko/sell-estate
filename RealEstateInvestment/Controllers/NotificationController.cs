@@ -56,18 +56,33 @@ namespace RealEstateInvestment.Controllers
             var userId = User.GetUserId();  
             if (userId == Guid.Empty) return Unauthorized();
              
-            var exists = await _context.FcmDeviceTokens.AnyAsync(t => t.Token == request.Token);
+            var exists = await _context.FcmDeviceTokens.FirstOrDefaultAsync(t => t.Token == request.Token);  //_context.FcmDeviceTokens.AnyAsync(t => t.Token == request.Token);
 
-            if (!exists)
+            if (exists == null)
             {
                 _context.FcmDeviceTokens.Add(new FcmDeviceToken
                 {
                     UserId = userId,
                     Token = request.Token
                 });
-
-                await _context.SaveChangesAsync();
             }
+            else if (exists.UserId != userId)
+            {
+                // token is used by other user - update
+                exists.UserId = userId;
+                exists.UpdatedAt = DateTime.UtcNow;
+            }
+
+            //if (!exists)
+            //{
+            //    _context.FcmDeviceTokens.Add(new FcmDeviceToken
+            //    {
+            //        UserId = userId,
+            //        Token = request.Token
+            //    });
+
+            //    await _context.SaveChangesAsync();
+            //}
          
           
             return Ok();

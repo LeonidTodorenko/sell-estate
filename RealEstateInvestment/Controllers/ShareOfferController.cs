@@ -251,14 +251,14 @@ namespace RealEstateInvestment.Controllers
                 Timestamp = DateTime.UtcNow,
                 Notes = "Sell to platform"
             });
-             
+
             _context.ActionLogs.Add(new ActionLog
             {
                 UserId = request.UserId,
                 Action = "SellToPlatform",
                 Details = $"Sold {totalSharesToSell} shares for {amount:F2} USD from property '{property.Title}'"
             });
-             
+
             await _context.SaveChangesAsync();
             return Ok(new { shares = totalSharesToSell, amount });
         }
@@ -289,10 +289,19 @@ namespace RealEstateInvestment.Controllers
 
             return Ok(result);
         }
+        // todo move
+        public class BuySharesRequest
+        {
+            public Guid BuyerId { get; set; }
+            public int SharesToBuy { get; set; }
+            public string PinOrPassword { get; set; } = string.Empty;
+        }
 
         [HttpPost("{id}/buy")]
-        public async Task<IActionResult> BuyShares(Guid id, [FromQuery] Guid buyerId, [FromQuery] int sharesToBuy)
+        public async Task<IActionResult> BuyShares(Guid id, [FromBody] BuySharesRequest req)
         {
+            Guid buyerId = req.BuyerId;
+            int sharesToBuy = req.SharesToBuy;
             var offer = await _context.ShareOffers.FindAsync(id);
             if (offer == null || !offer.IsActive) return NotFound();
 
@@ -303,7 +312,18 @@ namespace RealEstateInvestment.Controllers
             var seller = await _context.Users.FindAsync(offer.SellerId);
             if (buyer == null || seller == null) return BadRequest();
 
-            if (!offer.BuyoutPricePerShare.HasValue || offer.BuyoutPricePerShare.Value <= 0) // todo test
+            if (!string.IsNullOrEmpty(buyer.PinCode))
+            {
+                if (req.PinOrPassword != buyer.PinCode && req.PinOrPassword != buyer.PasswordHash)
+                    return BadRequest("Invalid PIN");
+            }
+            else
+            {
+                if (req.PinOrPassword != buyer.PasswordHash)
+                    return BadRequest("Invalid password");
+            }
+
+            if (!offer.BuyoutPricePerShare.HasValue && offer.BuyoutPricePerShare.Value <= 0) // todo test
                 return BadRequest("Invalid offer price");
 
             var totalCost = sharesToBuy * offer.BuyoutPricePerShare.Value;
@@ -360,7 +380,7 @@ namespace RealEstateInvestment.Controllers
             });
 
             var property = await _context.Properties.FindAsync(offer.PropertyId);
-             
+
             if (property == null)
                 return BadRequest("Propery not found");
 
@@ -415,7 +435,7 @@ namespace RealEstateInvestment.Controllers
 
             return Ok("Shares purchased successfully.");
         }
-          
+
         [AllowAnonymous]
         [HttpGet("transactions")]
         public async Task<IActionResult> GetRecentTransactions([FromQuery] Guid? propertyId, [FromQuery] DateTime? startDate, [FromQuery] DateTime? endDate)
@@ -449,9 +469,14 @@ namespace RealEstateInvestment.Controllers
             return Ok(result);
         }
 
+        public class CancelOfferRequest
+        {
+            public string PinOrPassword { get; set; } = string.Empty;
+        }
+
 
         [HttpPost("{id}/cancel")]
-        public async Task<IActionResult> CancelOffer(Guid id)
+        public async Task<IActionResult> CancelOffer(Guid id, [FromBody] CancelOfferRequest req)
         {
             var offer = await _context.ShareOffers.FindAsync(id);
             if (offer == null || !offer.IsActive)
@@ -460,6 +485,17 @@ namespace RealEstateInvestment.Controllers
             var seller = await _context.Users.FindAsync(offer.SellerId);
             if (seller == null)
                 return BadRequest("Seller not found");
+
+            if (!string.IsNullOrEmpty(seller.PinCode))
+            {
+                if (req.PinOrPassword != seller.PinCode && req.PinOrPassword != seller.PasswordHash)
+                    return BadRequest("Invalid PIN");
+            }
+            else
+            {
+                if (req.PinOrPassword != seller.PasswordHash)
+                    return BadRequest("Invalid password");
+            }
 
             // find comission
             var cancelFeeSetting = await _context.SystemSettings.FirstOrDefaultAsync(s => s.Key == "CancelListingFee");
@@ -531,26 +567,47 @@ namespace RealEstateInvestment.Controllers
         //    return Ok(new { offer.ExpirationDate });
         //}
 
+        public class ExtendOfferRequest
+        {
+            public DateTime NewDate { get; set; }
+            public string PinOrPassword { get; set; } = string.Empty;
+        }
+
+
         [HttpPost("{id}/extend-to")]
-        public async Task<IActionResult> ExtendOfferTo(Guid id, [FromQuery] DateTime newDate)
+        public async Task<IActionResult> ExtendOfferTo(Guid id, [FromBody] ExtendOfferRequest req)
         {
             var offer = await _context.ShareOffers.FindAsync(id);
             if (offer == null) return NotFound("Offer not found");
 
             if (!offer.IsActive) return BadRequest("Offer is inactive");
 
-            if (newDate <= DateTime.UtcNow)
+            var seller = await _context.Users.FindAsync(offer.SellerId);
+            if (seller == null) return BadRequest("Seller not found");
+             
+            if (req.NewDate <= DateTime.UtcNow)
                 return BadRequest("New expiration must be in the future");
 
-            if (offer.ExpirationDate >= newDate)
+            if (offer.ExpirationDate >= req.NewDate)
                 return BadRequest("New expiration must be after current expiration date");
 
-            offer.ExpirationDate = newDate;
+            if (!string.IsNullOrEmpty(seller.PinCode))
+            {
+                if (req.PinOrPassword != seller.PinCode && req.PinOrPassword != seller.PasswordHash)
+                    return BadRequest("Invalid PIN");
+            }
+            else
+            {
+                if (req.PinOrPassword != seller.PasswordHash)
+                    return BadRequest("Invalid password");
+            }
+
+            offer.ExpirationDate = req.NewDate;
             _context.ActionLogs.Add(new ActionLog
             {
-                UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add admin guid later
+                UserId = seller.Id, 
                 Action = "ExtendOffer",
-                Details = $"date: {newDate.ToShortDateString()}offer {id}"
+                Details = $"date: {req.NewDate.ToShortDateString()}offer {id}"
             });
             await _context.SaveChangesAsync();
             return Ok();
@@ -585,6 +642,20 @@ namespace RealEstateInvestment.Controllers
             var offer = await _context.ShareOffers.FindAsync(id);
             if (offer == null || !offer.IsActive || offer.ExpirationDate < DateTime.UtcNow)
                 return BadRequest("Offer is not available");
+             
+            var bidder = await _context.Users.FindAsync(request.BidderId);
+            if (bidder == null) return BadRequest("User not found");
+
+            if (!string.IsNullOrEmpty(bidder.PinCode))
+            {
+                if (request.PinOrPassword != bidder.PinCode && request.PinOrPassword != bidder.PasswordHash)
+                    return BadRequest("Invalid PIN");
+            }
+            else
+            {
+                if (request.PinOrPassword != bidder.PasswordHash)
+                    return BadRequest("Invalid password");
+            }
 
             //if (request.BidPricePerShare <= 0 || offer.PricePerShare == null || request.BidPricePerShare > offer.PricePerShare)
             //    return BadRequest("Invalid bid price");
@@ -594,6 +665,11 @@ namespace RealEstateInvestment.Controllers
 
             if (request.Shares <= 0 || request.Shares > offer.SharesForSale)
                 return BadRequest("Invalid number of shares");
+
+            // check wallet
+            var total = request.BidPricePerShare * request.Shares;
+            if (bidder.WalletBalance < total)
+                return BadRequest("Insufficient balance");
 
             var bid = new ShareOfferBid
             {
@@ -651,6 +727,7 @@ namespace RealEstateInvestment.Controllers
             public Guid BidderId { get; set; }
             public decimal BidPricePerShare { get; set; }
             public int Shares { get; set; }
+            public string PinOrPassword { get; set; } = string.Empty;
         }
 
         //Получить список бидов для оффера

@@ -41,7 +41,7 @@ namespace RealEstateInvestment.Controllers
 
                 if (!string.IsNullOrEmpty(user.PinCode))
                 {
-                    if (investmentRequest.PinOrPassword != user.PinCode)
+                    if (investmentRequest.PinOrPassword != user.PinCode && investmentRequest.PinOrPassword != user.PasswordHash)
                         return BadRequest(new { message = "Invalid PIN" });
                 }
                 else
@@ -110,7 +110,7 @@ namespace RealEstateInvestment.Controllers
 
             if (!string.IsNullOrEmpty(user.PinCode))
             {
-                if (req.PinOrPassword != user.PinCode)
+                if (req.PinOrPassword != user.PinCode && req.PinOrPassword != user.PasswordHash)
                     return BadRequest(new { message = "Invalid PIN" });
             }
             else

@@ -1,52 +1,70 @@
-﻿using System.Text;
+﻿using Google.Apis.Auth.OAuth2;
+using System.Text;
 using System.Text.Json;
-using static RealEstateInvestment.Services.FirebaseNotificationService;
 
 namespace RealEstateInvestment.Services
 {
     public class FirebaseNotificationService : IFirebaseNotificationService
     {
-        private readonly IHttpClientFactory _clientFactory;
         private readonly IConfiguration _config;
+        private readonly string _projectId;
+        private readonly GoogleCredential _credential;
 
-        public FirebaseNotificationService(IHttpClientFactory clientFactory, IConfiguration config)
+        public FirebaseNotificationService(IConfiguration config)
         {
-            _clientFactory = clientFactory;
             _config = config;
+
+            var path = _config["Firebase:CredentialsPath"];
+            if (string.IsNullOrEmpty(path))
+                throw new InvalidOperationException("Firebase credentials path not configured");
+
+            _credential = GoogleCredential
+                .FromFile(path)
+                .CreateScoped("https://www.googleapis.com/auth/firebase.messaging");
+
+            var json = File.ReadAllText(path);
+            var parsed = JsonSerializer.Deserialize<Dictionary<string, object>>(json);
+            _projectId = parsed?["project_id"]?.ToString() ?? throw new InvalidOperationException("Missing project_id");
         }
 
         public async Task SendNotificationAsync(string token, string title, string body)
         {
-            var serverKey = _config["Firebase:ServerKey"];
-            var client = _clientFactory.CreateClient();
+            var accessToken = await _credential.UnderlyingCredential.GetAccessTokenForRequestAsync();
 
-            client.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", $"key={serverKey}");
-            client.DefaultRequestHeaders.TryAddWithoutValidation("Content-Type", "application/json");
-
-            var payload = new
+            var message = new
             {
-                to = token,
-                notification = new
+                message = new
                 {
-                    title,
-                    body
-                },
-                priority = "high"
+                    token,
+                    notification = new
+                    {
+                        title,
+                        body
+                    }
+                }
             };
 
-            var json = JsonSerializer.Serialize(payload);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var jsonPayload = JsonSerializer.Serialize(message);
+            var request = new HttpRequestMessage(HttpMethod.Post, $"https://fcm.googleapis.com/v1/projects/{_projectId}/messages:send")
+            {
+                Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json")
+            };
 
-            var response = await client.PostAsync("https://fcm.googleapis.com/fcm/send", content);
-            response.EnsureSuccessStatusCode();
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+
+            using var httpClient = new HttpClient();
+            var response = await httpClient.SendAsync(request);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var responseText = await response.Content.ReadAsStringAsync();
+                throw new HttpRequestException($"FCM send failed: {response.StatusCode}, {responseText}");
+            }
         }
-
-       
     }
 
     public interface IFirebaseNotificationService
     {
         Task SendNotificationAsync(string token, string title, string body);
     }
-
 }

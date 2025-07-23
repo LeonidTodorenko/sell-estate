@@ -136,6 +136,19 @@ const LoginScreen = ({ navigation }: Props) => {
             });
 
             await AsyncStorage.setItem('user', JSON.stringify(response.data));
+
+             const fcmToken = await getFcmToken();
+              if (fcmToken) {
+                try {
+                  await api.post('/notifications/register-token', {
+                    token: fcmToken,
+                  });
+                  console.log('Token registered on backend');
+                } catch (err) {
+                  console.warn('Failed to register FCM token', err);
+                }
+              }
+
             navigation.navigate('Profile');
 
           } catch (err) {

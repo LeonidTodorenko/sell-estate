@@ -154,7 +154,7 @@ namespace RealEstateInvestment.Controllers
 
             if (!string.IsNullOrEmpty(user.PinCode))
             {
-                if (req.PinOrPassword != user.PinCode)
+                if (req.PinOrPassword != user.PinCode && req.PinOrPassword != user.PasswordHash)
                     return BadRequest(new { message = "Invalid PIN" });
             }
             else
