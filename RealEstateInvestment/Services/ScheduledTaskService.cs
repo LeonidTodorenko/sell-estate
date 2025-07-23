@@ -204,7 +204,7 @@ namespace RealEstateInvestment.Services
                                     RecipientId = app.UserId
                                 });
 
-                                SendFirebase("", "", scope,context, app.UserId);
+                                SendFirebase($"You were allocated {app.RequestedShares} shares for property {property.Title}.", "Your investment application was approved", scope,context, app.UserId);
                               
 
                                 acceptedAny = true;
@@ -315,7 +315,7 @@ namespace RealEstateInvestment.Services
 
                 foreach (var token in tokens)
                 {
-                    await notificationService.SendNotificationAsync(token, $"You were allocated {app.RequestedShares} shares for property {property.Title}.", "Your investment application was approved");
+                    await notificationService.SendNotificationAsync(token, text1, text2);
                 }
             }
             catch (Exception ex)
