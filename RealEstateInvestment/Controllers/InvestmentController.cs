@@ -484,11 +484,13 @@ namespace RealEstateInvestment.Controllers
                     from i in _context.Investments
                     join p in _context.Properties on i.PropertyId equals p.Id
                     where i.UserId == userId && i.Shares > 0
-                    group new { i, p } by new { i.PropertyId, p.Title, p.Price } into g
+                    group new { i, p } by new { i.PropertyId, p.Title, p.Price, p.TotalShares } into g
                     select new
                     {
                         PropertyId = g.Key.PropertyId,
                         PropertyTitle = g.Key.Title,
+                        PropertyPrice= g.Key.Price,
+                        PropertyTotalShares = g.Key.TotalShares,
                         ConfirmedShares = g.Sum(x => x.i.Shares),
                         ConfirmedAmount = g.Sum(x => x.i.InvestedAmount),
                         OwnershipPercent = Math.Round(g.Sum(x => x.i.InvestedAmount) / g.Key.Price * 100, 2),
@@ -522,7 +524,8 @@ namespace RealEstateInvestment.Controllers
                     ConfirmedApplications = (p?.PendingCount ?? 0),
                     MarketShares = m?.MarketShares ?? 0,
                     TotalInvested = c.ConfirmedAmount,
-                    c.OwnershipPercent
+                    c.OwnershipPercent,
+                    TotalShareValue = (c.ConfirmedShares + (p?.PendingShares ?? 0))* (c.PropertyPrice / c.PropertyTotalShares)
                 };
             });
 

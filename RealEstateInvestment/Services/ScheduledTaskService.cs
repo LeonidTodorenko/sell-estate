@@ -180,7 +180,7 @@ namespace RealEstateInvestment.Services
                                     continue;
 
                                 //user.WalletBalance -= app.RequestedAmount; уже зарезервировали
-                                property.AvailableShares -= app.RequestedShares;
+                                //property.AvailableShares -= app.RequestedShares;
                                 totalAllocated += app.RequestedAmount;
 
                                 context.Investments.Add(new Investment
@@ -241,7 +241,7 @@ namespace RealEstateInvestment.Services
                             {
                                 user.WalletBalance += app.RequestedAmount;
                                 property.AvailableShares += app.RequestedShares;
-
+                                property.Status = "declined"; // todo обсудить 
                                 app.Status = "rejected";
                                 property.PriorityInvestorId = null; // todo сбрасывает в рамках логики тестов
                                 context.Messages.Add(new Message

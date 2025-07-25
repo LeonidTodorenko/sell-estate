@@ -15,6 +15,7 @@ interface Investment {
   propertyTitle: string;
   totalShares: number;
   totalInvested: number;
+  totalShareValue: number;
   marketShares: number;
   ownershipPercent: number;
   confirmedShares: number;
@@ -75,13 +76,14 @@ const InvestmentsScreen = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>My Investments </Text>
+      <Text style={styles.title}>My Investments  </Text>
       <FlatList
         data={investments}
         renderItem={({ item }) => (
           <View style={styles.card}>
             <Text style={styles.name}>🏠 {item.propertyTitle}</Text>
-            <Text>💰 Invested: {item.totalInvested} USD</Text>
+            {/* <Text>💰 Invested: {item.totalInvested} USD</Text> видимо уберем это */}
+            <Text>📦 Total Share Value: {item.totalShareValue} USD</Text>
             <Text>📊 Shares: {item.totalShares} <Text style={{ color: 'gray' }}>( {item.confirmedApplications} applications, {item.confirmedShares}  сonfirmed shares) </Text></Text> 
             {item.marketShares > 0 && (
               <Text style={{ color: 'orange' }}>⚠️ {item.marketShares} shares are currently listed for sale</Text>
