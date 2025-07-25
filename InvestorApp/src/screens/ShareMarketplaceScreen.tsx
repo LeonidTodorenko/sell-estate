@@ -56,11 +56,12 @@ const ShareMarketplaceScreen = () => {
   const [extensionDate, setExtensionDate] = useState<Date | null>(null);
   const [pinModalVisible, setPinModalVisible] = useState(false);
   const [pinOrPassword, setPinOrPassword] = useState('');
-  const [pendingAction, setPendingAction] = useState<null | (() => void)>(null);
+const [pendingAction, setPendingAction] = useState<null | ((pin: string) => void)>(null);
 
-  const confirmWithPin = (action: () => void) => {
+  const confirmWithPin = (action: (pin: string) => void) => {
     setPendingAction(() => action);
     setPinModalVisible(true);
+   // setPinOrPassword('');
   };
 
   const submitPin = () => {
@@ -69,7 +70,15 @@ const ShareMarketplaceScreen = () => {
       return;
     }
     setPinModalVisible(false);
-    pendingAction?.();
+ 
+  pendingAction?.(pinOrPassword);
+  setPendingAction(null);
+
+    // pinOrPassword не успевает провалится, потому задержка todo переделать
+    // setTimeout(() => {
+    //   pendingAction?.();
+    //   setPendingAction(null);
+    // }, 200);
   };
 
 
@@ -134,7 +143,7 @@ const ShareMarketplaceScreen = () => {
     setBidModalVisible(true);
   };
 
-  const submitBid = async () => {
+  const submitBid = async (pin: string) => {
     const price = parseFloat(bidPrice);
     if (!currentOffer) return;
     const shares = currentOffer.sharesForSale;
@@ -162,7 +171,7 @@ const ShareMarketplaceScreen = () => {
         bidderId: user.userId,
         bidPricePerShare: price,
         shares,
-        pinOrPassword,
+        pinOrPassword: pin,
       });
 
       Alert.alert('Success', 'Bid placed');
@@ -174,7 +183,7 @@ const ShareMarketplaceScreen = () => {
     }
   };
 
-  const handleBuyNow = async (offer: ShareOffer, price: number) => {
+  const handleBuyNow = async (offer: ShareOffer, price: number,pin: string) => {
     Alert.alert(
       'Confirm Purchase',
       `Buy ${offer.sharesForSale} shares for ${formatCurrency(price)} per share?`,
@@ -191,7 +200,7 @@ const ShareMarketplaceScreen = () => {
               await api.post(`/share-offers/${offer.id}/buy`, {
                 buyerId: user.userId,
                 sharesToBuy: offer.sharesForSale,
-                pinOrPassword,
+                pinOrPassword: pin,
               });
 
               Alert.alert('Success', 'Purchase completed');
@@ -262,7 +271,7 @@ const ShareMarketplaceScreen = () => {
           { text: 'No' },
           {
             text: 'Yes',
-            onPress: () => confirmWithPin(() => cancelOffer(offerId)),
+            onPress: () => confirmWithPin((pin) => cancelOffer(offerId, pin)),
           },
         ]
       );
@@ -281,9 +290,9 @@ const ShareMarketplaceScreen = () => {
   };
 
 
-  const cancelOffer = async (id: string) => {
+  const cancelOffer = async (id: string, pin: string) => {
     try {
-      await api.post(`/share-offers/${id}/cancel`, { pinOrPassword });
+      await api.post(`/share-offers/${id}/cancel`, { pinOrPassword: pin });
       Alert.alert('Offer canceled');
       loadOffers();
     }  catch (error: any) {
@@ -382,7 +391,7 @@ const ShareMarketplaceScreen = () => {
                 {item.buyoutPricePerShare != null && (
                   <>
                     <View style={{ height: 10 }} />
-                    <Button title="Buy at Buyout Price" onPress={() => confirmWithPin(() => handleBuyNow(item, item.buyoutPricePerShare!))} />
+                    <Button title="Buy at Buyout Price" onPress={() => confirmWithPin((pin) => handleBuyNow(item, item.buyoutPricePerShare!,pin))} />
                   </>
                 )}
               </>
@@ -446,11 +455,11 @@ const ShareMarketplaceScreen = () => {
                 { text: 'Cancel' },
                 {
                   text: 'Confirm',
-                  onPress: () => confirmWithPin(async () => {
+                  onPress: () => confirmWithPin(async (pin) => {
                     try {
                       await api.post(`/share-offers/${selectedOfferForExtension.id}/extend-to`, {
                         newDate: selected.toISOString(),
-                        pinOrPassword,
+                        pinOrPassword: pin,
                       });
                       Alert.alert('Success', 'Offer extended');
                       loadOffers();
@@ -491,7 +500,7 @@ const ShareMarketplaceScreen = () => {
               value={bidPrice}
               onChangeText={setBidPrice}
             />
-            <Button title="Submit" onPress={() => confirmWithPin(submitBid)} />
+            <Button title="Submit" onPress={() => confirmWithPin((pin) => submitBid(pin))} />
             <View style={{ height: 10 }} />
             <Button title="Cancel" onPress={() => setBidModalVisible(false)} />
           </View>
