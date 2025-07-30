@@ -160,6 +160,8 @@ const RegisterScreen = ({ navigation }: Props) => {
         />
       </View>
       <Button title="Register" onPress={handleRegister} />
+      <View style={{ height: 10 }} />
+      <Button title="Forgot Password?" onPress={() => navigation.navigate('ForgotPassword')} />
 
       {/* <Button title="Verify I'm human" onPress={() => setShowCaptcha(true)} />
       {showCaptcha && <Captcha onVerify={(token) => {

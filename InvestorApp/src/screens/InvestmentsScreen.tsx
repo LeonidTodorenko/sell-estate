@@ -18,6 +18,7 @@ interface Investment {
   totalShareValue: number;
   marketShares: number;
   ownershipPercent: number;
+  monthlyRentalIncome: number;
   confirmedShares: number;
   confirmedApplications: number;
 }
@@ -92,6 +93,10 @@ const InvestmentsScreen = () => {
               ✔️ Confirmed: {item.confirmedApplications} applications, {item.confirmedShares}  сonfirmed shares
             </Text> */}
             <Text>📈 Ownership: {item.ownershipPercent}%</Text>
+          {item.monthlyRentalIncome !== null && item.monthlyRentalIncome !== 0 && (
+                <Text>Rental Income: {item.monthlyRentalIncome.toFixed(2)} USD</Text>
+              )}
+ 
             {imagesMap[item.propertyId] && imagesMap[item.propertyId].length > 0 && (
               <View style={styles.carouselContainer}>
                 <Swiper

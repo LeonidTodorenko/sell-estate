@@ -462,8 +462,7 @@ namespace RealEstateInvestment.Controllers
 
             return Ok(new { message = "User KYC rejected" });
         }
-
-        // summing up investments
+         
         [HttpGet("with-aggregated/{userId}")]
         public async Task<IActionResult> GetUserAggregatedInvestments(Guid userId)
         {
@@ -484,13 +483,14 @@ namespace RealEstateInvestment.Controllers
                     from i in _context.Investments
                     join p in _context.Properties on i.PropertyId equals p.Id
                     where i.UserId == userId && i.Shares > 0
-                    group new { i, p } by new { i.PropertyId, p.Title, p.Price, p.TotalShares } into g
+                    group new { i, p } by new { i.PropertyId, p.Title, p.Price, p.TotalShares, p.MonthlyRentalIncome } into g
                     select new
                     {
                         PropertyId = g.Key.PropertyId,
                         PropertyTitle = g.Key.Title,
                         PropertyPrice= g.Key.Price,
                         PropertyTotalShares = g.Key.TotalShares,
+                        MonthlyRentalIncome = g.Key.MonthlyRentalIncome,
                         ConfirmedShares = g.Sum(x => x.i.Shares),
                         ConfirmedAmount = g.Sum(x => x.i.InvestedAmount),
                         OwnershipPercent = Math.Round(g.Sum(x => x.i.InvestedAmount) / g.Key.Price * 100, 2),
@@ -515,6 +515,10 @@ namespace RealEstateInvestment.Controllers
                 var p = pending.FirstOrDefault(x => x.PropertyId == c.PropertyId);
                 var m = onMarket.FirstOrDefault(x => x.PropertyId == c.PropertyId);
 
+                int totalShares = c.PropertyTotalShares > 0 ? c.PropertyTotalShares : 1;
+                decimal totalRentalIncome = c.MonthlyRentalIncome;
+                decimal userRentalIncome = (totalRentalIncome / totalShares) * c.ConfirmedShares;
+
                 return new
                 {
                     c.PropertyId,
@@ -525,6 +529,7 @@ namespace RealEstateInvestment.Controllers
                     MarketShares = m?.MarketShares ?? 0,
                     TotalInvested = c.ConfirmedAmount,
                     c.OwnershipPercent,
+                    MonthlyRentalIncome = Math.Round(userRentalIncome, 2),
                     TotalShareValue = (c.ConfirmedShares + (p?.PendingShares ?? 0))* (c.PropertyPrice / c.PropertyTotalShares)
                 };
             });

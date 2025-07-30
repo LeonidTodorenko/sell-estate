@@ -204,13 +204,14 @@ namespace RealEstateInvestment.Controllers
 
             return Ok(user);
         }
-         
+
         [HttpGet("{userId}/total-assets")]
         public async Task<IActionResult> GetTotalAssets(Guid userId)
         {
             var user = await _context.Users.FindAsync(userId);
             if (user == null) return NotFound(new { message = "User not found" });
 
+            // investments
             var totalInvested = await (
                 from i in _context.Investments
                 join p in _context.Properties on i.PropertyId equals p.Id
@@ -219,20 +220,67 @@ namespace RealEstateInvestment.Controllers
                 {
                     i.Shares,
                     p.Price,
-                    ShareValue = p.Price / p.TotalShares  
+                    p.TotalShares,
+                    p.MonthlyRentalIncome,
+                    ShareValue = p.Price / p.TotalShares
                 }
             ).ToListAsync();
 
             decimal investmentValue = totalInvested.Sum(x => x.ShareValue * x.Shares);
+
+            // rental income
+            decimal rentalIncome = totalInvested.Sum(x =>
+                x.MonthlyRentalIncome > 0 && x.TotalShares > 0
+                    ? (x.MonthlyRentalIncome / x.TotalShares) * x.Shares
+                    : 0
+            );
+
+
+            //applications
+            var pendingApplications = await (
+                from a in _context.InvestmentApplications
+                join p in _context.Properties on a.PropertyId equals p.Id
+                where a.UserId == userId && a.Status == "pending"
+                select new
+                {
+                    a.RequestedShares,
+                    ShareValue = p.Price / p.TotalShares
+                }
+            ).ToListAsync();
+
+            decimal pendingApplicationsValue = pendingApplications.Sum(x => x.ShareValue * x.RequestedShares);
+             
+            // shares placed on market
+            var marketOffers = await (
+                from o in _context.ShareOffers
+                join p in _context.Properties on o.PropertyId equals p.Id
+                where o.SellerId == userId && o.IsActive
+                select new
+                {
+                    o.SharesForSale,
+                    ShareValue = p.Price / p.TotalShares
+                }
+            ).ToListAsync();
+
+            decimal marketValue = marketOffers.Sum(x => x.ShareValue * x.SharesForSale);
+
+            // balance
             decimal wallet = user.WalletBalance;
+
+            // total sum
+            decimal totalAssets = wallet + investmentValue + pendingApplicationsValue + marketValue;
 
             return Ok(new
             {
                 walletBalance = wallet,
                 investmentValue,
-                totalAssets = wallet + investmentValue
+                pendingApplicationsValue,
+                marketValue,
+                rentalIncome,
+                totalAssets
             });
         }
+
 
         [HttpGet("{id}/assets-summary")]
         public async Task<IActionResult> GetUserAssetSummary(Guid id)

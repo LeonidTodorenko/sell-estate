@@ -40,6 +40,21 @@ namespace RealEstateInvestment.Services
                     {
                         title,
                         body
+                    },
+                    android = new
+                    {
+                        priority = "high",
+                        notification = new
+                        {
+                            title,
+                            body,
+                            channel_id = "default", // как и в UI
+                            sound = "default",
+                            defaultSound = true,
+                            defaultVibrateTimings = true,
+                            visibility = "PUBLIC",
+                            notification_priority = "PRIORITY_HIGH"
+                        }
                     }
                 }
             };

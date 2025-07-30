@@ -53,40 +53,38 @@ namespace RealEstateInvestment.Controllers
         [HttpPost("register-token")]
         public async Task<IActionResult> RegisterToken([FromBody] TokenRequest request)
         {
-            var userId = User.GetUserId();  
+            var userId = User.GetUserId();
             if (userId == Guid.Empty) return Unauthorized();
-             
-            var exists = await _context.FcmDeviceTokens.FirstOrDefaultAsync(t => t.Token == request.Token);  //_context.FcmDeviceTokens.AnyAsync(t => t.Token == request.Token);
 
-            if (exists == null)
+            // Ищем запись с таким токеном (если уже есть)
+            var existingToken = await _context.FcmDeviceTokens
+                .FirstOrDefaultAsync(t => t.Token == request.Token);
+
+            if (existingToken != null)
             {
+                // Если токен уже есть, но принадлежит другому пользователю — обновляем
+                if (existingToken.UserId != userId)
+                {
+                    existingToken.UserId = userId;
+                    existingToken.UpdatedAt = DateTime.UtcNow;
+                }
+                // Если уже есть и принадлежит этому же пользователю — ничего не делаем
+            }
+            else
+            {
+                // Добавляем новый токен
                 _context.FcmDeviceTokens.Add(new FcmDeviceToken
                 {
                     UserId = userId,
-                    Token = request.Token
+                    Token = request.Token,
+                    CreatedAt = DateTime.UtcNow
                 });
             }
-            else if (exists.UserId != userId)
-            {
-                // token is used by other user - update
-                exists.UserId = userId;
-                exists.UpdatedAt = DateTime.UtcNow;
-            }
 
-            //if (!exists)
-            //{
-            //    _context.FcmDeviceTokens.Add(new FcmDeviceToken
-            //    {
-            //        UserId = userId,
-            //        Token = request.Token
-            //    });
-
-            //    await _context.SaveChangesAsync();
-            //}
-         
-          
+            await _context.SaveChangesAsync();
             return Ok();
         }
+
 
         public class TokenRequest
         {

@@ -100,11 +100,17 @@ const LoginScreen = ({ navigation }: Props) => {
           value={password}
           onChangeText={setPassword}
         />
-        <Button title="Login" onPress={handleLogin} />
-        <View style={{ height: 10 }} />
-        <Button title="Don't have an account? Register" onPress={() => navigation.navigate('Register')} />
-        <View style={{ height: 10 }} />
-        <Button title="Forgot Password?" onPress={() => navigation.navigate('ForgotPassword')} />
+        <View style={styles.rowButtons}>
+        <View style={styles.buttonContainer}>
+          <Button title="Login" onPress={handleLogin} />
+        </View>
+        <View style={styles.buttonContainer}>
+          <Button title="Sign up" onPress={() => navigation.navigate('Register')} />
+        </View>
+      </View>
+
+        {/* <View style={{ height: 10 }} />
+        <Button title="Forgot Password?" onPress={() => navigation.navigate('ForgotPassword')} /> */}
 
         {/* <Text onPress={() => navigation.navigate('Register')} style={styles.link}>
         Don't have an account? Register
@@ -202,7 +208,7 @@ const LoginScreen = ({ navigation }: Props) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: 'center', paddingHorizontal: 20 },
-  title: { fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 },
+  title: {  textShadowRadius: 1,textShadowOffset: { width: 1, height: 1 },textShadowColor: 'white',color: 'black', fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 },
   input: {
     borderWidth: 1,
     borderColor: '#ccc',
@@ -247,6 +253,15 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: 'bold',
   },
+  rowButtons: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  gap: 10, 
+  marginVertical: 10,
+},
+buttonContainer: {
+  flex: 1,
+},
 });
 
 export default LoginScreen;

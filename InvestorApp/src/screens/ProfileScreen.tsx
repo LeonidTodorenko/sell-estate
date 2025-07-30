@@ -25,13 +25,20 @@ const ProfileScreen = ({ navigation }: Props) => {
 const [investmentValue, setInvestmentValue] = useState<number | null>(null);
 const [totalAssets, setTotalAssets] = useState<number | null>(null);
 const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  const [marketValue, setMarketValue] = useState<number | null>(null);
+  const [pendingApplicationsValue, setPendingApplicationsValue] = useState<number | null>(null);
+  const [rentalIncome, setRentalIncome] = useState<number | null>(null);
 
 const fetchTotalAssets = async (userId: string) => {
   try {
     const res = await api.get(`/users/${userId}/total-assets`);
+    setRentalIncome(res.data.rentalIncome ?? 0);
     setTotalAssets(res.data.totalAssets);
         setInvestmentValue(res.data.investmentValue);
         setWalletBalance(res.data.walletBalance);
+
+           setMarketValue(res.data.marketValue);
+        setPendingApplicationsValue(res.data.pendingApplicationsValue);
   } catch (error: any) {
     console.error('Failed to fetch total assets', error);
   }
@@ -129,8 +136,21 @@ const fetchTotalAssets = async (userId: string) => {
      {investmentValue !== null && (
         <Text>Investment Value: {investmentValue.toFixed(2)}</Text>
       )}
+
+          {pendingApplicationsValue !== null && pendingApplicationsValue !== 0 && (
+              <Text>Pending Applications: {pendingApplicationsValue.toFixed(2)}</Text>
+            )}
+
+            {marketValue !== null && marketValue !== 0 && (
+              <Text>Listed on Market: {marketValue.toFixed(2)}</Text>
+            )}
+
       {totalAssets !== null && (
-        <Text>Total Assets: {totalAssets.toFixed(2)}</Text>
+        <Text style={{ fontWeight: 'bold' }}>Total Assets: {totalAssets.toFixed(2)}</Text>
+      )}
+
+      {rentalIncome !== null && rentalIncome !== 0 && (
+        <Text>Rental Income: {rentalIncome.toFixed(2)}</Text>
       )}
 
       <View style={styles.buttons}>
