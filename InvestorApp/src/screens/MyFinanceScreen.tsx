@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, FlatList, StyleSheet, ActivityIndicator, Button, Dimensions, ScrollView,
+  View, Text, FlatList, StyleSheet, Button, Dimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Picker } from '@react-native-picker/picker';
@@ -20,6 +20,8 @@ interface AssetStats {
   investmentValue: number;
   totalAssets: number;
   assetHistory: { date: string; total: number }[];
+    rentalIncome: number; 
+    rentIncomeHistory: { date: string; total: number }[];  
 }
 
 const MyFinanceScreen = () => {
@@ -29,6 +31,7 @@ const MyFinanceScreen = () => {
   const [stats, setStats] = useState<AssetStats | null>(null);
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [daysBack, setDaysBack] = useState<number>(30);
+ 
 
   useEffect(() => {
     const loadData = async () => {
@@ -81,12 +84,23 @@ const MyFinanceScreen = () => {
     </View>
   );
 
-  const balanceChartData = stats?.assetHistory
-    ? {
-        labels: stats.assetHistory.map(p => new Date(p.date).toLocaleDateString()),
-        datasets: [{ data: stats.assetHistory.map(p => p.total) }]
-      }
-    : null;
+ const dualChartData = stats?.assetHistory && stats?.rentIncomeHistory ? {
+  labels: stats.assetHistory.map(p => new Date(p.date).toLocaleDateString()),
+  datasets: [
+    {
+      data: stats.assetHistory.map(p => p.total),
+      color: () => 'rgba(0, 128, 255, 1)', // синяя — активы
+      strokeWidth: 2,
+    },
+    {
+      data: stats.rentIncomeHistory.map(p => p.total),
+      color: () => 'rgba(0, 200, 0, 1)', // зелёная — аренда
+      strokeWidth: 2,
+    },
+  ],
+  legend: ['Total Assets', 'Rent Income'],
+} : null;
+
 
   return (
   <FlatList
@@ -94,13 +108,14 @@ const MyFinanceScreen = () => {
       <>
         <Text style={styles.title}>My Finances</Text>
 
-        {stats && (
-          <View style={styles.summaryBox}>
-            <Text style={styles.asset}>Total Assets: ${stats.totalAssets.toFixed(2)}</Text>
-            <Text>Wallet Balance: ${stats.walletBalance.toFixed(2)}</Text>
-            <Text>Investments Value: ${stats.investmentValue.toFixed(2)}</Text>
-          </View>
-        )}
+     {stats && (
+  <View style={styles.summaryBox}>
+    <Text style={styles.asset}>Total Assets: ${stats.totalAssets.toFixed(2)}</Text>
+    <Text>Wallet Balance: ${stats.walletBalance.toFixed(2)}</Text>
+    <Text>Investments Value: ${stats.investmentValue.toFixed(2)}</Text>
+    <Text>Rental Income: ${stats.rentalIncome.toFixed(2)}</Text>
+  </View>
+)}
 
         <Text>Filter by type:</Text>
         <Picker selectedValue={typeFilter} onValueChange={setTypeFilter}>
@@ -125,28 +140,28 @@ const MyFinanceScreen = () => {
     keyExtractor={(item) => item.id}
     renderItem={renderItem}
     ListEmptyComponent={<Text style={styles.empty}>No transactions found.</Text>}
-    ListFooterComponent={
-      balanceChartData && (
-        <>
-          <Text style={styles.chartTitle}>Asset Growth</Text>
-          <LineChart
-            data={balanceChartData}
-            width={Dimensions.get('window').width - 32}
-            height={220}
-            yAxisSuffix=" $"
-            chartConfig={{
-              backgroundColor: '#ffffff',
-              backgroundGradientFrom: '#ffffff',
-              backgroundGradientTo: '#ffffff',
-              decimalPlaces: 2,
-              color: (opacity = 1) => `rgba(0, 128, 255, ${opacity})`,
-              labelColor: () => '#000',
-            }}
-            style={{ marginVertical: 20, borderRadius: 16 }}
-          />
-        </>
-      )
-    }
+   ListFooterComponent={
+  dualChartData && (
+    <>
+      <Text style={styles.chartTitle}>Asset Growth & Rent</Text>
+      <LineChart
+        data={dualChartData}
+        width={Dimensions.get('window').width - 32}
+        height={240}
+        yAxisSuffix=" $"
+        chartConfig={{
+          backgroundColor: '#ffffff',
+          backgroundGradientFrom: '#ffffff',
+          backgroundGradientTo: '#ffffff',
+          decimalPlaces: 2,
+          color: (opacity = 1) => `rgba(0, 128, 255, ${opacity})`,
+          labelColor: () => '#000',
+        }}
+        style={{ marginVertical: 20, borderRadius: 16 }}
+      />
+    </>
+  )
+}
   />
 );
 

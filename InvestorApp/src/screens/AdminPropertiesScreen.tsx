@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Button, Alert, ScrollView, Image, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Button, Alert, ScrollView, Image, TouchableOpacity, TextInput } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
@@ -56,6 +56,9 @@ const AdminPropertiesScreen = () => {
   const [modalImage, setModalImage] = useState<string | null>(null);
   const [imageIndex, setImageIndex] = useState(0);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const [rentModalVisible, setRentModalVisible] = useState(false);
+  const [rentAmount, setRentAmount] = useState<string>('');
+  const [rentTargetPropertyId, setRentTargetPropertyId] = useState<string | null>(null);
 
   const loadProperties = async () => {
     try {
@@ -284,6 +287,15 @@ const AdminPropertiesScreen = () => {
             {item.status === 'available' && (
               <Button title="✅ Finalize Auction" onPress={() => handleFinalize(item.id)} color="green" />
             )}
+           <Button
+              title="💸 Pay Rent"
+              onPress={() => {
+                setRentTargetPropertyId(item.id);
+                setRentModalVisible(true);
+              }}
+            />
+            <Button title="📜 View Rent History" onPress={() => navigation.navigate('RentHistory', { propertyId: item.id })} />
+
           </View>
         </View>
       ))}
@@ -295,6 +307,39 @@ const AdminPropertiesScreen = () => {
           )}
         </View>
       </Modal>
+
+      <Modal isVisible={rentModalVisible} onBackdropPress={() => setRentModalVisible(false)}>
+        <View style={{ backgroundColor: 'white', padding: 20, borderRadius: 10 }}>
+          <Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 10 }}>Enter rent amount (optional):</Text>
+          <Text style={{ marginBottom: 5, fontStyle: 'italic' }}>Leave blank to use full monthly rent.</Text>
+          <TextInput
+            placeholder="Amount in USD"
+            keyboardType="numeric"
+            value={rentAmount}
+            onChangeText={setRentAmount}
+            style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, marginBottom: 15 }}
+          />
+          <Button
+            title="💸 Confirm Rent Payment"
+            onPress={async () => {
+              try {
+                await api.post(`/properties/${rentTargetPropertyId}/pay-rent`, {
+                  customAmount: rentAmount ? parseFloat(rentAmount) : null,
+                });
+                Alert.alert('Success', 'Rent paid to investors');
+                setRentModalVisible(false);
+                setRentAmount('');
+                setRentTargetPropertyId(null);
+              } catch (error: any) {
+                Alert.alert('Error', error.response?.data?.message || error.message);
+              }
+            }}
+          />
+          <View style={{ height: 10 }} />
+          <Button title="Cancel" color="gray" onPress={() => setRentModalVisible(false)} />
+        </View>
+      </Modal>
+
     </ScrollView>
   );
 };

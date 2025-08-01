@@ -173,6 +173,10 @@ const fetchTotalAssets = async (userId: string) => {
         <View style={{ height: 10 }} />
         <Button title="Withdrawal History" onPress={() => navigation.navigate('MyWithdrawals')} />
         <View style={{ height: 10 }} />
+        
+         <Button title="Rental Income" onPress={() => navigation.navigate('MyRentIncome')} />
+       <View style={{ height: 10 }} />
+        
         {/* <Button title="Upload KYC" onPress={() => navigation.navigate('UploadKyc')} />
         <View style={{ height: 10 }} /> */}
         {/* <Button title="Top Up Balance" onPress={() => navigation.navigate('TopUp')} />

@@ -7,6 +7,7 @@
         ShareMarketBuy,
         ShareMarketSell,
         Deposit,
-        Withdrawal 
+        Withdrawal,
+        RentIncome
     }
 }

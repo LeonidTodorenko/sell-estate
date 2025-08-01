@@ -10,6 +10,7 @@ using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authorization;
 using RealEstateInvestment.Enums;
 using Org.BouncyCastle.Asn1.Ocsp;
+using RealEstateInvestment.Helpers;
 
 namespace RealEstateInvestment.Controllers
 { 
@@ -281,6 +282,47 @@ namespace RealEstateInvestment.Controllers
             });
         }
 
+        [HttpGet("me/rent-income-history")]
+        [Authorize]
+        public async Task<IActionResult> GetMyRentIncomeHistory([FromQuery] DateTime? from, [FromQuery] DateTime? to)
+        {
+            var userId = User.GetUserId();
+            if (userId == Guid.Empty)
+                return Unauthorized();
+
+            var logsQuery = _context.ActionLogs
+                .Where(l => l.UserId == userId && l.Action == "MonthlyRentPayout");
+
+            if (from.HasValue)
+                logsQuery = logsQuery.Where(l => l.Timestamp >= from.Value);
+            if (to.HasValue)
+                logsQuery = logsQuery.Where(l => l.Timestamp <= to.Value);
+
+            var logs = await logsQuery.OrderByDescending(l => l.Timestamp).ToListAsync();
+
+            var result = new List<object>();
+            foreach (var log in logs)
+            {
+                var match = Regex.Match(log.Details, @"property '([^']+)' \(([^)]+)\)");
+                var title = match.Success ? match.Groups[1].Value : "Unknown";
+
+                var amount = 0m;
+                var amountMatch = Regex.Match(log.Details, @"received (\d+(\.\d+)?) USD");
+                if (amountMatch.Success)
+                    decimal.TryParse(amountMatch.Groups[1].Value, out amount);
+
+                result.Add(new
+                {
+                    title,
+                    amount,
+                    log.Timestamp
+                });
+            }
+
+            return Ok(result);
+        }
+
+
 
         [HttpGet("{id}/assets-summary")]
         public async Task<IActionResult> GetUserAssetSummary(Guid id)
@@ -289,7 +331,6 @@ namespace RealEstateInvestment.Controllers
             if (user == null)
                 return NotFound("User not found");
 
-            // Получаем подтверждённые инвестиции пользователя
             var investments = await _context.Investments
                 .Where(i => i.UserId == id)
                 .Include(i => i.Property)
@@ -299,13 +340,10 @@ namespace RealEstateInvestment.Controllers
 
             foreach (var inv in investments)
             {
-               // var pricePerShare = inv.Property.BuybackPricePerShare > 0  ? inv.Property.BuybackPricePerShare  : inv.InvestedAmount / inv.Shares;
                 var pricePerShare = inv.Property.BuybackPricePerShare ?? (inv.InvestedAmount / inv.Shares);
-
                 investmentValue += inv.Shares * pricePerShare;
             }
 
-            // График изменения активов на основе транзакций
             var transactions = await _context.UserTransactions
                 .Where(t => t.UserId == id)
                 .OrderBy(t => t.Timestamp)
@@ -313,6 +351,7 @@ namespace RealEstateInvestment.Controllers
 
             var history = new List<object>();
             decimal runningTotal = 0;
+            decimal totalRentalIncome = 0;
 
             foreach (var tx in transactions)
             {
@@ -320,6 +359,7 @@ namespace RealEstateInvestment.Controllers
                 {
                     TransactionType.Deposit => tx.Amount,
                     TransactionType.ShareMarketSell => tx.Amount,
+                    TransactionType.RentIncome => tx.Amount,
                     TransactionType.Investment => -tx.Amount,
                     TransactionType.Withdrawal => -tx.Amount,
                     TransactionType.Buyback => -tx.Amount,
@@ -329,10 +369,31 @@ namespace RealEstateInvestment.Controllers
 
                 runningTotal += amount;
 
+                if (tx.Type == TransactionType.RentIncome)
+                    totalRentalIncome += tx.Amount;
+
                 history.Add(new
                 {
                     date = tx.Timestamp.ToString("yyyy-MM-dd"),
                     total = Math.Round(runningTotal, 2)
+                });
+            }
+
+            var rentTransactions = transactions
+    .Where(t => t.Type == TransactionType.RentIncome)
+    .OrderBy(t => t.Timestamp)
+    .ToList();
+
+            var rentHistory = new List<object>();
+            decimal rentRunningTotal = 0;
+
+            foreach (var tx in rentTransactions)
+            {
+                rentRunningTotal += tx.Amount;
+                rentHistory.Add(new
+                {
+                    date = tx.Timestamp.ToString("yyyy-MM-dd"),
+                    total = Math.Round(rentRunningTotal, 2)
                 });
             }
 
@@ -341,9 +402,13 @@ namespace RealEstateInvestment.Controllers
                 walletBalance = user.WalletBalance,
                 investmentValue = Math.Round(investmentValue, 2),
                 totalAssets = Math.Round(user.WalletBalance + investmentValue, 2),
-                assetHistory = history
+                rentalIncome = Math.Round(totalRentalIncome, 2),
+                assetHistory = history,
+                rentIncomeHistory = rentHistory
+
             });
         }
+
 
 
         // todo move

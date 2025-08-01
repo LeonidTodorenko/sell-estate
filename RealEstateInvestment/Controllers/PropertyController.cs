@@ -1,8 +1,12 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json.Linq;
 using RealEstateInvestment.Data;
+using RealEstateInvestment.Enums;
+using RealEstateInvestment.Helpers;
 using RealEstateInvestment.Models;
+using RealEstateInvestment.Services;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace RealEstateInvestment.Controllers
@@ -13,15 +17,18 @@ namespace RealEstateInvestment.Controllers
     public class PropertyController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly IFirebaseNotificationService _firebaseNotificationService;
 
         public class UploadImageRequest
         {
             public string Base64Image { get; set; }
         }
 
-        public PropertyController(AppDbContext context)
+        public PropertyController(AppDbContext context, IFirebaseNotificationService firebaseNotificationService)
         {
             _context = context;
+            _firebaseNotificationService = firebaseNotificationService;
+
         }
 
         // Get a list of real estate properties
@@ -38,7 +45,7 @@ namespace RealEstateInvestment.Controllers
         {
             //if (property.TotalShares <= 0)
             //    return BadRequest(new { message = "TotalShares must be greater than 0" });
-             
+
 
             //if (property.AvailableShares < 0)
             //    return BadRequest(new { message = "AvailableShares cannot be negative" });
@@ -55,7 +62,7 @@ namespace RealEstateInvestment.Controllers
 
             property.RealPrice = property.Price; // сохраняем оригинальную цену
             property.Price = property.TotalShares * 1000; // округляем до ближайшего 1000
-             
+
             var sharePrice = property.Price / property.TotalShares;
 
             if (sharePrice < 1000)
@@ -71,12 +78,12 @@ namespace RealEstateInvestment.Controllers
             try
             {
                 _context.Properties.Add(property);
-                 _context.ActionLogs.Add(new ActionLog
+                _context.ActionLogs.Add(new ActionLog
                 {
                     UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add admin guid later
                     Action = "CreateProperty",
                     Details = $"Created: {property.Title} with shares: {property.TotalShares}"
-                 });
+                });
                 await _context.SaveChangesAsync();
             }
             catch (Exception ex)
@@ -336,7 +343,7 @@ namespace RealEstateInvestment.Controllers
             }
 
             _context.Investments.RemoveRange(investments);
-              
+
             _context.ActionLogs.Add(new ActionLog
             {
                 UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo admin GUID
@@ -353,7 +360,7 @@ namespace RealEstateInvestment.Controllers
                 investmentsRefunded
             });
         }
-         
+
 
         [HttpGet("with-stats")]
         //[Authorize(Roles = "admin")] todo пока убрал тк нужен для приоритетного инестора для страницы юзера
@@ -365,11 +372,11 @@ namespace RealEstateInvestment.Controllers
                 var properties = await _context.Properties
                    .Include(p => p.PaymentPlans).ToListAsync();
 
-                var data= properties.Select(p => new
-                   {
-                       p.Id,
-                       p.Title,
-                       p.Status,
+                var data = properties.Select(p => new
+                {
+                    p.Id,
+                    p.Title,
+                    p.Status,
                     p.Location,
                     p.Price,
                     p.RealPrice,
@@ -392,19 +399,19 @@ namespace RealEstateInvestment.Controllers
                            .Select((pp, index) => new { Step = index + 1, pp.DueDate })
                            .FirstOrDefault(),
 
-                       PriorityInvestorId = p.PriorityInvestorId,
+                    PriorityInvestorId = p.PriorityInvestorId,
 
-                       ApplicationsCount = _context.InvestmentApplications
+                    ApplicationsCount = _context.InvestmentApplications
                            .Count(a => a.PropertyId == p.Id && a.Status == null),
 
-                       ApplicationsAmount = _context.InvestmentApplications
+                    ApplicationsAmount = _context.InvestmentApplications
                            .Where(a => a.PropertyId == p.Id && a.Status == null)
                            .Sum(a => (decimal?)a.RequestedAmount) ?? 0,
 
-                       ApprovedShares = _context.Investments
+                    ApprovedShares = _context.Investments
                            .Where(i => i.PropertyId == p.Id)
                            .Sum(i => (int?)i.Shares) ?? 0
-                   })
+                })
                    .ToList();
 
                 return Ok(data);
@@ -413,7 +420,7 @@ namespace RealEstateInvestment.Controllers
             {
                 return BadRequest(ex);
             }
-          
+
         }
 
         [HttpGet("{id}/buyback-price")]
@@ -423,6 +430,152 @@ namespace RealEstateInvestment.Controllers
             if (property == null) return NotFound();
             return Ok(new { buybackPrice = property.BuybackPricePerShare });
         }
+
+        // todo move
+        public class RentPayoutRequest
+        {
+            public decimal? CustomAmount { get; set; }
+        }
+
+        [HttpPost("{propertyId}/pay-rent")]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> PayRentalIncome(Guid propertyId, [FromBody] RentPayoutRequest request)
+        {
+            var property = await _context.Properties.FindAsync(propertyId);
+            if (property == null) return NotFound(new { message = "Property not found" });
+
+            var totalShares = property.TotalShares;
+            if (totalShares <= 0)
+                return BadRequest(new { message = "Property has invalid number of shares." });
+
+            decimal amountToDistribute = request.CustomAmount ?? property.MonthlyRentalIncome;
+
+            if (amountToDistribute <= 0)
+                return BadRequest(new { message = "Payout amount must be greater than zero." });
+
+            var investments = await _context.Investments
+                .Where(i => i.PropertyId == propertyId)
+                .ToListAsync();
+
+            if (!investments.Any())
+                return BadRequest(new { message = "No investors found for this property." });
+
+            // Распределение
+            var payoutPerShare = amountToDistribute / totalShares;
+
+            foreach (var inv in investments)
+            {
+                var payout = Math.Round(payoutPerShare * inv.Shares, 2);
+                var user = await _context.Users.FindAsync(inv.UserId);
+                if (user == null) continue;
+
+                user.WalletBalance += payout;
+
+                // log
+                _context.ActionLogs.Add(new ActionLog
+                {
+                    UserId = inv.UserId,
+                    Action = "MonthlyRentPayout",
+                    Details = $"User received {payout} USD rent for property '{property.Title}' ({property.Id})."
+                });
+
+                // сообщение
+                _context.Messages.Add(new Message
+                {
+                    RecipientId = inv.UserId,
+                    Title = $"💸 Rental income received: {payout} USD",
+                    Content = $"You have received rent payout for property \"{property.Title}\".\nAmount: {payout} USD."
+                });
+
+                var tokens = await _context.FcmDeviceTokens
+               .Where(t => t.UserId == inv.UserId)
+               .Select(t => t.Token).ToListAsync();
+                foreach (var token in tokens)
+                {
+                    await _firebaseNotificationService.SendNotificationAsync(token, $"💰 Rent income", $"You received {payout} USD for \"{property.Title}\"");
+                }
+
+                _context.UserTransactions.Add(new UserTransaction
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = inv.UserId,
+                    Type = TransactionType.RentIncome,
+                    Amount = payout,
+                    Timestamp = DateTime.UtcNow,
+                    Notes = $"Rental income for property '{property.Title}'"
+                });
+
+
+            }
+
+
+            property.LastPayoutDate = DateTime.UtcNow;
+
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = User.GetUserId(),
+                Action = "AdminRentPayout",
+                Details = $"Admin distributed {amountToDistribute} USD for property '{property.Title}'"
+            });
+
+            await _context.SaveChangesAsync();
+            return Ok(new { message = "Payout completed" });
+        }
+
+        [HttpGet("{propertyId}/rent-history")]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> GetRentPayoutHistory(Guid propertyId, [FromQuery] string? userId, [FromQuery] string? fullName, [FromQuery] DateTime? from, [FromQuery] DateTime? to)
+        {
+            var property = await _context.Properties.FindAsync(propertyId);
+            if (property == null)
+                return NotFound(new { message = "Property not found" });
+
+            var logsQuery = _context.ActionLogs
+                .Where(l => l.Action == "MonthlyRentPayout" && l.Details.Contains(propertyId.ToString()));
+
+            if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out var uid))
+                logsQuery = logsQuery.Where(l => l.UserId == uid);
+
+            if (from.HasValue)
+                logsQuery = logsQuery.Where(l => l.Timestamp >= from.Value);
+            if (to.HasValue)
+                logsQuery = logsQuery.Where(l => l.Timestamp <= to.Value);
+
+            var logs = await logsQuery
+                .OrderByDescending(l => l.Timestamp)
+                .ToListAsync();
+
+            var userIds = logs.Select(l => l.UserId).Distinct().ToList();
+            var users = await _context.Users
+                .Where(u => userIds.Contains(u.Id))
+                .ToDictionaryAsync(u => u.Id, u => u.FullName);
+
+            var result = logs
+                .Select(log =>
+                {
+                    var name = users.ContainsKey(log.UserId) ? users[log.UserId] : log.UserId.ToString();
+                    var amount = 0m;
+
+                    var match = System.Text.RegularExpressions.Regex.Match(log.Details, @"received (\d+(\.\d+)?) USD");
+                    if (match.Success)
+                        decimal.TryParse(match.Groups[1].Value, out amount);
+
+                    return new
+                    {
+                        fullName = name,
+                        amount,
+                        log.Timestamp
+                    };
+                })
+                .Where(r => string.IsNullOrEmpty(fullName) || r.fullName.Contains(fullName, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            return Ok(result);
+        }
+
+
+
+
 
     }
 }

@@ -46,6 +46,8 @@ import ChatScreen from '../screens/ChatScreen';
 import AdminChatScreen  from '../screens/AdminChatScreen';
 import MyInvestmentsScreen  from '../screens/MyInvestmentsScreen';
 import MyFinanceScreen  from '../screens/MyFinanceScreen';
+import RentHistoryScreen  from '../screens/RentHistoryScreen';
+import MyRentIncomeScreen  from '../screens/MyRentIncomeScreen';
 
 export type RootStackParamList = {
   Login: undefined;
@@ -91,6 +93,8 @@ export type RootStackParamList = {
   AdminChat: undefined;
   MyInvestments: undefined;
   MyFinance: undefined;
+  MyRentIncome: undefined;
+  RentHistory: { propertyId: string };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -142,6 +146,8 @@ export default function AppNavigator() {
         <Stack.Screen name="AdminChat" component={AdminChatScreen} options={{ title: 'Chat' }}/>
         <Stack.Screen name="MyInvestments" component={MyInvestmentsScreen} options={{ title: 'Stack history' }}/>
         <Stack.Screen name="MyFinance" component={MyFinanceScreen} options={{ title: 'My Finance' }}/>
+        <Stack.Screen name="RentHistory" component={RentHistoryScreen} options={{ title: 'Rent History ' }}/>
+        <Stack.Screen name="MyRentIncome" component={MyRentIncomeScreen} options={{ title: 'Rental Income ' }}/>
       </Stack.Navigator>
     </NavigationContainer>
   );
