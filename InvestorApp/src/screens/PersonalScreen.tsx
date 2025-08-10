@@ -30,43 +30,43 @@ const PersonalScreen = ({ navigation }: Props) => {
   const [rentalIncome, setRentalIncome] = useState<number | null>(null);
 
   const fetchTotalAssets = async (userId: string) => {
-  try {
-    const res = await api.get(`/users/${userId}/total-assets`);
-    setRentalIncome(res.data.rentalIncome ?? 0);
-    setTotalAssets(res.data.totalAssets);
-        setInvestmentValue(res.data.investmentValue);
-        setWalletBalance(res.data.walletBalance);
-   
-        setMarketValue(res.data.marketValue);
-        setPendingApplicationsValue(res.data.pendingApplicationsValue);
+    try {
+      const res = await api.get(`/users/${userId}/total-assets`);
+      setRentalIncome(res.data.rentalIncome ?? 0);
+      setTotalAssets(res.data.totalAssets);
+      setInvestmentValue(res.data.investmentValue);
+      setWalletBalance(res.data.walletBalance);
 
-  } catch (error: any) {
-    console.error('Failed to fetch total assets', error);
-  }
-};
+      setMarketValue(res.data.marketValue);
+      setPendingApplicationsValue(res.data.pendingApplicationsValue);
+
+    } catch (error: any) {
+      console.error('Failed to fetch total assets', error);
+    }
+  };
 
   useFocusEffect(
     useCallback(() => {
-        const fetchAndRefresh = async () => {
-          try {
-            const stored = await AsyncStorage.getItem('user');
-            if (stored) {
-              const parsed = JSON.parse(stored);
-              setUser(parsed);
-                  fetchUnreadCount(parsed.userId);
-                      fetchTotalAssets(parsed.userId);
-            } else {
-              // todo add console log Alert.alert('No session', 'Please log in again');
-          navigation.replace('Login');
-            }
-          } catch (error: any) {
-             let message = error.message || 'Unexpected error loading user';
-            Alert.alert('Error', 'Failed to load or refresh user' + message);
+      const fetchAndRefresh = async () => {
+        try {
+          const stored = await AsyncStorage.getItem('user');
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            setUser(parsed);
+            fetchUnreadCount(parsed.userId);
+            fetchTotalAssets(parsed.userId);
+          } else {
+            // todo add console log Alert.alert('No session', 'Please log in again');
+            navigation.replace('Login');
           }
-        };
+        } catch (error: any) {
+          let message = error.message || 'Unexpected error loading user';
+          Alert.alert('Error', 'Failed to load or refresh user' + message);
+        }
+      };
 
-        fetchAndRefresh();
-      }, [navigation])
+      fetchAndRefresh();
+    }, [navigation])
   );
 
 
@@ -78,7 +78,7 @@ const PersonalScreen = ({ navigation }: Props) => {
   //         const parsed = JSON.parse(stored);
   //         setUser(parsed);
   //         fetchUnreadCount(parsed.userId);
-          
+
   //       } else {
   //         Alert.alert('No session', 'Please log in again');
   //         navigation.replace('Login');
@@ -139,25 +139,25 @@ const PersonalScreen = ({ navigation }: Props) => {
       <Text>Full Name: {user.fullName}</Text>
       <Text>Email: {user.email}</Text>
       <Text>Wallet Balance: {walletBalance}</Text>
-           {investmentValue !== null && (
-              <Text>Investment Value: {investmentValue.toFixed(2)}</Text>
-            )}
+      {investmentValue !== null && (
+        <Text>Investment Value: {investmentValue.toFixed(2)}</Text>
+      )}
 
-            {pendingApplicationsValue !== null && pendingApplicationsValue !== 0 && (
-              <Text>Pending Applications: {pendingApplicationsValue.toFixed(2)}</Text>
-            )}
+      {pendingApplicationsValue !== null && pendingApplicationsValue !== 0 && (
+        <Text>Pending Applications: {pendingApplicationsValue.toFixed(2)}</Text>
+      )}
 
-            {marketValue !== null && marketValue !== 0 && (
-              <Text>Listed on Market: {marketValue.toFixed(2)}</Text>
-            )}
- 
-            {totalAssets !== null && (
-              <Text  style={{ fontWeight: 'bold' }}>Total Assets: {totalAssets.toFixed(2)}</Text>
-            )}
+      {marketValue !== null && marketValue !== 0 && (
+        <Text>Listed on Market: {marketValue.toFixed(2)}</Text>
+      )}
 
-            {rentalIncome !== null && rentalIncome !== 0 && (
-              <Text>Rental Income: {rentalIncome.toFixed(2)}</Text>
-            )}
+      {totalAssets !== null && (
+        <Text style={{ fontWeight: 'bold' }}>Total Assets: {totalAssets.toFixed(2)}</Text>
+      )}
+
+      {rentalIncome !== null && rentalIncome !== 0 && (
+        <Text>Rental Income: {rentalIncome.toFixed(2)}</Text>
+      )}
 
       <View style={styles.buttons}>
         <Button title="Edit Profile" onPress={() => navigation.navigate('EditProfile')} />
@@ -173,12 +173,12 @@ const PersonalScreen = ({ navigation }: Props) => {
         <View style={{ height: 10 }} />
         <Button title="Change Password" onPress={() => navigation.navigate('ChangePassword')} />
         <View style={{ height: 10 }} />
-          <Button
-            title="📜 Transaction History"
-            onPress={() => navigation.navigate('UserTransactions')}
-          />
+        <Button
+          title="📜 Transaction History"
+          onPress={() => navigation.navigate('UserTransactions')}
+        />
         <View style={{ height: 10 }} />
-          <Button title="Chat with admin" onPress={() => navigation.navigate('Chat')} />
+        <Button title="Chat with admin" onPress={() => navigation.navigate('Chat')} />
         <View style={{ height: 10 }} />
         <Button title="Logout" onPress={handleLogout} color="red" />
       </View>

@@ -452,10 +452,7 @@ namespace RealEstateInvestment.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
-
-
-
-
+         
         // todo move
         public class UpdateProfileRequest
         {

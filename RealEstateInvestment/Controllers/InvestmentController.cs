@@ -380,8 +380,7 @@ namespace RealEstateInvestment.Controllers
 
             return Ok(new { message = "First milestone is covered, no action needed" });
         }
-
-
+         
         // Get user investments
         [HttpGet("user/{userId}")]
         public async Task<IActionResult> GetUserInvestments(Guid userId)

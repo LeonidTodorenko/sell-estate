@@ -101,13 +101,13 @@ const LoginScreen = ({ navigation }: Props) => {
           onChangeText={setPassword}
         />
         <View style={styles.rowButtons}>
-        <View style={styles.buttonContainer}>
-          <Button title="Login" onPress={handleLogin} />
+          <View style={styles.buttonContainer}>
+            <Button title="Login" onPress={handleLogin} />
+          </View>
+          <View style={styles.buttonContainer}>
+            <Button title="Sign up" onPress={() => navigation.navigate('Register')} />
+          </View>
         </View>
-        <View style={styles.buttonContainer}>
-          <Button title="Sign up" onPress={() => navigation.navigate('Register')} />
-        </View>
-      </View>
 
         {/* <View style={{ height: 10 }} />
         <Button title="Forgot Password?" onPress={() => navigation.navigate('ForgotPassword')} /> */}
@@ -143,17 +143,17 @@ const LoginScreen = ({ navigation }: Props) => {
 
             await AsyncStorage.setItem('user', JSON.stringify(response.data));
 
-             const fcmToken = await getFcmToken();
-              if (fcmToken) {
-                try {
-                  await api.post('/notifications/register-token', {
-                    token: fcmToken,
-                  });
-                  console.log('Token registered on backend');
-                } catch (err) {
-                  console.warn('Failed to register FCM token', err);
-                }
+            const fcmToken = await getFcmToken();
+            if (fcmToken) {
+              try {
+                await api.post('/notifications/register-token', {
+                  token: fcmToken,
+                });
+                console.log('Token registered on backend');
+              } catch (err) {
+                console.warn('Failed to register FCM token', err);
               }
+            }
 
             navigation.navigate('Profile');
 
@@ -164,7 +164,7 @@ const LoginScreen = ({ navigation }: Props) => {
           ➤ Login as Test User
         </Text>
 
-          <Text onPress={async () => {
+        <Text onPress={async () => {
           try {
 
             const response = await api.post('/auth/login', {
@@ -208,7 +208,7 @@ const LoginScreen = ({ navigation }: Props) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: 'center', paddingHorizontal: 20 },
-  title: {  textShadowRadius: 1,textShadowOffset: { width: 1, height: 1 },textShadowColor: 'white',color: 'black', fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 },
+  title: { textShadowRadius: 1, textShadowOffset: { width: 1, height: 1 }, textShadowColor: 'white', color: 'black', fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 },
   input: {
     borderWidth: 1,
     borderColor: '#ccc',
@@ -247,21 +247,21 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: 'bold',
   },
-   userLink3: {
+  userLink3: {
     marginTop: 10,
     color: 'orange',
     textAlign: 'center',
     fontWeight: 'bold',
   },
   rowButtons: {
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  gap: 10, 
-  marginVertical: 10,
-},
-buttonContainer: {
-  flex: 1,
-},
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginVertical: 10,
+  },
+  buttonContainer: {
+    flex: 1,
+  },
 });
 
 export default LoginScreen;

@@ -1,5 +1,5 @@
-import React, {  useState, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, Alert, Image, TouchableOpacity,Button } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, FlatList, StyleSheet, Alert, Image, TouchableOpacity, Button } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
 import { useNavigation } from '@react-navigation/native';
@@ -70,10 +70,10 @@ const InvestmentsScreen = () => {
   // }, [loadInvestments]);
 
   useFocusEffect(
-  useCallback(() => {
-    loadInvestments();
-  }, [loadInvestments])
-);
+    useCallback(() => {
+      loadInvestments();
+    }, [loadInvestments])
+  );
 
   return (
     <View style={styles.container}>
@@ -85,7 +85,7 @@ const InvestmentsScreen = () => {
             <Text style={styles.name}>🏠 {item.propertyTitle}</Text>
             {/* <Text>💰 Invested: {item.totalInvested} USD</Text> видимо уберем это */}
             <Text>📦 Total Share Value: {item.totalShareValue} USD</Text>
-            <Text>📊 Shares: {item.totalShares} <Text style={{ color: 'gray' }}>( {item.confirmedApplications} applications, {item.confirmedShares}  сonfirmed shares) </Text></Text> 
+            <Text>📊 Shares: {item.totalShares} <Text style={{ color: 'gray' }}>( {item.confirmedApplications} applications, {item.confirmedShares}  сonfirmed shares) </Text></Text>
             {item.marketShares > 0 && (
               <Text style={{ color: 'orange' }}>⚠️ {item.marketShares} shares are currently listed for sale</Text>
             )}
@@ -93,10 +93,10 @@ const InvestmentsScreen = () => {
               ✔️ Confirmed: {item.confirmedApplications} applications, {item.confirmedShares}  сonfirmed shares
             </Text> */}
             <Text>📈 Ownership: {item.ownershipPercent}%</Text>
-          {item.monthlyRentalIncome !== null && item.monthlyRentalIncome !== 0 && (
-                <Text>Rental Income: {item.monthlyRentalIncome.toFixed(2)} USD</Text>
-              )}
- 
+            {item.monthlyRentalIncome !== null && item.monthlyRentalIncome !== 0 && (
+              <Text>Rental Income: {item.monthlyRentalIncome.toFixed(2)} USD</Text>
+            )}
+
             {imagesMap[item.propertyId] && imagesMap[item.propertyId].length > 0 && (
               <View style={styles.carouselContainer}>
                 <Swiper
@@ -123,17 +123,17 @@ const InvestmentsScreen = () => {
                 </Text>
               </View>
             )}
-             <Button title="📄 View Payment Plan" onPress={() => navigation.navigate('PaymentPlan', { propertyId: item.propertyId, readonly: true })} />
-               <View style={{ height: 10 }} />
-               <Button  title="💸 Sell My Shares"  onPress={() =>    navigation.navigate('SellMyShares', {      propertyId: item.propertyId,      propertyName: item.propertyTitle,    })  }/>
-                <View style={{ height: 10 }} />
-                <Button
-                    title="📄 My Applications"
-                    onPress={() =>
-                      navigation.navigate('InvestmentApplications', { propertyId: item.propertyId })
-                    }
-                  />
-                   <View style={{ height: 10 }} />
+            <Button title="📄 View Payment Plan" onPress={() => navigation.navigate('PaymentPlan', { propertyId: item.propertyId, readonly: true })} />
+            <View style={{ height: 10 }} />
+            <Button title="💸 Sell My Shares" onPress={() => navigation.navigate('SellMyShares', { propertyId: item.propertyId, propertyName: item.propertyTitle, })} />
+            <View style={{ height: 10 }} />
+            <Button
+              title="📄 My Applications"
+              onPress={() =>
+                navigation.navigate('InvestmentApplications', { propertyId: item.propertyId })
+              }
+            />
+            <View style={{ height: 10 }} />
             <Text
               style={styles.link}
               onPress={() => navigation.navigate('PropertyDetail', { propertyId: item.propertyId })}

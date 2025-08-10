@@ -84,8 +84,7 @@ namespace RealEstateInvestment.Controllers
             await _context.SaveChangesAsync();
             return Ok();
         }
-
-
+         
         public class TokenRequest
         {
             public string Token { get; set; }

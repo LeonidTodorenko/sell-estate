@@ -1,4 +1,4 @@
-import React, {  useState } from 'react';
+import React, { useState } from 'react';
 import { View, Text, Button, StyleSheet, Alert, Image, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -22,50 +22,50 @@ interface User {
 const ProfileScreen = ({ navigation }: Props) => {
   const [user, setUser] = useState<User | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
-const [investmentValue, setInvestmentValue] = useState<number | null>(null);
-const [totalAssets, setTotalAssets] = useState<number | null>(null);
-const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  const [investmentValue, setInvestmentValue] = useState<number | null>(null);
+  const [totalAssets, setTotalAssets] = useState<number | null>(null);
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [marketValue, setMarketValue] = useState<number | null>(null);
   const [pendingApplicationsValue, setPendingApplicationsValue] = useState<number | null>(null);
   const [rentalIncome, setRentalIncome] = useState<number | null>(null);
 
-const fetchTotalAssets = async (userId: string) => {
-  try {
-    const res = await api.get(`/users/${userId}/total-assets`);
-    setRentalIncome(res.data.rentalIncome ?? 0);
-    setTotalAssets(res.data.totalAssets);
-        setInvestmentValue(res.data.investmentValue);
-        setWalletBalance(res.data.walletBalance);
+  const fetchTotalAssets = async (userId: string) => {
+    try {
+      const res = await api.get(`/users/${userId}/total-assets`);
+      setRentalIncome(res.data.rentalIncome ?? 0);
+      setTotalAssets(res.data.totalAssets);
+      setInvestmentValue(res.data.investmentValue);
+      setWalletBalance(res.data.walletBalance);
 
-           setMarketValue(res.data.marketValue);
-        setPendingApplicationsValue(res.data.pendingApplicationsValue);
-  } catch (error: any) {
-    console.error('Failed to fetch total assets', error);
-  }
-};
+      setMarketValue(res.data.marketValue);
+      setPendingApplicationsValue(res.data.pendingApplicationsValue);
+    } catch (error: any) {
+      console.error('Failed to fetch total assets', error);
+    }
+  };
 
- useFocusEffect(
+  useFocusEffect(
     useCallback(() => {
-        const fetchAndRefresh = async () => {
-          try {
-            const stored = await AsyncStorage.getItem('user');
-            if (stored) {
-              const parsed = JSON.parse(stored);
-              setUser(parsed);
-                  fetchUnreadCount(parsed.userId);
-                      fetchTotalAssets(parsed.userId);
-            } else {
-              // todo add console log Alert.alert('No session', 'Please log in again');
-              navigation.replace('Login');
-            }
-          } catch (error: any) {
-             let message = error.message || 'Unexpected error loading user';
-            Alert.alert('Error', 'Failed to get user ' + message);
+      const fetchAndRefresh = async () => {
+        try {
+          const stored = await AsyncStorage.getItem('user');
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            setUser(parsed);
+            fetchUnreadCount(parsed.userId);
+            fetchTotalAssets(parsed.userId);
+          } else {
+            // todo add console log Alert.alert('No session', 'Please log in again');
+            navigation.replace('Login');
           }
-        };
+        } catch (error: any) {
+          let message = error.message || 'Unexpected error loading user';
+          Alert.alert('Error', 'Failed to get user ' + message);
+        }
+      };
 
-        fetchAndRefresh();
-      }, [navigation])
+      fetchAndRefresh();
+    }, [navigation])
   );
   // useEffect(() => {
   //   const loadUser = async () => {
@@ -133,17 +133,17 @@ const fetchTotalAssets = async (userId: string) => {
       <Text>Full Name: {user.fullName}</Text>
       <Text>Email: {user.email}</Text>
       <Text>Wallet Balance: {walletBalance}</Text>
-     {investmentValue !== null && (
+      {investmentValue !== null && (
         <Text>Investment Value: {investmentValue.toFixed(2)}</Text>
       )}
 
-          {pendingApplicationsValue !== null && pendingApplicationsValue !== 0 && (
-              <Text>Pending Applications: {pendingApplicationsValue.toFixed(2)}</Text>
-            )}
+      {pendingApplicationsValue !== null && pendingApplicationsValue !== 0 && (
+        <Text>Pending Applications: {pendingApplicationsValue.toFixed(2)}</Text>
+      )}
 
-            {marketValue !== null && marketValue !== 0 && (
-              <Text>Listed on Market: {marketValue.toFixed(2)}</Text>
-            )}
+      {marketValue !== null && marketValue !== 0 && (
+        <Text>Listed on Market: {marketValue.toFixed(2)}</Text>
+      )}
 
       {totalAssets !== null && (
         <Text style={{ fontWeight: 'bold' }}>Total Assets: {totalAssets.toFixed(2)}</Text>
@@ -158,14 +158,14 @@ const fetchTotalAssets = async (userId: string) => {
         {/* <Button title="Edit Profile" onPress={() => navigation.navigate('EditProfile')} /> */}
         <View style={{ height: 10 }} />
         <Button title="Browse Properties" onPress={() => navigation.navigate('Properties')} />
-             <View style={{ height: 10 }} />
+        <View style={{ height: 10 }} />
         <Button title="My Investments Applications" onPress={() => navigation.navigate('InvestmentApplications')} />
         <View style={{ height: 10 }} />
         <Button title="My Investments" onPress={() => navigation.navigate('Investments')} />
         <View style={{ height: 10 }} />
         <Button title="Withdraw Funds" onPress={() => navigation.navigate('Withdraw')} />
         <View style={{ height: 10 }} />
-         <Button title="My Finance" onPress={() => navigation.navigate('MyFinance')} /> 
+        <Button title="My Finance" onPress={() => navigation.navigate('MyFinance')} />
         {/* <View style={{ height: 10 }} />
         <Button title="Stake History" onPress={() => navigation.navigate('MyInvestments')} />  */}
         <View style={{ height: 10 }} />
@@ -173,10 +173,10 @@ const fetchTotalAssets = async (userId: string) => {
         <View style={{ height: 10 }} />
         <Button title="Withdrawal History" onPress={() => navigation.navigate('MyWithdrawals')} />
         <View style={{ height: 10 }} />
-        
-         <Button title="Rental Income" onPress={() => navigation.navigate('MyRentIncome')} />
-       <View style={{ height: 10 }} />
-        
+
+        <Button title="Rental Income" onPress={() => navigation.navigate('MyRentIncome')} />
+        <View style={{ height: 10 }} />
+
         {/* <Button title="Upload KYC" onPress={() => navigation.navigate('UploadKyc')} />
         <View style={{ height: 10 }} /> */}
         {/* <Button title="Top Up Balance" onPress={() => navigation.navigate('TopUp')} />
@@ -192,12 +192,12 @@ const fetchTotalAssets = async (userId: string) => {
           title="Go to Share Marketplace"
           onPress={() => navigation.navigate('ShareMarketplaces')}
         />
-         <View style={{ height: 10 }} />
+        <View style={{ height: 10 }} />
         {/* todo подумать <Button
           title="🔐 Test Password Reset - dunno will remove"
           onPress={() => navigation.navigate('ResetPassword')}
         /> */}
-          {/* <Button
+        {/* <Button
             title="📜 Transaction History"
             onPress={() => navigation.navigate('UserTransactions')}
           />
