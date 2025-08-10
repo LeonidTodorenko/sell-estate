@@ -327,87 +327,132 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("{id}/assets-summary")]
         public async Task<IActionResult> GetUserAssetSummary(Guid id)
         {
-            var user = await _context.Users.FindAsync(id);
-            if (user == null)
-                return NotFound("User not found");
-
-            var investments = await _context.Investments
-                .Where(i => i.UserId == id)
-                .Include(i => i.Property)
-                .ToListAsync();
-
-            decimal investmentValue = 0;
-
-            foreach (var inv in investments)
+            try
             {
-                var pricePerShare = inv.Property.BuybackPricePerShare ?? (inv.InvestedAmount / inv.Shares);
-                investmentValue += inv.Shares * pricePerShare;
-            }
+                var user = await _context.Users.FindAsync(id);
+                if (user == null) return NotFound("User not found");
 
-            var transactions = await _context.UserTransactions
-                .Where(t => t.UserId == id)
-                .OrderBy(t => t.Timestamp)
-                .ToListAsync();
+                // Текущая стоимость инвестиций
+                var investments = await _context.Investments
+                    .Where(i => i.UserId == id)
+                    .Include(i => i.Property)
+                    .ToListAsync();
 
-            var history = new List<object>();
-            decimal runningTotal = 0;
-            decimal totalRentalIncome = 0;
-
-            foreach (var tx in transactions)
-            {
-                var amount = tx.Type switch
+                decimal investmentValue = investments.Sum(inv =>
                 {
-                    TransactionType.Deposit => tx.Amount,
-                    TransactionType.ShareMarketSell => tx.Amount,
-                    TransactionType.RentIncome => tx.Amount,
-                    TransactionType.Investment => -tx.Amount,
-                    TransactionType.Withdrawal => -tx.Amount,
-                    TransactionType.Buyback => -tx.Amount,
-                    TransactionType.ShareMarketBuy => -tx.Amount,
-                    _ => 0
-                };
+                    var pps = inv.Property.BuybackPricePerShare ?? (inv.InvestedAmount / inv.Shares);
+                    return inv.Shares * pps;
+                });
 
-                runningTotal += amount;
+                // Все транзакции пользователя по времени
+                var transactions = await _context.UserTransactions
+                    .Where(t => t.UserId == id)
+                    .OrderBy(t => t.Timestamp)
+                    .ToListAsync();
 
-                if (tx.Type == TransactionType.RentIncome)
-                    totalRentalIncome += tx.Amount;
+                // Карты "последнее значение на дату"
+                var assetMap = new SortedDictionary<string, decimal>(); // общий (включая аренду)
+                var equityMap = new SortedDictionary<string, decimal>(); // без аренды
+                var rentMap = new SortedDictionary<string, decimal>(); // только аренда
 
-                history.Add(new
+                decimal runningTotalAll = 0m; // asset (вкл. аренду)
+                decimal runningEquity = 0m; // equity (без аренды)
+                decimal runningRent = 0m; // только аренда
+                decimal totalRentalIncome = 0m;
+
+                foreach (var tx in transactions)
                 {
-                    date = tx.Timestamp.ToString("yyyy-MM-dd"),
-                    total = Math.Round(runningTotal, 2)
+                    var dateStr = tx.Timestamp.ToString("yyyy-MM-dd");
+
+                    // Изменение "общего" ряда (как раньше)
+                    var deltaAll = tx.Type switch
+                    {
+                        TransactionType.Deposit => tx.Amount,
+                        TransactionType.ShareMarketSell => tx.Amount,
+                        TransactionType.RentIncome => tx.Amount,
+                        TransactionType.Investment => -tx.Amount,
+                        TransactionType.Withdrawal => -tx.Amount,
+                        TransactionType.Buyback => -tx.Amount,
+                        TransactionType.ShareMarketBuy => -tx.Amount,
+                        _ => 0m
+                    };
+                    runningTotalAll += deltaAll;
+
+                    // Изменение equity (без аренды)
+                    var deltaEquity = tx.Type switch
+                    {
+                        TransactionType.Deposit => tx.Amount,
+                        TransactionType.ShareMarketSell => tx.Amount,
+                        TransactionType.Investment => -tx.Amount,
+                        TransactionType.Withdrawal => -tx.Amount,
+                        TransactionType.Buyback => -tx.Amount,
+                        TransactionType.ShareMarketBuy => -tx.Amount,
+                        // RentIncome игнорируем
+                        _ => 0m
+                    };
+                    runningEquity += deltaEquity;
+
+                    // Только аренда
+                    if (tx.Type == TransactionType.RentIncome)
+                    {
+                        runningRent += tx.Amount;
+                        totalRentalIncome += tx.Amount;
+                    }
+
+                    // Обновляем «последнее значение на дату»
+                    assetMap[dateStr] = Math.Round(runningTotalAll, 2);
+                    equityMap[dateStr] = Math.Round(runningEquity, 2);
+                    rentMap[dateStr] = Math.Round(runningRent, 2);
+                }
+
+                // Преобразуем карты в истории
+                var assetHistory = assetMap.Select(kv => new { date = kv.Key, total = kv.Value }).ToList();
+                var equityHistory = equityMap.Select(kv => new { date = kv.Key, total = kv.Value }).ToList();
+                var rentIncomeHistory = rentMap.Select(kv => new { date = kv.Key, total = kv.Value }).ToList();
+
+                // combined = equity + rent c переносом последнего известного значения
+                var allDates = new SortedSet<string>(
+                    assetMap.Keys.Concat(equityMap.Keys).Concat(rentMap.Keys)
+                );
+
+                var combinedHistory = new List<object>();
+                decimal lastEq = 0m, lastRent = 0m;
+                foreach (var d in allDates)
+                {
+                    if (equityMap.TryGetValue(d, out var eq)) lastEq = eq;
+                    if (rentMap.TryGetValue(d, out var r)) lastRent = r;
+                    combinedHistory.Add(new { date = d, total = Math.Round(lastEq + lastRent, 2) });
+                }
+
+                return Ok(new
+                {
+                    walletBalance = user.WalletBalance,
+                    investmentValue = Math.Round(investmentValue, 2),
+                    totalAssets = Math.Round(user.WalletBalance + investmentValue, 2),
+
+                    // агрегаты
+                    rentalIncome = Math.Round(totalRentalIncome, 2),
+
+                    // ряды
+                    assetHistory,        // общий (как раньше)
+                    equityHistory,       // без аренды
+                    rentIncomeHistory,   // только аренда
+                    combinedHistory      // equity + rent
                 });
             }
-
-            var rentTransactions = transactions
-    .Where(t => t.Type == TransactionType.RentIncome)
-    .OrderBy(t => t.Timestamp)
-    .ToList();
-
-            var rentHistory = new List<object>();
-            decimal rentRunningTotal = 0;
-
-            foreach (var tx in rentTransactions)
+            catch (Exception ex)
             {
-                rentRunningTotal += tx.Amount;
-                rentHistory.Add(new
+                _context.ActionLogs.Add(new ActionLog
                 {
-                    date = tx.Timestamp.ToString("yyyy-MM-dd"),
-                    total = Math.Round(rentRunningTotal, 2)
+                    UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"),
+                    Action = "GetUserAssetSummary error",
+                    Details = ex.Message,
                 });
+                await _context.SaveChangesAsync();
+                return BadRequest(new { message = ex.Message });
             }
-
-            return Ok(new
-            {
-                walletBalance = user.WalletBalance,
-                investmentValue = Math.Round(investmentValue, 2),
-                totalAssets = Math.Round(user.WalletBalance + investmentValue, 2),
-                rentalIncome = Math.Round(totalRentalIncome, 2),
-                assetHistory = history,
-                rentIncomeHistory = rentHistory
-
-            });
         }
+
 
 
 

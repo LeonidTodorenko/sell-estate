@@ -211,7 +211,7 @@ const fetchTotalAssets = async (userId: string) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    //backgroundColor: theme.colors.background,
     paddingHorizontal: 20,
   },
   title: {

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   View, Text, FlatList, StyleSheet, Button, Dimensions,
 } from 'react-native';
@@ -15,13 +15,23 @@ interface Transaction {
   notes: string;
 }
 
+interface HistoryPoint {
+  date: string;   // "yyyy-MM-dd"
+  total: number;  // cumulative value
+}
+
 interface AssetStats {
   walletBalance: number;
   investmentValue: number;
   totalAssets: number;
-  assetHistory: { date: string; total: number }[];
-    rentalIncome: number; 
-    rentIncomeHistory: { date: string; total: number }[];  
+
+  // агрегаты
+  rentalIncome: number;
+
+  // ряды
+  equityHistory: HistoryPoint[];       // активы без аренды
+  rentIncomeHistory: HistoryPoint[];   // только аренда
+  combinedHistory: HistoryPoint[];     // equity + rent
 }
 
 const MyFinanceScreen = () => {
@@ -31,7 +41,6 @@ const MyFinanceScreen = () => {
   const [stats, setStats] = useState<AssetStats | null>(null);
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [daysBack, setDaysBack] = useState<number>(30);
- 
 
   useEffect(() => {
     const loadData = async () => {
@@ -60,18 +69,20 @@ const MyFinanceScreen = () => {
     const now = new Date();
     const sinceDate = new Date(now.setDate(now.getDate() - daysBack));
 
-    const filtered = transactions.filter(t => {
+    const filteredNow = transactions.filter(t => {
       const matchType = typeFilter === 'all' || t.type === typeFilter;
       const matchDate = new Date(t.timestamp) >= sinceDate;
       return matchType && matchDate;
     });
 
-    setFiltered(filtered);
+    setFiltered(filteredNow);
   }, [transactions, typeFilter, daysBack]);
 
   const getColor = (type: string) => {
-    if (['deposit', 'investment', 'share_market_sell'].includes(type)) return 'green';
-    if (['withdrawal', 'share_market_buy', 'buyback'].includes(type)) return 'red';
+    const t = type.toLowerCase();
+    if (['deposit', 'investment', 'share_market_sell'].includes(t)) return 'green';
+    if (['withdrawal', 'share_market_buy', 'buyback'].includes(t)) return 'red';
+    if (t === 'rent_income' || t === 'rentincome') return 'green';
     return 'black';
   };
 
@@ -84,87 +95,137 @@ const MyFinanceScreen = () => {
     </View>
   );
 
- const dualChartData = stats?.assetHistory && stats?.rentIncomeHistory ? {
-  labels: stats.assetHistory.map(p => new Date(p.date).toLocaleDateString()),
-  datasets: [
-    {
-      data: stats.assetHistory.map(p => p.total),
-      color: () => 'rgba(0, 128, 255, 1)', // синяя — активы
-      strokeWidth: 2,
-    },
-    {
-      data: stats.rentIncomeHistory.map(p => p.total),
-      color: () => 'rgba(0, 200, 0, 1)', // зелёная — аренда
-      strokeWidth: 2,
-    },
-  ],
-  legend: ['Total Assets', 'Rent Income'],
-} : null;
+  const equityChart = useMemo(() => {
+    if (!stats?.equityHistory?.length) return null;
+    return {
+      labels: stats.equityHistory.map(p => new Date(p.date).toLocaleDateString()),
+      datasets: [{ data: stats.equityHistory.map(p => p.total) }],
+    };
+  }, [stats]);
 
+  const rentChart = useMemo(() => {
+    if (!stats?.rentIncomeHistory?.length) return null;
+    return {
+      labels: stats.rentIncomeHistory.map(p => new Date(p.date).toLocaleDateString()),
+      datasets: [{ data: stats.rentIncomeHistory.map(p => p.total) }],
+    };
+  }, [stats]);
+
+  const combinedChart = useMemo(() => {
+    if (!stats?.combinedHistory?.length) return null;
+    return {
+      labels: stats.combinedHistory.map(p => new Date(p.date).toLocaleDateString()),
+      datasets: [{ data: stats.combinedHistory.map(p => p.total) }],
+    };
+  }, [stats]);
 
   return (
-  <FlatList
-    ListHeaderComponent={
-      <>
-        <Text style={styles.title}>My Finances</Text>
+    <FlatList
+      ListHeaderComponent={
+        <>
+          <Text style={styles.title}>My Finances</Text>
 
-     {stats && (
-  <View style={styles.summaryBox}>
-    <Text style={styles.asset}>Total Assets: ${stats.totalAssets.toFixed(2)}</Text>
-    <Text>Wallet Balance: ${stats.walletBalance.toFixed(2)}</Text>
-    <Text>Investments Value: ${stats.investmentValue.toFixed(2)}</Text>
-    <Text>Rental Income: ${stats.rentalIncome.toFixed(2)}</Text>
-  </View>
-)}
+          {stats && (
+            <View style={styles.summaryBox}>
+              <Text style={styles.asset}>Total Assets: ${stats.totalAssets.toFixed(2)}</Text>
+              <Text>Wallet Balance: ${stats.walletBalance.toFixed(2)}</Text>
+              <Text>Investments Value: ${stats.investmentValue.toFixed(2)}</Text>
+              <Text>Rental Income: ${stats.rentalIncome.toFixed(2)}</Text>
+            </View>
+          )}
 
-        <Text>Filter by type:</Text>
-        <Picker selectedValue={typeFilter} onValueChange={setTypeFilter}>
-          <Picker.Item label="All" value="all" />
-          <Picker.Item label="Investment" value="investment" />
-          <Picker.Item label="Deposit" value="deposit" />
-          <Picker.Item label="Withdrawal" value="withdrawal" />
-          <Picker.Item label="Market Buy" value="share_market_buy" />
-          <Picker.Item label="Market Sell" value="share_market_sell" />
-          <Picker.Item label="Buyback" value="buyback" />
-        </Picker>
+          <Text>Filter by type:</Text>
+          <Picker selectedValue={typeFilter} onValueChange={setTypeFilter}>
+            <Picker.Item label="All" value="all" />
+            <Picker.Item label="Investment" value="investment" />
+            <Picker.Item label="Deposit" value="deposit" />
+            <Picker.Item label="Withdrawal" value="withdrawal" />
+            <Picker.Item label="Market Buy" value="share_market_buy" />
+            <Picker.Item label="Market Sell" value="share_market_sell" />
+            <Picker.Item label="Buyback" value="buyback" />
+            <Picker.Item label="Rent Income" value="rent_income" />
+          </Picker>
 
-        <Text>Show last:</Text>
-        <View style={styles.btnRow}>
-          {[7, 30, 90].map(d => (
-            <Button key={d} title={`${d} days`} onPress={() => setDaysBack(d)} />
-          ))}
-        </View>
-      </>
-    }
-    data={filtered}
-    keyExtractor={(item) => item.id}
-    renderItem={renderItem}
-    ListEmptyComponent={<Text style={styles.empty}>No transactions found.</Text>}
-   ListFooterComponent={
-  dualChartData && (
-    <>
-      <Text style={styles.chartTitle}>Asset Growth & Rent</Text>
-      <LineChart
-        data={dualChartData}
-        width={Dimensions.get('window').width - 32}
-        height={240}
-        yAxisSuffix=" $"
-        chartConfig={{
-          backgroundColor: '#ffffff',
-          backgroundGradientFrom: '#ffffff',
-          backgroundGradientTo: '#ffffff',
-          decimalPlaces: 2,
-          color: (opacity = 1) => `rgba(0, 128, 255, ${opacity})`,
-          labelColor: () => '#000',
-        }}
-        style={{ marginVertical: 20, borderRadius: 16 }}
-      />
-    </>
-  )
-}
-  />
-);
+          <Text>Show last:</Text>
+          <View style={styles.btnRow}>
+            {[7, 30, 90].map(d => (
+              <Button key={d} title={`${d} days`} onPress={() => setDaysBack(d)} />
+            ))}
+          </View>
+        </>
+      }
+      data={filtered}
+      keyExtractor={(item) => item.id}
+      renderItem={renderItem}
+      ListEmptyComponent={<Text style={styles.empty}>No transactions found.</Text>}
+      ListFooterComponent={
+        <>
+          {equityChart && (
+            <>
+              <Text style={styles.chartTitle}>📈 Asset Growth (without rent)</Text>
+              <LineChart
+                data={equityChart}
+                width={Dimensions.get('window').width - 32}
+                height={220}
+                yAxisSuffix=" $"
+                chartConfig={{
+                  backgroundColor: '#ffffff',
+                  backgroundGradientFrom: '#ffffff',
+                  backgroundGradientTo: '#ffffff',
+                  decimalPlaces: 2,
+                  color: (opacity = 1) => `rgba(0, 128, 255, ${opacity})`,
+                  labelColor: () => '#000',
+                }}
+                style={{ marginVertical: 20, borderRadius: 16 }}
+              />
+            </>
+          )}
 
+          {rentChart && (
+            <>
+              <Text style={styles.chartTitle}>🏠 Rent Income</Text>
+              <LineChart
+                data={rentChart}
+                width={Dimensions.get('window').width - 32}
+                height={220}
+                yAxisSuffix=" $"
+                chartConfig={{
+                  backgroundColor: '#ffffff',
+                  backgroundGradientFrom: '#ffffff',
+                  backgroundGradientTo: '#ffffff',
+                  decimalPlaces: 2,
+                  color: (opacity = 1) => `rgba(0, 200, 0, ${opacity})`,
+                  labelColor: () => '#000',
+                }}
+                style={{ marginBottom: 20, borderRadius: 16 }}
+              />
+            </>
+          )}
+
+          {combinedChart && (
+            <>
+              <Text style={styles.chartTitle}>🧮 Overall Growth (Assets + Rent)</Text>
+              <LineChart
+                data={combinedChart}
+                width={Dimensions.get('window').width - 32}
+                height={220}
+                yAxisSuffix=" $"
+                chartConfig={{
+                  backgroundColor: '#ffffff',
+                  backgroundGradientFrom: '#ffffff',
+                  backgroundGradientTo: '#ffffff',
+                  decimalPlaces: 2,
+                  color: (opacity = 1) => `rgba(128, 0, 255, ${opacity})`,
+                  labelColor: () => '#000',
+                }}
+                style={{ marginBottom: 30, borderRadius: 16 }}
+              />
+            </>
+          )}
+        </>
+      }
+    />
+  );
 };
 
 const styles = StyleSheet.create({
