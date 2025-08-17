@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { View, Text, Button, StyleSheet, ScrollView } from 'react-native';
+import { View, Text,  StyleSheet, ScrollView } from 'react-native';
 import api from '../api';
 import AddPaymentPlanModal from '../components/AddPaymentPlanModal';
 import PaymentPlanTable from '../components/PaymentPlanTable';
+import BlueButton from '../components/BlueButton';
 
 interface PaymentPlan {
   id: string;
@@ -49,7 +50,7 @@ const PaymentPlanScreen = ({ route }: any) => {
     <View style={styles.container}>
       <Text style={styles.title}>📋 Payment Plan</Text>
       {!readonly && (
-        <Button title="➕ Add Payment Plan" onPress={() => setShowModal(true)} />
+        <BlueButton title="➕ Add Payment Plan" onPress={() => setShowModal(true)} />
       )}
     
 

@@ -219,32 +219,22 @@ namespace RealEstateInvestment.Controllers
                     Details = "Apply For Investment Shares: " + req.RequestedShares + "; InvestedAmount: " + expectedAmount + "; PropertyId: " + req.PropertyId
                 });
 
-                _context.UserTransactions.Add(new UserTransaction
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = req.UserId,
-                    Type = TransactionType.Investment,
-                    Amount = expectedAmount,
-                    Shares = req.RequestedShares,
-                    PropertyId = property.Id,
-                    PropertyTitle = property.Title,
-                    Timestamp = DateTime.UtcNow,
-                    Notes = "Apply For Investment Shares"
-                });
+                // мешает расчету для графика - скрыл пока
+                //_context.UserTransactions.Add(new UserTransaction
+                //{
+                //    Id = Guid.NewGuid(),
+                //    UserId = req.UserId,
+                //    Type = TransactionType.Investment,
+                //    Amount = expectedAmount,
+                //    Shares = req.RequestedShares,
+                //    PropertyId = property.Id,
+                //    PropertyTitle = property.Title,
+                //    Timestamp = DateTime.UtcNow,
+                //    Notes = "Apply For Investment Shares"
+                //});
 
             }
-
-            //var app = new InvestmentApplication
-            //{
-            //    UserId = req.UserId,
-            //    PropertyId = req.PropertyId,
-            //    RequestedAmount = req.RequestedAmount,
-            //    RequestedShares = req.RequestedShares,
-            //    StepNumber = req.StepNumber,
-            //    IsPriority = false
-            //};
-
-            //_context.InvestmentApplications.Add(app);
+             
             await _context.SaveChangesAsync();
             return Ok(new { message = "Application submitted" });
         }

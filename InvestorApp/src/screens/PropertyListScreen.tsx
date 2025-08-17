@@ -17,6 +17,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback } from 'react';
+import BlueButton from '../components/BlueButton';
 
 interface PropertyImage {
   id: string;
@@ -68,7 +69,12 @@ useFocusEffect(
             };
           })
         );
-        setProperties(propertiesWithExtras);
+
+          const sortedProperties = propertiesWithExtras.sort((a, b) =>
+              a.title.localeCompare(b.title)
+            );
+
+        setProperties(sortedProperties);
 
         const userResponses = await api.get('/properties/with-stats');
         const userIds = userResponses.data.filter((p: Property) => p.priorityInvestorId).map((p: Property) => p.priorityInvestorId);
@@ -145,8 +151,9 @@ useFocusEffect(
             {item.priorityInvestorId && (
               <Text>⭐ Priority Investor: {userMap[item.priorityInvestorId] || item.priorityInvestorId}</Text>
             )}
-            <Button
-              title="📍 View on Map"
+            <BlueButton
+            icon="📍"
+              title=" View on Map"
               onPress={() =>
                 navigation.navigate('PropertyMap', {
                   latitude: item.latitude,
@@ -156,9 +163,9 @@ useFocusEffect(
               }
             />
             <View style={{ height: 10 }} />
-            <Button title="📄 View Payment Plan" onPress={() => navigation.navigate('PaymentPlan', { propertyId: item.id, readonly: true })} />
+            <BlueButton icon="📄" title=" View Payment Plan" onPress={() => navigation.navigate('PaymentPlan', { propertyId: item.id, readonly: true })} />
             <View style={{ height: 10 }} />
-            <Button
+            <BlueButton icon="💸"
               title={item.hasPaymentPlan ? "Invest" : "Object not active"}
               disabled={!item.hasPaymentPlan}
               onPress={() =>

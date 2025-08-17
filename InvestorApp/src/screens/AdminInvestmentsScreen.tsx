@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, Alert, Button } from 'react-native';
+import { View, Text, FlatList, StyleSheet, Alert  } from 'react-native';
 import api from '../api';
+import BlueButton from '../components/BlueButton';
 
 interface Investment {
   investmentId: string;
@@ -62,7 +63,7 @@ const AdminInvestmentsScreen = () => {
             <Text>Shares: {item.shares}</Text>
             <Text>Invested: {item.investedAmount} USD</Text>
             <Text>Date: {new Date(item.createdAt).toLocaleDateString()}</Text>
-            <Button title="Cancel" color="red" onPress={() => handleDelete(item.investmentId)} />
+            <BlueButton    title="Cancel" variant="red" onPress={() => handleDelete(item.investmentId)} />
           </View>
         )}
       />

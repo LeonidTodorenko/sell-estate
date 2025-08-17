@@ -170,7 +170,7 @@ namespace RealEstateInvestment.Controllers
             var investments = await _context.Investments
                 .Include(i => i.Property)
                 .Include(i => i.User)
-                .Where(i => i.UserId == request.UserId && i.PropertyId == request.PropertyId)
+                .Where(i => i.UserId == request.UserId && i.PropertyId == request.PropertyId && i.Shares > 0)
                 .ToListAsync();
 
             if (!investments.Any())

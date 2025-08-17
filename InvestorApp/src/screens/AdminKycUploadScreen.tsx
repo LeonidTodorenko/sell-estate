@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, Button, StyleSheet, TextInput, Image, Alert } from 'react-native';
+import { View, Text,   StyleSheet,   Image, Alert } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
 import api from '../api';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import StyledInput from '../components/StyledInput';
+import BlueButton from '../components/BlueButton';
 
 type RouteProps = RouteProp<RootStackParamList, 'AdminKycUpload'>;
 
@@ -43,9 +44,9 @@ const AdminKycUploadScreen = () => {
       <Text style={styles.title}>Upload KYC for User</Text>
       <Text>User ID: {userId}</Text>
       <StyledInput value={type} onChangeText={setType} style={styles.input} placeholder="Type (e.g., passport)" />
-      <Button title="Select File" onPress={selectFile} />
+      <BlueButton title="Select File" onPress={selectFile} />
       {base64 && <Image source={{ uri: `data:image/jpeg;base64,${base64}` }} style={styles.preview} />}
-      <Button title="Upload" onPress={upload} disabled={!base64} />
+      <BlueButton title="Upload" onPress={upload} disabled={!base64} />
     </View>
   );
 };

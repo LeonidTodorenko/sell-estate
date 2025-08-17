@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, FlatList, Button, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, FlatList,   StyleSheet, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
+import BlueButton from '../components/BlueButton';
 
 interface ChatMessage {
   id: string;
@@ -80,7 +81,7 @@ const ChatScreen = () => {
         onChangeText={setInput}
         placeholder="Type a message"
       />
-      <Button title="Send" onPress={sendMessage} />
+      <BlueButton title="Send" onPress={sendMessage} />
     </View>
   );
 };

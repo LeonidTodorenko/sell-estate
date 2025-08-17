@@ -1,12 +1,13 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-  View, Text, FlatList, StyleSheet, Button, Alert, Modal, TextInput, Pressable, Platform, TouchableOpacity
+  View, Text, FlatList, StyleSheet,   Alert, Modal, TextInput, Pressable, Platform, TouchableOpacity
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import BlueButton from '../components/BlueButton';
 
 interface GroupedInvestment {
   propertyId: string;
@@ -148,13 +149,13 @@ const SellMySharesScreen = () => {
             <Text>Average Price/Share: ${item.averagePrice.toFixed(2)}</Text>
 
             {item.buybackPricePerShare && (
-              <Button
+           <BlueButton 
                 title={`Sell for buyback price ($${item.buybackPricePerShare}/share)`}
                 onPress={() => handleSellToPlatform(item)}
               />
             )}
             <View style={{ marginTop: 8 }}>
-              <Button title="List on marketplace" onPress={() => handleListOnMarketplace(item)} />
+              <BlueButton title="List on marketplace" onPress={() => handleListOnMarketplace(item)} />
             </View>
           </View>
         )}

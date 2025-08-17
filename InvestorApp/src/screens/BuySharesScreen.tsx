@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Button, StyleSheet, Alert } from 'react-native';
+import { View, Text,   StyleSheet, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import api from '../api';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import StyledInput from '../components/StyledInput';
+import BlueButton from '../components/BlueButton';
 
 type BuyRouteProp = RouteProp<RootStackParamList, 'BuyShares'>;
 
@@ -155,7 +156,7 @@ const BuySharesScreen = () => {
         value={pinOrPassword}
         onChangeText={setPinOrPassword}
       />
-      <Button title="Invest" onPress={handleBuy} />
+      <BlueButton title="Invest" onPress={handleBuy} />
     </View>
   );
 };

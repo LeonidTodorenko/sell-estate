@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Button, Alert, ScrollView, Image, TouchableOpacity, TextInput } from 'react-native';
+import { View, Text, StyleSheet, Alert, ScrollView, Image, TouchableOpacity, TextInput } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
@@ -7,6 +7,7 @@ import api from '../api';
 import { launchImageLibrary } from 'react-native-image-picker';
 import Swiper from 'react-native-swiper';
 import Modal from 'react-native-modal';
+import BlueButton from '../components/BlueButton';
 //import PaymentPlanScreen from '../components/PaymentPlanScreen';
 
 global.Buffer = global.Buffer || require('buffer').Buffer;
@@ -179,7 +180,9 @@ const AdminPropertiesScreen = () => {
   return (
     <ScrollView style={styles.container}>
       <Text style={styles.title}>Manage Properties</Text>
-      <Button title="➕ Add Property" onPress={() => navigation.navigate('PropertyForm')} />
+      {/* <BlueButton      title="➕ Add Property"          onPress={() => navigation.navigate('PropertyForm')} /> */}
+      <BlueButton  icon="➕"  title="Add Property"  onPress={() => navigation.navigate('PropertyForm')}/>
+
       {properties.map((item) => (
         <View key={item.id} style={styles.card}>
           <Text>🏠 {item.title}</Text>
@@ -238,10 +241,12 @@ const AdminPropertiesScreen = () => {
             </View>
           )}
 
-          <Button title="📄 View Payment Plan" onPress={() => navigation.navigate('PaymentPlan', { propertyId: item.id, readonly: false })} />
+          {/* <BlueButton title="📄 View Payment Plan" onPress={() => navigation.navigate('PaymentPlan', { propertyId: item.id, readonly: false })} /> */}
+          <BlueButton  icon="📄"  title="View Payment Plan"  onPress={() => navigation.navigate('PaymentPlan', { propertyId: item.id, readonly: false })}/>
+
 
           <View style={styles.buttonRow}>
-            <Button title="📍 View on Map" onPress={() => {
+            <BlueButton    icon="📍" title="  View on Map" onPress={() => {
               if (typeof item.latitude === 'number' && typeof item.longitude === 'number') {
                 navigation.navigate('PropertyMap', {
                   latitude: item.latitude,
@@ -253,21 +258,21 @@ const AdminPropertiesScreen = () => {
               }
             }} />
 
-            <Button title="📷 Upload Image" onPress={() => uploadImage(item.id)} />
+            <BlueButton icon="📷" title="  Upload Image" onPress={() => uploadImage(item.id)} />
 
             {item.images && item.images.length > 0 && (
-              <Button title="🗑 Delete Image" color="red" onPress={() => deleteImage(item.images[imageIndex].id)} />
+              <BlueButton icon="🗑" title="Delete Image" variant="red"  onPress={() => deleteImage(item.images[imageIndex].id)} />
             )}
 
-            <Button
+            <BlueButton
               title={item.listingType === 'sale' ? 'Set For Rent' : 'Set For Sale'}
               onPress={() => changeListingType(item.id, item.listingType === 'sale' ? 'rent' : 'sale')}
             />
 
-            <Button title="Set Sold" onPress={() => changeStatus(item.id, 'sold')} />
-            <Button title="Set Available" onPress={() => changeStatus(item.id, 'available')} />
-            <Button title="✏️ Edit" onPress={() => navigation.navigate('PropertyForm', { property: item })} />
-            <Button title="🗑 Delete" color="red" onPress={() => {
+            <BlueButton title="Set Sold" onPress={() => changeStatus(item.id, 'sold')} />
+            <BlueButton title="Set Available" onPress={() => changeStatus(item.id, 'available')} />
+            <BlueButton icon="✏️"  title=" Edit" onPress={() => navigation.navigate('PropertyForm', { property: item })} />
+            <BlueButton icon="🗑" title=" Delete" variant="red" onPress={() => {
               Alert.alert('Confirm Deletion', 'Are you sure you want to delete this property?', [
                 { text: 'Cancel', style: 'cancel' },
                 {
@@ -285,16 +290,17 @@ const AdminPropertiesScreen = () => {
             }} />
 
             {item.status === 'available' && (
-              <Button title="✅ Finalize Auction" onPress={() => handleFinalize(item.id)} color="green" />
+              <BlueButton icon="✅"  title=" Finalize Auction" onPress={() => handleFinalize(item.id)} variant="green" />
             )}
-           <Button
-              title="💸 Pay Rent"
+           <BlueButton
+           icon="💸"
+              title=" Pay Rent"
               onPress={() => {
                 setRentTargetPropertyId(item.id);
                 setRentModalVisible(true);
               }}
             />
-            <Button title="📜 View Rent History" onPress={() => navigation.navigate('RentHistory', { propertyId: item.id })} />
+            <BlueButton icon="📜"              title=" View Rent History" onPress={() => navigation.navigate('RentHistory', { propertyId: item.id })} />
 
           </View>
         </View>
@@ -319,8 +325,9 @@ const AdminPropertiesScreen = () => {
             onChangeText={setRentAmount}
             style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, marginBottom: 15 }}
           />
-          <Button
-            title="💸 Confirm Rent Payment"
+          <BlueButton
+           icon="💸"  
+            title=" Confirm Rent Payment"
             onPress={async () => {
               try {
                 await api.post(`/properties/${rentTargetPropertyId}/pay-rent`, {
@@ -336,7 +343,7 @@ const AdminPropertiesScreen = () => {
             }}
           />
           <View style={{ height: 10 }} />
-          <Button title="Cancel" color="gray" onPress={() => setRentModalVisible(false)} />
+          <BlueButton title="Cancel" variant="gray" onPress={() => setRentModalVisible(false)} />
         </View>
       </Modal>
 

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, Button, Alert, StyleSheet } from 'react-native';
+import { View, Text,  Alert, StyleSheet } from 'react-native';
 import api from '../api';
 import StyledInput from '../components/StyledInput';
+import BlueButton from './BlueButton';
 
 const MathCaptcha = ({ onSuccess }: { onSuccess: () => void }) => {
   const [expression, setExpression] = useState('');
@@ -46,7 +47,7 @@ const MathCaptcha = ({ onSuccess }: { onSuccess: () => void }) => {
       <View style={styles.row}>
         <Text style={styles.label}>Solve: </Text>
         <Text style={styles.expression}>{expression}</Text>
-        <Button title="🔁" onPress={loadCaptcha} />
+        <BlueButton title="🔁" onPress={loadCaptcha} />
       </View>
       <StyledInput
         value={answer}
@@ -55,7 +56,7 @@ const MathCaptcha = ({ onSuccess }: { onSuccess: () => void }) => {
         style={styles.input}
         placeholder="Your answer"
       />
-      <Button title="Verify" onPress={verifyCaptcha} />
+      <BlueButton title="Verify" onPress={verifyCaptcha} />
     </View>
   );
 };

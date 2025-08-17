@@ -432,9 +432,8 @@ namespace RealEstateInvestment.Controllers
 
                     // агрегаты
                     rentalIncome = Math.Round(totalRentalIncome, 2),
-
-                    // ряды
-                    assetHistory,        // общий (как раньше)
+                     
+                    assetHistory,        // общий 
                     equityHistory,       // без аренды
                     rentIncomeHistory,   // только аренда
                     combinedHistory      // equity + rent

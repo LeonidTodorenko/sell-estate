@@ -1,11 +1,12 @@
 // screens/RentHistoryScreen.tsx
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Alert, TextInput, Button, Platform, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Alert, TextInput,   Platform, TouchableOpacity } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import api from '../api';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import BlueButton from '../components/BlueButton';
 
 type RentHistoryRouteProp = RouteProp<RootStackParamList, 'RentHistory'>;
 
@@ -95,7 +96,7 @@ const RentHistoryScreen = () => {
           />
         )}
 
-        <Button title="🔍 Filter" onPress={load} />
+        <BlueButton title="🔍 Filter" onPress={load} />
       </View>
 
       {/* СПИСОК */}

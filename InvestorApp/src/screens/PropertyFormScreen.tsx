@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Text, Button, StyleSheet, ScrollView, Alert } from 'react-native';
+import { Text,   StyleSheet, ScrollView, Alert, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { KeyboardAvoidingView, Platform } from 'react-native';
 import { RootStackParamList } from '../navigation/AppNavigator';
@@ -9,6 +9,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useCallback } from 'react';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { TouchableOpacity } from 'react-native';
+import BlueButton from '../components/BlueButton';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PropertyForm'>;
 
@@ -185,7 +186,7 @@ const PropertyFormScreen = ({ route, navigation }: Props) => {
       )}
 
       <Text>Listing Type:</Text>
-      <Button
+      <BlueButton
         title={listingType === 'sale' ? 'For Sale (Tap to switch)' : 'For Rent (Tap to switch)'}
         onPress={() => setListingType(listingType === 'sale' ? 'rent' : 'sale')}
       />
@@ -246,7 +247,8 @@ const PropertyFormScreen = ({ route, navigation }: Props) => {
       )}
       {/* <StyledInput style={styles.input} placeholder="Last Payout Date (YYYY-MM-DD)" value={lastPayoutDate} onChangeText={setLastPayoutDate} /> */}
 
-      <Button title={existing ? 'Update' : 'Create'} onPress={handleSubmit} />
+      <BlueButton   title={existing ? 'Update' : 'Create'} onPress={handleSubmit} />
+       <View style={{ height: 50 }} />
     </ScrollView>
     </KeyboardAvoidingView>
   );

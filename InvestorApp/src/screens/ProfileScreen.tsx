@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Button, StyleSheet, Alert, Image, ScrollView } from 'react-native';
+import { View, Text,   StyleSheet, Alert, Image, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
@@ -7,6 +7,7 @@ import theme from '../constants/theme';
 import api from '../api';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback } from 'react';
+import BlueButton from '../components/BlueButton';
 
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
@@ -154,55 +155,55 @@ const ProfileScreen = ({ navigation }: Props) => {
       )}
 
       <View style={styles.buttons}>
-        <Button title="Profile" onPress={() => navigation.navigate('Personal')} />
-        {/* <Button title="Edit Profile" onPress={() => navigation.navigate('EditProfile')} /> */}
+        <BlueButton title="Profile" onPress={() => navigation.navigate('Personal')} />
+        {/* <BlueButton title="Edit Profile" onPress={() => navigation.navigate('EditProfile')} /> */}
         <View style={{ height: 10 }} />
-        <Button title="Browse Properties" onPress={() => navigation.navigate('Properties')} />
+        <BlueButton title="Browse Properties" onPress={() => navigation.navigate('Properties')} />
         <View style={{ height: 10 }} />
-        <Button title="My Investments Applications" onPress={() => navigation.navigate('InvestmentApplications')} />
+        <BlueButton title="My Investments Applications" onPress={() => navigation.navigate('InvestmentApplications')} />
         <View style={{ height: 10 }} />
-        <Button title="My Investments" onPress={() => navigation.navigate('Investments')} />
+        <BlueButton title="My Investments" onPress={() => navigation.navigate('Investments')} />
         <View style={{ height: 10 }} />
-        <Button title="Withdraw Funds" onPress={() => navigation.navigate('Withdraw')} />
+        <BlueButton title="Withdraw Funds" onPress={() => navigation.navigate('Withdraw')} />
         <View style={{ height: 10 }} />
-        <Button title="My Finance" onPress={() => navigation.navigate('MyFinance')} />
+        <BlueButton title="My Finance" onPress={() => navigation.navigate('MyFinance')} />
         {/* <View style={{ height: 10 }} />
-        <Button title="Stake History" onPress={() => navigation.navigate('MyInvestments')} />  */}
+        <BlueButton title="Stake History" onPress={() => navigation.navigate('MyInvestments')} />  */}
         <View style={{ height: 10 }} />
-        <Button title="My Properties" onPress={() => navigation.navigate('MyProperties')} />
+        <BlueButton title="My Properties" onPress={() => navigation.navigate('MyProperties')} />
         <View style={{ height: 10 }} />
-        <Button title="Withdrawal History" onPress={() => navigation.navigate('MyWithdrawals')} />
-        <View style={{ height: 10 }} />
-
-        <Button title="Rental Income" onPress={() => navigation.navigate('MyRentIncome')} />
+        <BlueButton title="Withdrawal History" onPress={() => navigation.navigate('MyWithdrawals')} />
         <View style={{ height: 10 }} />
 
-        {/* <Button title="Upload KYC" onPress={() => navigation.navigate('UploadKyc')} />
+        <BlueButton title="Rental Income" onPress={() => navigation.navigate('MyRentIncome')} />
+        <View style={{ height: 10 }} />
+
+        {/* <BlueButton title="Upload KYC" onPress={() => navigation.navigate('UploadKyc')} />
         <View style={{ height: 10 }} /> */}
-        {/* <Button title="Top Up Balance" onPress={() => navigation.navigate('TopUp')} />
+        {/* <BlueButton title="Top Up Balance" onPress={() => navigation.navigate('TopUp')} />
         <View style={{ height: 10 }} /> */}
-        {/* <Button
+        {/* <BlueButton 
           title={`Inbox Messages${unreadCount > 0 ? ` (${unreadCount})` : ''}`}
           onPress={() => navigation.navigate('Inbox')}
         />
         <View style={{ height: 10 }} /> */}
-        {/* <Button title="Change Password" onPress={() => navigation.navigate('ChangePassword')} />
+        {/* <BlueButton title="Change Password" onPress={() => navigation.navigate('ChangePassword')} />
         <View style={{ height: 10 }} /> */}
-        <Button
+        <BlueButton 
           title="Go to Share Marketplace"
           onPress={() => navigation.navigate('ShareMarketplaces')}
         />
         <View style={{ height: 10 }} />
-        {/* todo подумать <Button
+        {/* todo подумать <BlueButton 
           title="🔐 Test Password Reset - dunno will remove"
           onPress={() => navigation.navigate('ResetPassword')}
         /> */}
-        {/* <Button
+        {/* <BlueButton 
             title="📜 Transaction History"
             onPress={() => navigation.navigate('UserTransactions')}
           />
         <View style={{ height: 10 }} /> */}
-        <Button title="Logout" onPress={handleLogout} color="red" />
+        <BlueButton   title="Logout" onPress={handleLogout} variant="red" />
       </View>
     </ScrollView>
   );

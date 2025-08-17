@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, FlatList, Alert } from 'react-native';
+import { View, Text,   StyleSheet, FlatList, Alert } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import api from '../api';
 //import { useNavigation } from '@react-navigation/native';
 import StyledInput from '../components/StyledInput';
+import BlueButton from '../components/BlueButton';
 
 interface Message {
   id: string;
@@ -102,7 +103,7 @@ const AdminMessagesScreen = () => {
         ))}
       </Picker>
 
-      <Button title="Send Message" onPress={handleSend} />
+      <BlueButton title="Send Message" onPress={handleSend} />
 
       <Text style={styles.header}>📋 Sent Messages</Text>
       <FlatList

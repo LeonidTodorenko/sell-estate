@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, Button } from 'react-native';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator  } from 'react-native';
 import api from '../api';
 import StyledInput from '../components/StyledInput';
+import BlueButton from '../components/BlueButton';
 
 interface ActionLog {
   id: string;
@@ -74,7 +75,7 @@ const AdminLogsScreen = () => {
           value={userNameFilter}
           onChangeText={setUserNameFilter}
         />
-        <Button title="Apply" onPress={() => { setPage(1); fetchLogs(); }} />
+        <BlueButton title="Apply" onPress={() => { setPage(1); fetchLogs(); }} />
       </View>
 
       {loading ? (
@@ -88,9 +89,9 @@ const AdminLogsScreen = () => {
       )}
 
       <View style={styles.pagination}>
-        <Button title="Previous" onPress={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} />
+        <BlueButton title="Previous" onPress={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} />
         <Text style={styles.pageNumber}>Page {page}</Text>
-        <Button title="Next" onPress={() => setPage(p => p + 1)} disabled={page >= totalPages} />
+        <BlueButton title="Next" onPress={() => setPage(p => p + 1)} disabled={page >= totalPages} />
       </View>
     </View>
   );

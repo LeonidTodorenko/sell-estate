@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, Button, StyleSheet, Alert } from 'react-native';
+import { View, Text, FlatList,  StyleSheet, Alert } from 'react-native';
 // import { useNavigation } from '@react-navigation/native';
 // import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 // import { RootStackParamList } from '../navigation/AppNavigator';
 import api from '../api';
+import BlueButton from '../components/BlueButton';
 
 interface Withdrawal {
   id: string;
@@ -45,15 +46,15 @@ const AdminWithdrawalsScreen = () => {
     <View style={styles.container}>
       <Text style={styles.title}>All Withdrawal Requests</Text>
  
-      {/* <Button title="Manage Users" onPress={() => navigation.navigate('AdminUsers')} />
+      {/* <BlueButton title="Manage Users" onPress={() => navigation.navigate('AdminUsers')} />
 
-      <Button title="View All Investments" onPress={() => navigation.navigate('AdminInvestments')} />
+      <BlueButton title="View All Investments" onPress={() => navigation.navigate('AdminInvestments')} />
 
-      <Button title="Process KYC" onPress={() => navigation.navigate('AdminKyc')} />
+      <BlueButton title="Process KYC" onPress={() => navigation.navigate('AdminKyc')} />
 
-      <Button title="📊 View Stats" onPress={() => navigation.navigate('AdminStats')} />
+      <BlueButton title="📊 View Stats" onPress={() => navigation.navigate('AdminStats')} />
 
-      <Button title="🏠 Manage Properties" onPress={() => navigation.navigate('AdminProperties')} /> */}
+      <BlueButton title="🏠 Manage Properties" onPress={() => navigation.navigate('AdminProperties')} /> */}
 
 
       <FlatList
@@ -68,8 +69,8 @@ const AdminWithdrawalsScreen = () => {
 
             {item.status === 'pending' && (
               <View style={styles.buttonRow}>
-                <Button title="Approve" onPress={() => handleAction(item.id, 'approve')} />
-                <Button title="Reject" color="red" onPress={() => handleAction(item.id, 'reject')} />
+                <BlueButton title="Approve" onPress={() => handleAction(item.id, 'approve')} />
+                <BlueButton   title="Reject" variant="red" onPress={() => handleAction(item.id, 'reject')} />
               </View>
             )}
           </View>

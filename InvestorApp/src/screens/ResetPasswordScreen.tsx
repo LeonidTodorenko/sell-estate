@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, Alert, StyleSheet } from 'react-native';
+import { View, Text,   Alert, StyleSheet } from 'react-native';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import api from '../api';
 import StyledInput from '../components/StyledInput';
+import BlueButton from '../components/BlueButton';
 
 type ResetPasswordScreenRouteProp = RouteProp<RootStackParamList, 'ResetPassword'>;
 
@@ -56,7 +57,7 @@ const ResetPasswordScreen = () => {
         value={confirmPassword}
         onChangeText={setConfirmPassword}
       />
-      <Button title="Reset Password" onPress={handleReset} />
+      <BlueButton title="Reset Password" onPress={handleReset} />
     </View>
   );
 };

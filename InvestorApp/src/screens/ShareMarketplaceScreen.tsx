@@ -1,6 +1,6 @@
 import React, {  useEffect, useState } from 'react';
 import {
-  View, Text, FlatList, StyleSheet, Button, Alert, TextInput, Modal
+  View, Text, FlatList, StyleSheet,  Alert, TextInput, Modal
 } from 'react-native';
 import api from '../api';
 import { formatCurrency } from '../utils/format';
@@ -13,6 +13,7 @@ import { RootStackParamList } from '../navigation/AppNavigator';
 import DropDownPicker from 'react-native-dropdown-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import PinPromptModal from '../components/PinPromptModal';
+import BlueButton from '../components/BlueButton';
 
 
 interface ShareOffer {
@@ -344,9 +345,9 @@ const [pendingAction, setPendingAction] = useState<null | ((pin: string) => void
         />
 
         <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginTop: 8 }}>
-          <Button title=" Max Price" onPress={() => applySort('max')} />
-          <Button title=" Min Price" onPress={() => applySort('min')} />
-          <Button title="Expiring Soon" onPress={() => applySort('exp')} />
+          <BlueButton additionalPadding={1} width="110"  title=" Max Price" onPress={() => applySort('max')} />
+          <BlueButton additionalPadding={1} width="110" title=" Min Price" onPress={() => applySort('min')} />
+          <BlueButton additionalPadding={1} width="110" title="Expiring Soon" onPress={() => applySort('exp')} />
         </View>
         {selectedProperty !== '' && (
           <Text style={{ marginTop: 8, fontStyle: 'italic' }}>
@@ -355,7 +356,7 @@ const [pendingAction, setPendingAction] = useState<null | ((pin: string) => void
         )}
       </View>
      
-        <Button
+       <BlueButton 
           title="View Trade History"
           onPress={() => navigation.navigate('TradeHistory')}
         />
@@ -385,13 +386,13 @@ const [pendingAction, setPendingAction] = useState<null | ((pin: string) => void
 
             {item.sellerId !== userId && (
               <>
-                <Button title="Place Bid" onPress={() => openBidModal(item)} />
+                <BlueButton title="Place Bid" onPress={() => openBidModal(item)} />
                 <View style={{ height: 10 }} />
-                {/* <Button title="Buy Now" onPress={() => handleBuyNow(item, item.startPricePerShare ?? 0)} /> */}
+                {/* <BlueButton title="Buy Now" onPress={() => handleBuyNow(item, item.startPricePerShare ?? 0)} /> */}
                 {item.buyoutPricePerShare != null && (
                   <>
                     <View style={{ height: 10 }} />
-                    <Button title="Buy at Buyout Price" onPress={() => confirmWithPin((pin) => handleBuyNow(item, item.buyoutPricePerShare!,pin))} />
+                    <BlueButton title="Buy at Buyout Price" onPress={() => confirmWithPin((pin) => handleBuyNow(item, item.buyoutPricePerShare!,pin))} />
                   </>
                 )}
               </>
@@ -400,16 +401,16 @@ const [pendingAction, setPendingAction] = useState<null | ((pin: string) => void
             {item.sellerId === userId && (
               <>
                 <View style={{ height: 10 }} />
-                <Button title="Cancel Listing" onPress={  () => confirmCancelOffer(item.id)} />
+                <BlueButton title="Cancel Listing" onPress={  () => confirmCancelOffer(item.id)} />
                 <View style={{ height: 10 }} />
-                 <Button title="Extend until..." onPress={() => {
+                 <BlueButton title="Extend until..." onPress={() => {
                     setSelectedOfferForExtension(item);
                     setExtensionDate(new Date(item.expirationDate));
                     setShowDatePicker(true);
                   }} />
-                {/* <Button title="Extend 7 Days" onPress={() => extendOffer(item.id, 7)} /> */}
+                {/* <BlueButton title="Extend 7 Days" onPress={() => extendOffer(item.id, 7)} /> */}
                 {/* <View style={{ height: 10 }} />
-                <Button title="Load Bids" onPress={() => loadBidsForOffer(item.id)} /> */}
+                <BlueButton title="Load Bids" onPress={() => loadBidsForOffer(item.id)} /> */}
               </>
             )}
 
@@ -422,7 +423,7 @@ const [pendingAction, setPendingAction] = useState<null | ((pin: string) => void
                     <Text>Shares: {bid.shares}</Text>
                     <Text>At: {new Date(bid.createdAt).toLocaleString()}</Text>
                     {/* {item.sellerId === userId && (
-                      <Button title="Accept" onPress={() => handleAcceptBid(bid)}  />
+                      <BlueButton title="Accept" onPress={() => handleAcceptBid(bid)}  />
                     )} */}
                   </View>
                 ))}
@@ -500,9 +501,9 @@ const [pendingAction, setPendingAction] = useState<null | ((pin: string) => void
               value={bidPrice}
               onChangeText={setBidPrice}
             />
-            <Button title="Submit" onPress={() => confirmWithPin((pin) => submitBid(pin))} />
+            <BlueButton title="Submit" onPress={() => confirmWithPin((pin) => submitBid(pin))} />
             <View style={{ height: 10 }} />
-            <Button title="Cancel" onPress={() => setBidModalVisible(false)} />
+            <BlueButton title="Cancel" onPress={() => setBidModalVisible(false)} />
           </View>
         </View>
       </Modal>

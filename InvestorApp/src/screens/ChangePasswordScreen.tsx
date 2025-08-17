@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
+import { View, Text,   StyleSheet, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
 import StyledInput from '../components/StyledInput';
+import BlueButton from '../components/BlueButton';
 
 const ChangePasswordScreen = () => {
   const [currentPassword, setCurrentPassword] = useState('');
@@ -69,7 +70,7 @@ const ChangePasswordScreen = () => {
         onChangeText={setConfirmPassword}
       />
 
-      <Button title="Update Password" onPress={handleChangePassword} />
+      <BlueButton title="Update Password" onPress={handleChangePassword} />
     </View>
   );
 };

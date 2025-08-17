@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
+import { View, Text,   StyleSheet, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
 import StyledInput from '../components/StyledInput';
+import BlueButton from '../components/BlueButton';
 
 const TopUpScreen = () => {
   const [amount, setAmount] = useState('');
@@ -56,7 +57,7 @@ const TopUpScreen = () => {
         value={pinOrPassword}
         onChangeText={setPinOrPassword}
       />
-      <Button title="Top Up" onPress={handleTopUp} />
+      <BlueButton title="Top Up" onPress={handleTopUp} />
     </View>
   );
 };

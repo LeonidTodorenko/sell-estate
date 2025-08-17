@@ -1,9 +1,10 @@
 // Updated UploadKycScreen.tsx
 import React, { useEffect, useState } from 'react';
-import { View, Text, Button, StyleSheet, Image, Alert, TextInput, FlatList } from 'react-native';
+import { View, Text,   StyleSheet, Image, Alert, TextInput, FlatList } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
+import BlueButton from '../components/BlueButton';
 
 interface KycDoc {
   id: string;
@@ -72,14 +73,14 @@ const UploadKycScreen = () => {
       <Text>Type:</Text>
       <TextInput value={type} onChangeText={setType} style={styles.input} />
 
-      <Button title="Select File" onPress={selectFile} />
+      <BlueButton title="Select File" onPress={selectFile} />
       {base64 && (
         <Image
           source={{ uri: `data:image/jpeg;base64,${base64}` }}
           style={styles.preview}
         />
       )}
-      <Button title="Upload" onPress={upload} disabled={!base64} />
+      <BlueButton title="Upload" onPress={upload} disabled={!base64} />
 
       <Text style={styles.subheading}>My Documents:</Text>
       <FlatList

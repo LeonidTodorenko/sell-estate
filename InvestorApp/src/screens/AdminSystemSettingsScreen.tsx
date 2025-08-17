@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, Button, Alert, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, TextInput,  Alert, StyleSheet, ScrollView } from 'react-native';
 import api from '../api';
+import BlueButton from '../components/BlueButton';
 
 interface SystemSetting {
   key: string;
@@ -60,7 +61,7 @@ const AdminSystemSettingsScreen = () => {
             onChangeText={(text) => setEdited((prev) => ({ ...prev, [s.key]: text }))}
             keyboardType="numeric"
           />
-          <Button title="Save" onPress={() => saveSetting(s.key)} />
+          <BlueButton title="Save" onPress={() => saveSetting(s.key)} />
         </View>
       ))}
     </ScrollView>

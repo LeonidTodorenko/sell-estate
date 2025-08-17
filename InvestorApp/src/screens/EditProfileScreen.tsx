@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, Alert, ScrollView, Image } from 'react-native';
+import { View, Text,   StyleSheet, Alert, ScrollView, Image } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { useLoading } from '../contexts/LoadingContext';
 import StyledInput from '../components/StyledInput';
+import BlueButton from '../components/BlueButton';
 //import { Buffer } from 'buffer';
 
 global.Buffer = global.Buffer || require('buffer').Buffer;
@@ -114,10 +115,10 @@ const EditProfileScreen = () => {
       ) :  (
         <Text>No avatar</Text>
       )}
-      <Button title="📷 Upload  Avatar" onPress={handlePickAvatar} />
+      <BlueButton title="📷 Upload  Avatar" onPress={handlePickAvatar} />
 
       <View style={{ height: 20 }} />
-      <Button title="Update" onPress={handleUpdate} />
+      <BlueButton title="Update" onPress={handleUpdate} />
     </ScrollView>
   );
 };

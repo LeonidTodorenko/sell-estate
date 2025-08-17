@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, Button, StyleSheet, Alert, Image } from 'react-native';
+import { View, Text, FlatList,   StyleSheet, Alert, Image } from 'react-native';
 import api from '../api';
+import BlueButton from '../components/BlueButton';
 
 interface KycDoc {
   id: string;
@@ -77,9 +78,9 @@ const AdminKycScreen = () => {
               />
             )}
             <View style={styles.buttonRow}>
-              <Button title="Approve" onPress={() => handleAction(item.id, 'approve')} />
-              <Button title="Reject" color="red" onPress={() => handleAction(item.id, 'reject')} />
-              <Button title="🗑 Delete" color="gray" onPress={() => handleDelete(item.id)} />
+              <BlueButton title="Approve" onPress={() => handleAction(item.id, 'approve')} />
+              <BlueButton    title="Reject" variant="red" onPress={() => handleAction(item.id, 'reject')} />
+              <BlueButton    title="🗑 Delete" variant="gray" onPress={() => handleDelete(item.id)} />
             </View>
           </View>
         )}

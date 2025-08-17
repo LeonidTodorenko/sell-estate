@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, FlatList, StyleSheet, TextInput, Button,
+  View, Text, FlatList, StyleSheet, TextInput,  
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
+import BlueButton from '../components/BlueButton';
 
 interface Investment {
   id: string;
@@ -94,7 +95,7 @@ const MyInvestmentsScreen = () => {
     />
   </View>
 
-  <Button title="Apply Filters" onPress={applyFilters} />
+  <BlueButton title="Apply Filters" onPress={applyFilters} />
 </View>
 
 

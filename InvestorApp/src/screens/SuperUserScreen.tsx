@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TextInput, Button, FlatList, Alert } from 'react-native';
+import { View, Text, StyleSheet, TextInput,  FlatList, Alert } from 'react-native';
 import api from '../api';
+import BlueButton from '../components/BlueButton';
 
 interface Investment {
   propertyId: string;
@@ -81,8 +82,8 @@ const SuperUserScreen = () => {
       />
 
       <View style={styles.buttonRow}>
-        <Button title="➕ Add" onPress={() => updateBalance(parseFloat(amount))} />
-        <Button title="➖ Subtract" onPress={() => updateBalance(-parseFloat(amount))} />
+        <BlueButton title="➕ Add" onPress={() => updateBalance(parseFloat(amount))} />
+        <BlueButton title="➖ Subtract" onPress={() => updateBalance(-parseFloat(amount))} />
       </View>
 
       <Text style={styles.subtitle}>Investments</Text>

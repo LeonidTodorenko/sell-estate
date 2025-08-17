@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import {
-  View, Text, FlatList, StyleSheet, Button, Dimensions,
+  View, Text, FlatList, StyleSheet,  Dimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Picker } from '@react-native-picker/picker';
 import api from '../api';
 import { LineChart } from 'react-native-chart-kit';
+import BlueButton from '../components/BlueButton';
 
 interface Transaction {
   id: string;
@@ -149,7 +150,7 @@ const MyFinanceScreen = () => {
           <Text>Show last:</Text>
           <View style={styles.btnRow}>
             {[7, 30, 90].map(d => (
-              <Button key={d} title={`${d} days`} onPress={() => setDaysBack(d)} />
+              <BlueButton key={d} title={`${d} days`} onPress={() => setDaysBack(d)} />
             ))}
           </View>
         </>

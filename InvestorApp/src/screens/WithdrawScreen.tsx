@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
+import { View, Text,   StyleSheet, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import StyledInput from '../components/StyledInput';
+import BlueButton from '../components/BlueButton';
 
 const WithdrawScreen = () => {
   const [amount, setAmount] = useState('');
@@ -40,7 +41,7 @@ const WithdrawScreen = () => {
         value={amount}
         onChangeText={setAmount}
       />
-      <Button title="Submit Request" onPress={handleWithdraw} />
+      <BlueButton title="Submit Request" onPress={handleWithdraw} />
     </View>
   );
 };

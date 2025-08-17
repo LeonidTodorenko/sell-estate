@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Button, StyleSheet, Alert, Image, ScrollView } from 'react-native';
+import { View, Text,  StyleSheet, Alert, Image, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
@@ -7,6 +7,7 @@ import theme from '../constants/theme';
 import api from '../api';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback } from 'react';
+import BlueButton from '../components/BlueButton';
 
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Personal'>;
@@ -160,27 +161,27 @@ const PersonalScreen = ({ navigation }: Props) => {
       )}
 
       <View style={styles.buttons}>
-        <Button title="Edit Profile" onPress={() => navigation.navigate('EditProfile')} />
+        <BlueButton title="Edit Profile" onPress={() => navigation.navigate('EditProfile')} />
         <View style={{ height: 10 }} />
-        <Button title="Upload KYC" onPress={() => navigation.navigate('UploadKyc')} />
+        <BlueButton title="Upload KYC" onPress={() => navigation.navigate('UploadKyc')} />
         <View style={{ height: 10 }} />
-        <Button title="Top Up Balance" onPress={() => navigation.navigate('TopUp')} />
+        <BlueButton title="Top Up Balance" onPress={() => navigation.navigate('TopUp')} />
         <View style={{ height: 10 }} />
-        <Button
+   <BlueButton 
           title={`Inbox Messages${unreadCount > 0 ? ` (${unreadCount})` : ''}`}
           onPress={() => navigation.navigate('Inbox')}
         />
         <View style={{ height: 10 }} />
-        <Button title="Change Password" onPress={() => navigation.navigate('ChangePassword')} />
+        <BlueButton title="Change Password" onPress={() => navigation.navigate('ChangePassword')} />
         <View style={{ height: 10 }} />
-        <Button
+        <BlueButton 
           title="📜 Transaction History"
           onPress={() => navigation.navigate('UserTransactions')}
         />
         <View style={{ height: 10 }} />
-        <Button title="Chat with admin" onPress={() => navigation.navigate('Chat')} />
+        <BlueButton title="Chat with admin" onPress={() => navigation.navigate('Chat')} />
         <View style={{ height: 10 }} />
-        <Button title="Logout" onPress={handleLogout} color="red" />
+        <BlueButton    title="Logout" onPress={handleLogout} variant="red" />
       </View>
     </ScrollView>
   );

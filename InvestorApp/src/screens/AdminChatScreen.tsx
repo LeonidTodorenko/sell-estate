@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TextInput, Button, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, TextInput,   StyleSheet, TouchableOpacity } from 'react-native';
 import api from '../api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import BlueButton from '../components/BlueButton';
 
 interface User {
   id: string;
@@ -91,8 +92,8 @@ const AdminChatScreen = () => {
             onChangeText={setInput}
             placeholder="Type a message"
           />
-          <Button title="Send" onPress={sendMessage} />
-          <Button title="Back to users" onPress={() => setSelectedUser(null)} />
+          <BlueButton title="Send" onPress={sendMessage} />
+          <BlueButton title="Back to users" onPress={() => setSelectedUser(null)} />
         </>
       )}
     </View>

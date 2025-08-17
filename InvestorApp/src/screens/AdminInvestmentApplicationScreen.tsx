@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, TextInput, FlatList, Button, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, FlatList,  StyleSheet, Alert } from 'react-native';
 import api from '../api';
+import BlueButton from '../components/BlueButton';
 //import { useUser } from '../contexts/UserContext';
 
 interface InvestmentApplication {
@@ -94,10 +95,10 @@ const AdminInvestmentApplicationScreen = () => {
           onChangeText={setPropertyId}
           placeholder="Property ID"
         />
-        <Button title="Load" onPress={fetchApplications} />
+        <BlueButton title="Load" onPress={fetchApplications} />
       </View>
 
-      <Button title="Recalculate Priority" onPress={handleRecalculate} color="orange" />
+      <BlueButton   title="Recalculate Priority" onPress={handleRecalculate} variant="orange" />
 
       <FlatList
         data={applications}
@@ -113,10 +114,10 @@ const AdminInvestmentApplicationScreen = () => {
             <Text>Priority: {item.isPriority ? '✅' : '❌'}</Text>
 
             <View style={styles.buttonRow}>
-              <Button title="✔ Approve" onPress={() => handleApprove(item.id, item.requestedShares)} />
-              <Button title="✖ Reject" onPress={() => handleReject(item.id)} />
-              <Button title="↪ Carry" onPress={() => handleCarry(item.id)} />
-              <Button
+              <BlueButton title="✔ Approve" onPress={() => handleApprove(item.id, item.requestedShares)} />
+              <BlueButton title="✖ Reject" onPress={() => handleReject(item.id)} />
+              <BlueButton title="↪ Carry" onPress={() => handleCarry(item.id)} />
+              <BlueButton 
                 title={item.isPriority ? 'Remove ⭐' : 'Make ⭐'}
                 onPress={() => handleTogglePriority(item.id, item.isPriority)}
               />

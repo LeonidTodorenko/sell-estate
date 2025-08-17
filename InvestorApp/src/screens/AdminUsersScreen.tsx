@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
-import { View, Text, FlatList, Button, StyleSheet, Alert } from 'react-native';
+import { View, Text, FlatList,   StyleSheet, Alert } from 'react-native';
 import api from '../api';
+import BlueButton from '../components/BlueButton';
 
 interface User {
   id: string;
@@ -52,18 +53,18 @@ const AdminUsersScreen = () => {
             <Text>Email: {item.email}</Text>
             <Text>Balance: {item.walletBalance} USD</Text>
             <Text>Status: {item.isBlocked ? 'Blocked' : 'Active'}</Text>
-            <Button
+          <BlueButton 
               title="➕ Upload KYC"
               onPress={() => navigation.navigate('AdminKycUpload', { userId: item.id })}
             />
-            <Button
+         <BlueButton 
               title="📄 View KYC"
               onPress={() => navigation.navigate('UserKycView', { userId: item.id })}
             />
-            <Button
+    <BlueButton 
               title={item.isBlocked ? 'Unblock' : 'Block'}
               onPress={() => toggleBlock(item.id)}
-              color={item.isBlocked ? 'green' : 'red'}
+              variant={item.isBlocked ? 'green' : 'red'}
             />
           </View>
         )}

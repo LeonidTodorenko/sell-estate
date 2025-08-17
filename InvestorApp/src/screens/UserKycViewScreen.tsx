@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, FlatList, Image, StyleSheet, Alert, Button } from 'react-native';
+import { View, Text, FlatList, Image, StyleSheet, Alert  } from 'react-native';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import { launchImageLibrary } from 'react-native-image-picker';
 import api from '../api';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import BlueButton from '../components/BlueButton';
 
 interface KycDoc {
   id: string;
@@ -59,7 +60,7 @@ const UserKycViewScreen = () => {
     <View style={styles.container}>
       <Text style={styles.title}>User's KYC Documents</Text>
 
-      <Button title="➕ Upload New Document" onPress={uploadForUser} />
+      <BlueButton title="➕ Upload New Document" onPress={uploadForUser} />
 
       <FlatList
         data={docs}

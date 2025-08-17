@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Button, StyleSheet, Alert } from 'react-native';
+import { View, Text,   StyleSheet, Alert } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
@@ -9,6 +9,7 @@ import loginBackground from '../assets/images/login.jpg';
 import { useLoading } from '../contexts/LoadingContext';
 import StyledInput from '../components/StyledInput';
 import { getFcmToken } from '../firebase';
+import BlueButton from '../components/BlueButton';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
@@ -102,15 +103,15 @@ const LoginScreen = ({ navigation }: Props) => {
         />
         <View style={styles.rowButtons}>
           <View style={styles.buttonContainer}>
-            <Button title="Login" onPress={handleLogin} />
+            <BlueButton title="Login" onPress={handleLogin} />
           </View>
           <View style={styles.buttonContainer}>
-            <Button title="Sign up" onPress={() => navigation.navigate('Register')} />
+            <BlueButton title="Sign up" onPress={() => navigation.navigate('Register')} />
           </View>
         </View>
 
         {/* <View style={{ height: 10 }} />
-        <Button title="Forgot Password?" onPress={() => navigation.navigate('ForgotPassword')} /> */}
+        <BlueButton title="Forgot Password?" onPress={() => navigation.navigate('ForgotPassword')} /> */}
 
         {/* <Text onPress={() => navigation.navigate('Register')} style={styles.link}>
         Don't have an account? Register
@@ -200,14 +201,14 @@ const LoginScreen = ({ navigation }: Props) => {
           ➤ Login as Test User3
         </Text>
 
-        {/* <Button title="Test API" onPress={testApi} color="orange" /> */}
+        {/* <BlueButton title="Test API" onPress={testApi} color="orange" /> */}
       </View>
     </ImageBackground>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', paddingHorizontal: 20 },
+  container: { flex: 1, justifyContent: 'center', paddingHorizontal: 20, marginTop: 390 },
   title: { textShadowRadius: 1, textShadowOffset: { width: 1, height: 1 }, textShadowColor: 'white', color: 'black', fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 },
   input: {
     borderWidth: 1,

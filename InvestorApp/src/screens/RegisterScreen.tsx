@@ -1,10 +1,11 @@
 import React, { useEffect,useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
+import { View, Text,  StyleSheet, Alert } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import StyledInput from '../components/StyledInput';
 //import Captcha from '../components/Captcha';
 import api from '../api';
+import BlueButton from '../components/BlueButton';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Register'>;
 
@@ -136,7 +137,7 @@ const RegisterScreen = ({ navigation }: Props) => {
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
           <Text style={styles.captchaLabel}>Solve: </Text>
           <Text style={styles.captchaExpression}>{captchaExpression}</Text>
-          <Button title="🔁" onPress={loadCaptcha} />
+          <BlueButton title="🔁" onPress={loadCaptcha} />
         </View>
         <TextInput
           style={styles.input}
@@ -150,7 +151,7 @@ const RegisterScreen = ({ navigation }: Props) => {
       <View style={styles.captchaContainer}>
         <Text style={styles.captchaLabel}>Solve:</Text>
         <Text style={styles.captchaExpression}>{captchaExpression}</Text>
-        <Button title="🔁" onPress={loadCaptcha} />
+        <BlueButton title="🔁" onPress={loadCaptcha} />
         <StyledInput
           style={styles.input}
           placeholder="Answer"
@@ -159,11 +160,11 @@ const RegisterScreen = ({ navigation }: Props) => {
           onChangeText={setCaptchaAnswer}
         />
       </View>
-      <Button title="Register" onPress={handleRegister} />
+      <BlueButton title="Register" onPress={handleRegister} />
       <View style={{ height: 10 }} />
-      <Button title="Forgot Password?" onPress={() => navigation.navigate('ForgotPassword')} />
+      <BlueButton title="Forgot Password?" onPress={() => navigation.navigate('ForgotPassword')} />
 
-      {/* <Button title="Verify I'm human" onPress={() => setShowCaptcha(true)} />
+      {/* <BlueButton title="Verify I'm human" onPress={() => setShowCaptcha(true)} />
       {showCaptcha && <Captcha onVerify={(token) => {
         setShowCaptcha(false);
         handleRegister(token);

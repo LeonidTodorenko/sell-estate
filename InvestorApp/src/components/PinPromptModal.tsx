@@ -1,5 +1,6 @@
 import React from 'react';
-import { Modal, View, Text, TextInput, Button, StyleSheet } from 'react-native';
+import { Modal, View, Text, TextInput,   StyleSheet } from 'react-native';
+import BlueButton from './BlueButton';
 
 type PinPromptModalProps = {
   visible: boolean;
@@ -21,9 +22,9 @@ const PinPromptModal: React.FC<PinPromptModalProps> = ({ visible, onSubmit, onCa
           value={pin}
           onChangeText={setPin}
         />
-        <Button title="Submit" onPress={onSubmit} />
+        <BlueButton title="Submit" onPress={onSubmit} />
         <View style={{ height: 10 }} />
-        <Button title="Cancel" onPress={onCancel} />
+        <BlueButton title="Cancel" onPress={onCancel} />
       </View>
     </View>
   </Modal>

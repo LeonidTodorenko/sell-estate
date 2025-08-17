@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View,Modal,  Text, Button, ScrollView, StyleSheet, Alert } from 'react-native';
+import { View,Modal,  Text,   ScrollView, StyleSheet, Alert } from 'react-native';
 import StyledInput from '../components/StyledInput';
 import api from '../api';
+import BlueButton from './BlueButton';
 
 export interface NewPaymentPlan {
   milestone: string;
@@ -114,9 +115,9 @@ const AddPaymentPlanModal = ({ visible, onClose, propertyId, onAdded }: AddPayme
         <StyledInput placeholder="VAT" style={styles.input} keyboardType="numeric" onChangeText={(text) => setPlan(p => ({ ...p, vat: parseNumber(text) }))} />
         <StyledInput placeholder="Paid" style={styles.input} keyboardType="numeric" onChangeText={(text) => setPlan(p => ({ ...p, paid: parseNumber(text) }))} />
 
-        <Button title="💾 Save" onPress={handleSave} />
+        <BlueButton   title="💾 Save" onPress={handleSave} />
           <View style={{ height: 10 }} />
-        <Button title="Cancel" onPress={onClose} color="gray" />
+        <BlueButton    title="Cancel" onPress={onClose} variant="gray" />
       </ScrollView>
     </Modal>
   );

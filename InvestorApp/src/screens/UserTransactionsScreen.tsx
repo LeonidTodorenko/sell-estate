@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, Alert, Button, TouchableOpacity
+  View, Text, StyleSheet, FlatList, Alert,  TouchableOpacity
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
 import { Picker } from '@react-native-picker/picker';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
+import BlueButton from '../components/BlueButton';
 
 interface UserTransaction {
   id: string;
@@ -90,7 +91,7 @@ export default function UserTransactionsScreen() {
         </TouchableOpacity>
       </View>
 
-      <Button title="Apply Filters" onPress={fetchTransactions} />
+      <BlueButton title="Apply Filters" onPress={fetchTransactions} />
 
       <FlatList
         data={transactions}

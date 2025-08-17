@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, Button, Alert, StyleSheet } from 'react-native';
+import { View, Text,   Alert, StyleSheet } from 'react-native';
 import api from '../api';
 import StyledInput from '../components/StyledInput';
+import BlueButton from '../components/BlueButton';
 
 const ForgotPasswordScreen = () => {
   const [email, setEmail] = useState('');
@@ -27,7 +28,7 @@ const ForgotPasswordScreen = () => {
         onChangeText={setEmail}
         autoCapitalize="none"
       />
-      <Button title="Send Reset Link" onPress={handleSubmit} />
+      <BlueButton title="Send Reset Link" onPress={handleSubmit} />
     </View>
   );
 };

@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, Button, Alert, ScrollView, FlatList, TextInput, Modal } from 'react-native';
+import { View, Text, StyleSheet,   Alert, ScrollView, FlatList,  Modal } from 'react-native';
 import api from '../api';
 import StyledInput from '../components/StyledInput';
+import BlueButton from './BlueButton';
 
 interface PaymentPlan {
   id: string;
@@ -84,11 +85,11 @@ const PaymentPlansSection = ({ propertyId }: { propertyId: string }) => {
             <Text>📊 {item.percentage}% of price</Text>
             <Text>💵 Amount: {item.amountDue} + VAT: {item.vat} = Total: {item.total}</Text>
             <Text>✅ Paid: {item.paid} | 🔸 Outstanding: {item.outstanding}</Text>
-            <Button title="❌ Delete" onPress={() => handleDelete(item.id)} color="red" />
+            <BlueButton    title="❌ Delete" onPress={() => handleDelete(item.id)} variant="red" />
           </View>
         )}
       />
-      <Button title="➕ Add Payment Plan" onPress={() => setShowModal(true)} />
+      <BlueButton title="➕ Add Payment Plan" onPress={() => setShowModal(true)} />
 
       <Modal visible={showModal} animationType="slide">
         <ScrollView style={styles.modalContent}>
@@ -119,8 +120,8 @@ const PaymentPlansSection = ({ propertyId }: { propertyId: string }) => {
           <StyledInput placeholder="Amount Due" style={styles.input} keyboardType="numeric" onChangeText={(text) => setNewPlan(p => ({ ...p, amountDue: parseNumber(text) }))} />
           <StyledInput placeholder="VAT" style={styles.input} keyboardType="numeric" onChangeText={(text) => setNewPlan(p => ({ ...p, vat: parseNumber(text) }))} />
           <StyledInput placeholder="Paid" style={styles.input} keyboardType="numeric" onChangeText={(text) => setNewPlan(p => ({ ...p, paid: parseNumber(text) }))} />
-          <Button title="💾 Save" onPress={handleAdd} />
-          <Button title="Cancel" onPress={() => setShowModal(false)} color="gray" />
+          <BlueButton title="💾 Save" onPress={handleAdd} />
+          <BlueButton    title="Cancel" onPress={() => setShowModal(false)} variant="gray" />
         </ScrollView>
       </Modal>
     </View>

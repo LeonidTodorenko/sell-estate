@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, Alert, Image, TouchableOpacity, Button } from 'react-native';
+import { View, Text, FlatList, StyleSheet, Alert, Image, TouchableOpacity } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
 import { useNavigation } from '@react-navigation/native';
@@ -9,6 +9,7 @@ import { useLoading } from '../contexts/LoadingContext';
 import Swiper from 'react-native-swiper';
 import Modal from 'react-native-modal';
 import { useFocusEffect } from '@react-navigation/native';
+import BlueButton from '../components/BlueButton';
 
 interface Investment {
   propertyId: string;
@@ -123,12 +124,12 @@ const InvestmentsScreen = () => {
                 </Text>
               </View>
             )}
-            <Button title="📄 View Payment Plan" onPress={() => navigation.navigate('PaymentPlan', { propertyId: item.propertyId, readonly: true })} />
+            <BlueButton icon="📄" title=" View Payment Plan" onPress={() => navigation.navigate('PaymentPlan', { propertyId: item.propertyId, readonly: true })} />
             <View style={{ height: 10 }} />
-            <Button title="💸 Sell My Shares" onPress={() => navigation.navigate('SellMyShares', { propertyId: item.propertyId, propertyName: item.propertyTitle, })} />
+            <BlueButton icon="💸" title=" Sell My Shares" onPress={() => navigation.navigate('SellMyShares', { propertyId: item.propertyId, propertyName: item.propertyTitle, })} />
             <View style={{ height: 10 }} />
-            <Button
-              title="📄 My Applications"
+            <BlueButton icon="📄"
+              title=" My Applications"
               onPress={() =>
                 navigation.navigate('InvestmentApplications', { propertyId: item.propertyId })
               }
