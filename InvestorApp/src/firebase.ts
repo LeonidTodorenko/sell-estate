@@ -31,7 +31,7 @@ export async function requestUserPermission() {
       console.log('Android push permission granted');
       await AsyncStorage.setItem('askedPushPermission', 'true');
     } else {
-      Alert.alert('Permission denied', 'Push notifications are not enabled');
+      Alert.alert('Permission denied',  'Push notifications are not enabled.\n\n For them to work, enable notifications for the app in Android settings: "Settings → Apps → [Your app] → Notifications".');
     }
   }
 

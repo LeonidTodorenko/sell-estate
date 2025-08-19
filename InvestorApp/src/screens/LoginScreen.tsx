@@ -79,6 +79,7 @@ const LoginScreen = ({ navigation }: Props) => {
     };
   */
   return (
+    <View style={{ flex: 1, marginTop: -50 }}>
     <ImageBackground
       source={loginBackground}
       resizeMode="cover"
@@ -204,11 +205,12 @@ const LoginScreen = ({ navigation }: Props) => {
         {/* <BlueButton title="Test API" onPress={testApi} color="orange" /> */}
       </View>
     </ImageBackground>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', paddingHorizontal: 20, marginTop: 390 },
+  container: { flex: 1, justifyContent: 'center', paddingHorizontal: 20, marginTop: 310 },
   title: { textShadowRadius: 1, textShadowOffset: { width: 1, height: 1 }, textShadowColor: 'white', color: 'black', fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 },
   input: {
     borderWidth: 1,
@@ -220,7 +222,7 @@ const styles = StyleSheet.create({
   },
   link: { marginTop: 10, color: 'blue', textAlign: 'center' },
   adminLink: {
-    marginTop: 20,
+    marginTop: 1,
     color: 'white',
     textAlign: 'center',
     fontWeight: 'bold',
@@ -237,19 +239,19 @@ const styles = StyleSheet.create({
     width: '90%',
   },
   userLink: {
-    marginTop: 10,
+    marginTop: 1,
     color: 'red',
     textAlign: 'center',
     fontWeight: 'bold',
   },
   userLink2: {
-    marginTop: 10,
+    marginTop: 3,
     color: 'black',
     textAlign: 'center',
     fontWeight: 'bold',
   },
   userLink3: {
-    marginTop: 10,
+    marginTop: 3,
     color: 'orange',
     textAlign: 'center',
     fontWeight: 'bold',
