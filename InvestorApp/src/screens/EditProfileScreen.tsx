@@ -6,6 +6,7 @@ import { launchImageLibrary } from 'react-native-image-picker';
 import { useLoading } from '../contexts/LoadingContext';
 import StyledInput from '../components/StyledInput';
 import BlueButton from '../components/BlueButton';
+
 //import { Buffer } from 'buffer';
 
 global.Buffer = global.Buffer || require('buffer').Buffer;
@@ -119,6 +120,7 @@ const EditProfileScreen = () => {
 
       <View style={{ height: 20 }} />
       <BlueButton title="Update" onPress={handleUpdate} />
+      <View style={{ height: 20 }} />
     </ScrollView>
   );
 };

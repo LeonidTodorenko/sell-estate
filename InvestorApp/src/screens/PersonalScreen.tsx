@@ -167,10 +167,7 @@ const PersonalScreen = ({ navigation }: Props) => {
         <View style={{ height: 10 }} />
         <BlueButton title="Top Up Balance" onPress={() => navigation.navigate('TopUp')} />
         <View style={{ height: 10 }} />
-   <BlueButton 
-          title={`Inbox Messages${unreadCount > 0 ? ` (${unreadCount})` : ''}`}
-          onPress={() => navigation.navigate('Inbox')}
-        />
+        <BlueButton title={`Inbox Messages${unreadCount > 0 ? ` (${unreadCount})` : ''}`} onPress={() => navigation.navigate('Inbox')} />
         <View style={{ height: 10 }} />
         <BlueButton title="Change Password" onPress={() => navigation.navigate('ChangePassword')} />
         <View style={{ height: 10 }} />

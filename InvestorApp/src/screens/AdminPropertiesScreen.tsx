@@ -301,7 +301,7 @@ const AdminPropertiesScreen = () => {
               }}
             />
             <BlueButton icon="📜"              title=" View Rent History" onPress={() => navigation.navigate('RentHistory', { propertyId: item.id })} />
-
+            <View style={{ height: 50 }} />
           </View>
         </View>
       ))}

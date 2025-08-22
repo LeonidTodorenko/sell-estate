@@ -45,10 +45,10 @@ const BlueButton: React.FC<BlueButtonProps> = ({ title, onPress, icon, variant='
         {
           backgroundColor: bg,
           paddingVertical: 9,
-           paddingHorizontal: 16,
+          paddingHorizontal: 16,
           marginBottom: 8,
-              paddingLeft: resolvedReservedLeft,
-    paddingRight: resolvedReservedLeft,
+          paddingLeft: resolvedReservedLeft,
+          paddingRight: resolvedReservedLeft,
           // paddingLeft: icon ? RESERVED_LEFT : 16,
           // paddingRight: icon ? RESERVED_LEFT : 16,
           elevation: 2,

@@ -66,6 +66,14 @@ const ChatScreen = () => {
 
   return (
     <View style={styles.container}>
+       <TextInput
+        style={styles.input}
+        value={input}
+        onChangeText={setInput}
+        placeholder="Type a message"
+      />
+      <BlueButton title="Send" onPress={sendMessage} />
+      
       <FlatList
         data={messages}
         keyExtractor={(item) => item.id}
@@ -75,13 +83,7 @@ const ChatScreen = () => {
           </Text>
         )}
       />
-      <TextInput
-        style={styles.input}
-        value={input}
-        onChangeText={setInput}
-        placeholder="Type a message"
-      />
-      <BlueButton title="Send" onPress={sendMessage} />
+     
     </View>
   );
 };
