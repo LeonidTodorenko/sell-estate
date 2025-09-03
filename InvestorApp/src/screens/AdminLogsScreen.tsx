@@ -3,6 +3,7 @@ import { View, Text, FlatList, StyleSheet, ActivityIndicator  } from 'react-nati
 import api from '../api';
 import StyledInput from '../components/StyledInput';
 import BlueButton from '../components/BlueButton';
+import theme from '../constants/theme';
 
 interface ActionLog {
   id: string;
@@ -98,7 +99,7 @@ const AdminLogsScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: '#fff' },
+  container: { flex: 1, padding: 16, backgroundColor: theme.colors.background },
   title: { fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 },
   card: {
     borderWidth: 1,

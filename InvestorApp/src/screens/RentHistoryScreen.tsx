@@ -7,6 +7,7 @@ import api from '../api';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import BlueButton from '../components/BlueButton';
+import theme from '../constants/theme';
 
 type RentHistoryRouteProp = RouteProp<RootStackParamList, 'RentHistory'>;
 
@@ -118,7 +119,7 @@ const RentHistoryScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
+  container: { flex: 1, padding: 16,backgroundColor: theme.colors.background },
   title: { fontSize: 22, fontWeight: 'bold', marginBottom: 10 },
   card: {
     borderWidth: 1,

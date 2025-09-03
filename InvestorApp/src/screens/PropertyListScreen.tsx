@@ -18,6 +18,7 @@ import { RootStackParamList } from '../navigation/AppNavigator';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback } from 'react';
 import BlueButton from '../components/BlueButton';
+import theme from '../constants/theme';
 
 interface PropertyImage {
   id: string;
@@ -195,7 +196,7 @@ useFocusEffect(
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
+  container: { flex: 1, padding: 16 ,backgroundColor: theme.colors.background},
   title: { fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 },
   card: {
     borderWidth: 1,

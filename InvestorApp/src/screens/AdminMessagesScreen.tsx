@@ -5,6 +5,7 @@ import api from '../api';
 //import { useNavigation } from '@react-navigation/native';
 import StyledInput from '../components/StyledInput';
 import BlueButton from '../components/BlueButton';
+import theme from '../constants/theme';
 
 interface Message {
   id: string;
@@ -126,6 +127,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
+    backgroundColor: theme.colors.background
   },
   header: {
     fontSize: 22,

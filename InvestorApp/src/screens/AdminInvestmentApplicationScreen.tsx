@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, TextInput, FlatList,  StyleSheet, Alert } from 'react-native';
 import api from '../api';
 import BlueButton from '../components/BlueButton';
+import theme from '../constants/theme';
 //import { useUser } from '../contexts/UserContext';
 
 interface InvestmentApplication {
@@ -130,7 +131,7 @@ const AdminInvestmentApplicationScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { padding: 20 },
+  container: { padding: 20 ,backgroundColor: theme.colors.background,},
   title: { fontSize: 24, fontWeight: 'bold', marginBottom: 20 },
   inputRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   input: { flex: 1, borderColor: '#ccc', borderWidth: 1, marginRight: 10, padding: 8, borderRadius: 5 },

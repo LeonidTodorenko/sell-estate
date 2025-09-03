@@ -6,6 +6,7 @@ import { launchImageLibrary } from 'react-native-image-picker';
 import { useLoading } from '../contexts/LoadingContext';
 import StyledInput from '../components/StyledInput';
 import BlueButton from '../components/BlueButton';
+import theme from '../constants/theme';
 
 //import { Buffer } from 'buffer';
 
@@ -126,7 +127,7 @@ const EditProfileScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20 },
+  container: { flex: 1, padding: 20,backgroundColor: theme.colors.background },
   title: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
   input: {
     borderWidth: 1,

@@ -3,6 +3,7 @@ import { View, Text,  Alert, StyleSheet } from 'react-native';
 import api from '../api';
 import StyledInput from '../components/StyledInput';
 import BlueButton from './BlueButton';
+import theme from '../constants/theme';
 
 const MathCaptcha = ({ onSuccess }: { onSuccess: () => void }) => {
   const [expression, setExpression] = useState('');
@@ -62,7 +63,7 @@ const MathCaptcha = ({ onSuccess }: { onSuccess: () => void }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { marginTop: 20 },
+  container: { marginTop: 20,backgroundColor: theme.colors.background, },
   row: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   label: { fontSize: 18 },
   expression: { fontSize: 18, fontWeight: 'bold', marginHorizontal: 8 },

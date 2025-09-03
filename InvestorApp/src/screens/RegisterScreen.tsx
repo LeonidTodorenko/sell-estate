@@ -6,6 +6,7 @@ import StyledInput from '../components/StyledInput';
 //import Captcha from '../components/Captcha';
 import api from '../api';
 import BlueButton from '../components/BlueButton';
+import theme from '../constants/theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Register'>;
 
@@ -178,6 +179,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 20,
+    backgroundColor: theme.colors.background
   },
   title: {
     fontSize: 24,

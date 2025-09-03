@@ -10,6 +10,7 @@ import Swiper from 'react-native-swiper';
 import Modal from 'react-native-modal';
 import { useFocusEffect } from '@react-navigation/native';
 import BlueButton from '../components/BlueButton';
+import theme from '../constants/theme';
 
 interface Investment {
   propertyId: string;
@@ -157,7 +158,7 @@ const InvestmentsScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: 20, paddingTop: 20 },
+  container: { flex: 1, paddingHorizontal: 20, paddingTop: 20,backgroundColor: theme.colors.background },
   title: { fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 },
   name: { fontSize: 15, fontWeight: 'bold', marginBottom: 10 },
   link: { color: 'blue', marginTop: 10 },

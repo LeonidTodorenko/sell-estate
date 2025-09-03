@@ -14,6 +14,7 @@ import DropDownPicker from 'react-native-dropdown-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import PinPromptModal from '../components/PinPromptModal';
 import BlueButton from '../components/BlueButton';
+import theme from '../constants/theme';
 
 
 interface ShareOffer {
@@ -527,7 +528,7 @@ const [pendingAction, setPendingAction] = useState<null | ((pin: string) => void
 export default ShareMarketplaceScreen;
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: '#fff' },
+  container: { flex: 1, padding: 16,backgroundColor: theme.colors.background },
   header: { fontSize: 22, fontWeight: 'bold', marginBottom: 12 },
   card: {
     borderWidth: 1,

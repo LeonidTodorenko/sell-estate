@@ -3,6 +3,7 @@ import { View, Text, TextInput, FlatList,   StyleSheet, Alert } from 'react-nati
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
 import BlueButton from '../components/BlueButton';
+import theme from '../constants/theme';
 
 interface ChatMessage {
   id: string;
@@ -89,7 +90,7 @@ const ChatScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 12 },
+  container: { flex: 1, padding: 12 ,backgroundColor: theme.colors.background},
   input: {
     borderWidth: 1,
     borderColor: '#ccc',

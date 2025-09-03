@@ -326,6 +326,7 @@ const styles = StyleSheet.create({
      //  width: '100%',
     maxWidth: 420,            // чтобы на широких экранах не растягивалось
     alignSelf: 'center',
+    
     //  flex: 1, justifyContent: 'center', paddingHorizontal: 20, marginTop: 350
     },
   title: { textShadowRadius: 1, textShadowOffset: { width: 1, height: 1 }, textShadowColor: 'white', color: 'black', fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 },

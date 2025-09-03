@@ -6,6 +6,7 @@ import api from '../api';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import StyledInput from '../components/StyledInput';
 import BlueButton from '../components/BlueButton';
+import theme from '../constants/theme';
 
 type BuyRouteProp = RouteProp<RootStackParamList, 'BuyShares'>;
 
@@ -162,7 +163,7 @@ const BuySharesScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20 },
+  container: { flex: 1, padding: 20 ,backgroundColor: theme.colors.background},
   title: { fontSize: 24, fontWeight: 'bold', marginBottom: 16, textAlign: 'center' },
   input: {
     borderWidth: 1,

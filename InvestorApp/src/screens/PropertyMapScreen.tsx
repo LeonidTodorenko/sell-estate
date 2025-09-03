@@ -10,6 +10,7 @@ import { View, StyleSheet } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import theme from '../constants/theme';
 
 type RouteProps = RouteProp<RootStackParamList, 'PropertyMap'>;
 
@@ -27,7 +28,7 @@ const PropertyMapScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1,backgroundColor: theme.colors.background },
   map: { flex: 1 },
 });
 

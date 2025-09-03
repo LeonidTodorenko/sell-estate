@@ -1,6 +1,7 @@
 import React from 'react';
 import { WebView } from 'react-native-webview';
 import { View, StyleSheet } from 'react-native';
+import theme from '../constants/theme';
 
 interface CaptchaProps {
   onVerify: (token: string) => void;
@@ -57,6 +58,7 @@ const styles = StyleSheet.create({
     borderColor: '#ccc',
     borderRadius: 8,
     overflow: 'hidden',
+    backgroundColor: theme.colors.background,
   },
   webview: {
     flex: 1,

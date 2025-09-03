@@ -9,6 +9,7 @@ import { RootStackParamList } from '../navigation/AppNavigator';
 import { useNavigation } from '@react-navigation/native';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import { useCallback } from 'react';
+import theme from '../constants/theme';
 
 
 interface InvestmentApplication {
@@ -88,7 +89,7 @@ export default function InvestmentApplicationScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: '#f5f5dc' },
+  container: { flex: 1, padding: 20,backgroundColor: theme.colors.background },
   title: { fontSize: 22, fontWeight: 'bold', textAlign: 'center', marginBottom: 20, color: '#2a1602' },
   card: {
     backgroundColor: 'white',

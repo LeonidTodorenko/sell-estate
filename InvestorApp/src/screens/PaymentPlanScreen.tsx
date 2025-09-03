@@ -4,6 +4,7 @@ import api from '../api';
 import AddPaymentPlanModal from '../components/AddPaymentPlanModal';
 import PaymentPlanTable from '../components/PaymentPlanTable';
 import BlueButton from '../components/BlueButton';
+import theme from '../constants/theme';
 
 interface PaymentPlan {
   id: string;
@@ -72,7 +73,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
-    backgroundColor: '#fff',
+     backgroundColor: theme.colors.background
   },
   title: {
     fontSize: 24,

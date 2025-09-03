@@ -5,6 +5,7 @@ import { Picker } from '@react-native-picker/picker';
 import { LineChart } from 'react-native-chart-kit';
 import { Dimensions } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import theme from '../constants/theme';
 
 interface Trade {
   timestamp: string;
@@ -162,7 +163,7 @@ const TradeHistoryScreen = () => {
 export default TradeHistoryScreen;
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: '#fff' },
+  container: { flex: 1, padding: 16,backgroundColor: theme.colors.background },
   title: { fontSize: 22, fontWeight: 'bold', marginBottom: 12, textAlign: 'center' },
   picker: { backgroundColor: '#eee', marginVertical: 10 },
   card: {

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList,   StyleSheet, Alert, Image } from 'react-native';
 import api from '../api';
 import BlueButton from '../components/BlueButton';
+import theme from '../constants/theme';
 
 interface KycDoc {
   id: string;
@@ -90,7 +91,7 @@ const AdminKycScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
+  container: { flex: 1, padding: 16 ,backgroundColor: theme.colors.background,},
   title: { fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 },
   card: {
     borderWidth: 1,

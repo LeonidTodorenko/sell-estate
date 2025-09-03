@@ -7,6 +7,7 @@ import api from '../api';
 import { Picker } from '@react-native-picker/picker';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import BlueButton from '../components/BlueButton';
+import theme from '../constants/theme';
 
 interface UserTransaction {
   id: string;
@@ -118,7 +119,7 @@ export default function UserTransactionsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: '#f5f5dc' },
+  container: { flex: 1, padding: 16, backgroundColor: theme.colors.background },
   title: { fontSize: 22, fontWeight: 'bold', marginBottom: 10, textAlign: 'center', color: '#2a1602' },
   picker: { marginBottom: 10 },
   dateRow: {

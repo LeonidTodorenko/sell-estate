@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
 import StyledInput from '../components/StyledInput';
 import BlueButton from '../components/BlueButton';
+import theme from '../constants/theme';
 
 const ChangePasswordScreen = () => {
   const [currentPassword, setCurrentPassword] = useState('');
@@ -80,6 +81,7 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     justifyContent: 'center',
+    backgroundColor: theme.colors.background
   },
   title: {
     fontSize: 22,

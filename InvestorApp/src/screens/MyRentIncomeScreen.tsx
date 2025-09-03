@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import api from '../api';
+import theme from '../constants/theme';
 
 interface LogEntry {
   title: string;
@@ -47,7 +48,7 @@ const MyRentIncomeScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
+  container: { flex: 1, padding: 16,backgroundColor: theme.colors.background },
   title: { fontSize: 24, fontWeight: 'bold', marginBottom: 12 },
   card: {
     borderWidth: 1,

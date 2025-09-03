@@ -8,6 +8,7 @@ import { RouteProp, useRoute } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import BlueButton from '../components/BlueButton';
+import theme from '../constants/theme';
 
 interface GroupedInvestment {
   propertyId: string;
@@ -239,7 +240,7 @@ const SellMySharesScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
+  container: { flex: 1, padding: 16,backgroundColor: theme.colors.background },
   title: { fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 },
   card: {
     borderWidth: 1,

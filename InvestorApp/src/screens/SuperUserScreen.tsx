@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TextInput,  FlatList, Alert } from 'react-native';
 import api from '../api';
 import BlueButton from '../components/BlueButton';
+import theme from '../constants/theme';
 
 interface Investment {
   propertyId: string;
@@ -105,7 +106,7 @@ const SuperUserScreen = () => {
 export default SuperUserScreen;
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: '#fff' },
+  container: { flex: 1, padding: 16,backgroundColor: theme.colors.background },
   title: { fontSize: 22, fontWeight: 'bold', marginBottom: 10 },
   subtitle: { fontSize: 18, fontWeight: 'bold', marginTop: 20 },
   balance: { fontSize: 18, marginBottom: 10 },

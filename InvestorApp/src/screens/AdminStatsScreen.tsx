@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Alert } from 'react-native';
 import api from '../api';
 import { LineChart } from 'react-native-chart-kit';
 import { Dimensions } from 'react-native';
+import theme from '../constants/theme';
 
 interface Stats {
   investors: number;
@@ -125,7 +126,7 @@ const AdminStatsScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20 },
+  container: { flex: 1, padding: 20,backgroundColor: theme.colors.background },
   title: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
   chartTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 10 },
   legendContainer: {

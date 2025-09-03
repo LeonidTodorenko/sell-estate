@@ -5,6 +5,7 @@ import { RootStackParamList } from '../navigation/AppNavigator';
 import api from '../api';
 import Swiper from 'react-native-swiper';
 import { TouchableOpacity, Modal } from 'react-native';
+import theme from '../constants/theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PropertyDetail'>;
 
@@ -112,7 +113,7 @@ const [imageIndex, setImageIndex] = useState(0);
 };
 
 const styles = StyleSheet.create({
-  container: { padding: 16 },
+  container: { padding: 16 ,backgroundColor: theme.colors.background},
   image: { width: '100%', height: 200, borderRadius: 8, marginBottom: 16 },
   title: { fontSize: 24, fontWeight: 'bold', marginBottom: 10 },
   carouselContainer: {

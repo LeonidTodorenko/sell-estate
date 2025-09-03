@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import AdminProtectedScreen from '../components/AdminProtectedScreen';
+import theme from '../constants/theme';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -61,7 +62,7 @@ const styles = StyleSheet.create({
     padding: 20,
     flexGrow: 1,
     justifyContent: 'center',
-    backgroundColor: '#f5f5dc',
+    backgroundColor: theme.colors.background,
   },
   title: {
     fontSize: 26,

@@ -5,6 +5,7 @@ import { launchImageLibrary } from 'react-native-image-picker';
 import api from '../api';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import BlueButton from '../components/BlueButton';
+import theme from '../constants/theme';
 
 interface KycDoc {
   id: string;
@@ -82,7 +83,7 @@ const UserKycViewScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
+  container: { flex: 1, padding: 16 ,backgroundColor: theme.colors.background},
   title: { fontSize: 20, fontWeight: 'bold', marginBottom: 12, textAlign: 'center' },
   card: {
     borderWidth: 1,

@@ -8,6 +8,7 @@ import { launchImageLibrary } from 'react-native-image-picker';
 import Swiper from 'react-native-swiper';
 import Modal from 'react-native-modal';
 import BlueButton from '../components/BlueButton';
+import theme from '../constants/theme';
 //import PaymentPlanScreen from '../components/PaymentPlanScreen';
 
 global.Buffer = global.Buffer || require('buffer').Buffer;
@@ -352,7 +353,7 @@ const AdminPropertiesScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
+  container: { flex: 1, padding: 16,backgroundColor: theme.colors.background },
   title: { fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 },
   card: {
     borderWidth: 1,

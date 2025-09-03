@@ -3,6 +3,7 @@ import { View, Text, FlatList, TextInput,   StyleSheet, TouchableOpacity } from 
 import api from '../api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import BlueButton from '../components/BlueButton';
+import theme from '../constants/theme';
 
 interface User {
   id: string;
@@ -101,7 +102,7 @@ const AdminChatScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 12 },
+  container: { flex: 1, padding: 12 ,backgroundColor: theme.colors.background,},
   title: { fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 10 },
   input: { borderWidth: 1, borderColor: '#ccc', padding: 10, marginVertical: 10 },
   userItem: { padding: 12, borderBottomWidth: 1, borderColor: '#eee' },

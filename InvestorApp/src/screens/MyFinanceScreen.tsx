@@ -7,6 +7,7 @@ import { Picker } from '@react-native-picker/picker';
 import api from '../api';
 import { LineChart } from 'react-native-chart-kit';
 import BlueButton from '../components/BlueButton';
+import theme from '../constants/theme';
 
 interface Transaction {
   id: string;
@@ -230,7 +231,7 @@ const MyFinanceScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { padding: 16, paddingBottom: 40 },
+  container: { padding: 16, paddingBottom: 40 ,backgroundColor: theme.colors.background},
   title: { fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 12 },
   summaryBox: {
     backgroundColor: '#eef',

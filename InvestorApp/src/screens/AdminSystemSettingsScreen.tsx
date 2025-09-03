@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput,  Alert, StyleSheet, ScrollView } from 'react-native';
 import api from '../api';
 import BlueButton from '../components/BlueButton';
+import theme from '../constants/theme';
 
 interface SystemSetting {
   key: string;
@@ -69,7 +70,7 @@ const AdminSystemSettingsScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { padding: 16 },
+  container: { padding: 16 ,backgroundColor: theme.colors.background},
   header: { fontSize: 22, fontWeight: 'bold', marginBottom: 16 },
   settingBlock: { marginBottom: 20 },
   label: { fontSize: 16, fontWeight: 'bold' },

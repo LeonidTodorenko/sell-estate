@@ -6,6 +6,7 @@ import { RouteProp, useRoute } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import StyledInput from '../components/StyledInput';
 import BlueButton from '../components/BlueButton';
+import theme from '../constants/theme';
 
 type RouteProps = RouteProp<RootStackParamList, 'AdminKycUpload'>;
 
@@ -52,7 +53,7 @@ const AdminKycUploadScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
+  container: { flex: 1, padding: 16,backgroundColor: theme.colors.background },
   title: { fontSize: 22, fontWeight: 'bold', marginBottom: 16 },
   input: {
     borderWidth: 1,
