@@ -88,7 +88,7 @@ const LoginScreen = ({ navigation }: Props) => {
         }
       }
 
-      navigation.navigate('Profile');
+      navigation.navigate('Home');
       setLoading(false);
     } catch (error: any) {
       let message = 'Something went wrong';
@@ -233,7 +233,8 @@ const LoginScreen = ({ navigation }: Props) => {
               }
             }
 
-            navigation.navigate('Profile');
+            navigation.navigate('Home');
+            
 
           } catch (err) {
             Alert.alert('Error', 'Failed to log in as user@example.com');
@@ -251,7 +252,7 @@ const LoginScreen = ({ navigation }: Props) => {
             });
 
             await AsyncStorage.setItem('user', JSON.stringify(response.data));
-            navigation.navigate('Profile');
+            navigation.navigate('Home');
 
           } catch (err) {
             Alert.alert('Error', 'Failed to log in as user2@example.com');
@@ -269,7 +270,7 @@ const LoginScreen = ({ navigation }: Props) => {
             });
 
             await AsyncStorage.setItem('user', JSON.stringify(response.data));
-            navigation.navigate('Profile');
+            navigation.navigate('Home');
 
           } catch (err) {
             Alert.alert('Error', 'Failed to log in as user3@example.com');

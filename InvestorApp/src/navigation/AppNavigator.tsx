@@ -48,6 +48,7 @@ import MyInvestmentsScreen from '../screens/MyInvestmentsScreen';
 import MyFinanceScreen from '../screens/MyFinanceScreen';
 import RentHistoryScreen from '../screens/RentHistoryScreen';
 import MyRentIncomeScreen from '../screens/MyRentIncomeScreen';
+import MainHomeScreen from '../screens/HomeScreen';
 
 export type RootStackParamList = {
   Login: undefined;
@@ -95,6 +96,7 @@ export type RootStackParamList = {
   MyFinance: undefined;
   MyRentIncome: undefined;
   RentHistory: { propertyId: string };
+  Home: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -148,6 +150,7 @@ export default function AppNavigator() {
         <Stack.Screen name="MyFinance" component={MyFinanceScreen} options={{ title: 'My Finance' }} />
         <Stack.Screen name="RentHistory" component={RentHistoryScreen} options={{ title: 'Rent History ' }} />
         <Stack.Screen name="MyRentIncome" component={MyRentIncomeScreen} options={{ title: 'Rental Income ' }} />
+        <Stack.Screen name="Home" component={MainHomeScreen} options={{ title: 'Home ' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );
