@@ -121,8 +121,15 @@ app.MapControllers();
 // Авто-миграция и суперюзер
 using (var scope = app.Services.CreateScope())
 {
+    var cfg = scope.ServiceProvider.GetRequiredService<IConfiguration>();
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    context.Database.Migrate(); 
+    context.Database.Migrate();
+
+    var runMigrations = cfg.GetValue<bool>("RunMigrationsOnStartup"); // false на стенде
+    if (runMigrations)
+    {
+        context.Database.Migrate();
+    }
 
     var superUserService = scope.ServiceProvider.GetRequiredService<ISuperUserService>();
     await superUserService.EnsureSuperUserExistsAsync();
