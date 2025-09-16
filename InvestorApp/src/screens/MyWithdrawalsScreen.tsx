@@ -3,6 +3,7 @@ import { View, Text, FlatList, StyleSheet } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
 import theme from '../constants/theme';
+import { loadSession } from '../services/sessionStorage';
 
 interface Withdrawal {
   id: string;
@@ -16,11 +17,15 @@ const MyWithdrawalsScreen = () => {
 
   useEffect(() => {
     const loadData = async () => {
-      const stored = await AsyncStorage.getItem('user');
-      if (!stored) return;
 
-      const user = JSON.parse(stored);
-      const response = await api.get(`/withdrawals/user/${user.userId}`);
+       const session = await loadSession();
+        if (!session?.user?.id && !session?.user?.userId) return;
+        const userId = session.user.id ?? session.user.userId;
+      // todo заменить везде
+      // const stored = await AsyncStorage.getItem('user');
+      // if (!stored) return;
+      //const user = JSON.parse(stored);
+      const response = await api.get(`/withdrawals/user/${userId}`);
       setWithdrawals(response.data);
     };
 

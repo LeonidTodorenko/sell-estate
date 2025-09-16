@@ -6,6 +6,7 @@ import { LoadingProvider } from './src/contexts/LoadingContext';
 import { requestUserPermission, getFcmToken } from './src/firebase';
 import messaging from '@react-native-firebase/messaging';
 import notifee, { AndroidImportance } from '@notifee/react-native';
+import { AuthProvider } from './src/contexts/AuthContext';
 
 export default function App() {
   useEffect(() => {
@@ -42,10 +43,12 @@ export default function App() {
 
   return (
     <LoadingProvider>
+         <AuthProvider>
       <SafeAreaView style={styles.container}>
         <StatusBar backgroundColor={theme.colors.background} barStyle="dark-content" />
         <AppNavigator />
       </SafeAreaView>
+      </AuthProvider>
     </LoadingProvider>
   );
 }

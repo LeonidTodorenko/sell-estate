@@ -30,6 +30,8 @@ namespace RealEstateInvestment.Data
         public DbSet<ChatMessage> ChatMessages { get; set; }
         public DbSet<FcmDeviceToken> FcmDeviceTokens { get; set; }
 
+        public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
 
@@ -49,6 +51,13 @@ namespace RealEstateInvestment.Data
             }
 
             modelBuilder.Entity<User>().HasIndex(u => u.Email).IsUnique();
+
+            modelBuilder.Entity<RefreshToken>()
+                        .HasIndex(x => x.UserId);
+
+            modelBuilder.Entity<RefreshToken>()
+                        .Property(x => x.TokenHash)
+                        .IsRequired();
         }
 
     }

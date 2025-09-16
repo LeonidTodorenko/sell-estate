@@ -1,8 +1,8 @@
 import React, {   useEffect, useState } from 'react';
-import { View,Dimensions, Text,   StyleSheet, Alert, TouchableWithoutFeedback, KeyboardAvoidingView, ScrollView, Platform, Keyboard } from 'react-native';
+import { View,Dimensions, Text,   StyleSheet, Alert , Platform, Keyboard } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import api from '../api';
+//import AsyncStorage from '@react-native-async-storage/async-storage';
+ import axios from 'axios';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { ImageBackground } from 'react-native';
 import loginBackground from '../assets/images/login.jpg';
@@ -11,15 +11,23 @@ import StyledInput from '../components/StyledInput';
 import { getFcmToken } from '../firebase';
 import BlueButton from '../components/BlueButton';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { saveSession } from '../services/sessionStorage';
+import { API_BASE_URL, setAccessToken, writeLegacyUser } from '../api';
+import { getRoleFromUserAndToken } from '../services/auth';
+//import { AuthContext } from '../contexts/AuthContext';
 
 //import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
+ 
+
 const LoginScreen = ({ navigation }: Props) => {
   const { setLoading } = useLoading();
+  //  const { signIn } = React.useContext(AuthContext);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+    const [busy, setBusy] = useState(false);  // блокируем повторные тапы
 
   const HERO_HEIGHT = Math.round(Dimensions.get('window').height * 0.43);
   // Следим, открыта ли клавиатура
@@ -38,59 +46,133 @@ const LoginScreen = ({ navigation }: Props) => {
 
   const currentHero = kbShown ? 200 : HERO_HEIGHT; // <— СПЕЙСЕР МЕНЬШЕ при открытой клаве
 
+ 
+  // const handleLogin = async () => {
+  //   try {
+  //     setLoading(true);
+  //    //    await signIn(email, password);
+ 
+  //     const response = await api.post('/auth/login', { email, password });
+  //     //await AsyncStorage.setItem('user', JSON.stringify(response.data));
+      
 
-//   const [kbHeight, setKbHeight] = useState(0);
-  //const insets = useSafeAreaInsets?.() ?? { bottom: 0, top: 0, left: 0, right: 0 };
+  //     const { accessToken, refreshToken, user } = response.data;
+  //     await saveSession({ accessToken, refreshToken, user });
+  //     setAccessToken(accessToken);
 
-  // слушаем клавиатуру
-  // useEffect(() => {
-  //   const showSub = Keyboard.addListener(
-  //     Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-  //     e => setKbHeight(e.endCoordinates?.height ?? 0)
-  //   );
-  //   const hideSub = Keyboard.addListener(
-  //     Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-  //     () => setKbHeight(0)
-  //   );
-  //   return () => {
-  //     showSub.remove();
-  //     hideSub.remove();
-  //   };
-  // }, []);
+  //       // ДЛЯ ЛЕГАСИ: записать старый формат
+  //             await writeLegacyUser(response.data);
 
-  const handleLogin = async () => {
+  //     const fcmToken = await getFcmToken();
+  //     if (fcmToken) {
+  //       try {
+  //         // const { api } = await import('../services/http');
+  //         await api.post('/notifications/register-token', {
+  //           token: fcmToken,
+  //         });
+  //         console.log('Token registered on backend');
+  //       } catch (err) {
+  //         console.warn('Failed to register FCM token', err);
+  //       }
+  //     }
+
+  //         const role = user?.role ?? user?.Role ?? 'user';
+
+  //     // важный момент: RESET, чтобы кнопка "Назад" не возвращала на Login
+  //     navigation.reset({
+  //       index: 0,
+  //       routes: [{ name: role === 'admin' ? 'AdminDashboards' : 'Home' } as any],
+  //     });
+  //    //navigation.navigate('Home');
+  //     setLoading(false);
+  //   } catch (error: any) {
+  //     let message = 'Something went wrong';
+  //     if (error.response?.data?.message) { //if (error.response && error.response.data && error.response.data.message) {
+  //       message = error.response.data.message;
+  //     } else if (error.message) {
+  //       message = error.message;
+  //     }
+
+  //     Alert.alert('Login failed', 'Invalid email or password' + message);
+  //     setLoading(false);
+  //   }
+  // };
+
+   // ----- единая функция логина, которой пользуются и обычная кнопка, и «быстрые» ссылки -----
+  const loginCore = async (creds: { email: string; password: string }, goto?: keyof RootStackParamList) => {
+    if (busy) return;            // защита от двойного нажатия
+    setBusy(true);
+    Keyboard.dismiss();
+    setLoading(true);
     try {
-      setLoading(true);
-      const response = await api.post('/auth/login', { email, password });
+      // КЛЮЧЕВОЕ: идём напрямую, минуя интерсепторы api-инстанса
+      const { data } = await axios.post(`${API_BASE_URL}/auth/login`, creds, {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 15000,
+      });
 
-      //const { token, ...userInfo } = response.data;
-      //Alert.alert("response:" + response.data);
-      //Alert.alert("token:" + token);
-      //Alert.alert("userInfo:" + userInfo);
-      //  await AsyncStorage.setItem('data', JSON.stringify(response.data));
-      //await AsyncStorage.setItem('user', JSON.stringify(userInfo));
-      //await AsyncStorage.setItem('token',JSON.stringify(userInfo.token));
+      const { accessToken, refreshToken, user } = data;
+      setAccessToken(accessToken);
+      await Promise.all([
+        saveSession({ accessToken, refreshToken, user }),
+        writeLegacyUser(data), // чтобы старые места, читающие AsyncStorage('user'), были счастливы
+      ]);
 
-      await AsyncStorage.setItem('user', JSON.stringify(response.data));
-
-      //const user = response.data;
-      // await AsyncStorage.setItem('user', JSON.stringify(user));
-
-      const fcmToken = await getFcmToken();
+        const fcmToken = await getFcmToken();
       if (fcmToken) {
         try {
-          await api.post('/notifications/register-token', {
-            token: fcmToken,
-          });
-          console.log('Token registered on backend');
-        } catch (err) {
-          console.warn('Failed to register FCM token', err);
+          await axios.post(`${API_BASE_URL}/notifications/register-token`, { token: fcmToken });
+        } catch (e) {
+          console.warn('Failed to register FCM token', e);
         }
       }
 
-      navigation.navigate('Home');
-      setLoading(false);
-    } catch (error: any) {
+            const role = getRoleFromUserAndToken(user, accessToken);
+      const target: keyof RootStackParamList = goto ?? (role === 'admin' ? 'AdminDashboards' : 'Home');
+      navigation.reset({ index: 0, routes: [{ name: target }] });
+
+    
+
+//       (async () => {
+//   try {
+//     let fcmToken: string | null = null;
+//     try {
+//       fcmToken = await getFcmToken();
+//     } catch (e: any) {
+//       const msg = String(e?.message ?? e);
+//       if (/Cannot generate keys with required security guarantees/i.test(msg)) {
+//         console.warn('FCM keygen issue, will skip this time');
+//         fcmToken = null; // просто пропускаем
+//       } else {
+//         console.warn('getFcmToken failed:', e);
+//         fcmToken = null;
+//       }
+//     }
+
+//     if (fcmToken) {
+//       try {
+//         await axios.post(`${API_BASE_URL}/notifications/register-token`, { token: fcmToken });
+//       } catch (e) {
+//         console.warn('Failed to register FCM token:', e);
+//         Alert.alert('Failed to register FCM token:');
+//       }
+//     }
+//   } catch {}
+// })();
+
+      
+  //     const safeRole =
+  // (typeof getRoleFromUserAndToken === 'function'
+  //   ? getRoleFromUserAndToken(user, accessToken)
+  //   : (user?.role ?? user?.Role ?? 'user')
+  // ).toLowerCase();
+
+      //const role = user?.role ?? user?.Role ?? 'user';
+
+      
+      
+ 
+   } catch (error: any) {
       let message = 'Something went wrong';
       if (error.response?.data?.message) { //if (error.response && error.response.data && error.response.data.message) {
         message = error.response.data.message;
@@ -98,26 +180,17 @@ const LoginScreen = ({ navigation }: Props) => {
         message = error.message;
       }
 
-      Alert.alert('Login failed', 'Invalid email or password' + message);
+      Alert.alert('Login failed', 'Error: ' + message);
       setLoading(false);
+    } finally {
+      setLoading(false);
+      setBusy(false);
     }
   };
-  /*
-    const testApi = async () => {
-      try {
-        const response = await api.get('/properties'); 
-        Alert.alert('Success', JSON.stringify(response.data).slice(0, 200));
-      } catch (error: any) {
-        let message = 'API call failed';
-        if (error.response && error.response.data) {
-          message = JSON.stringify(error.response.data);
-        } else if (error.message) {
-          message = error.message;
-        }
-        Alert.alert('API Error', message);
-      }
-    };
-  */
+
+   const handleLogin = () => loginCore({ email, password });
+
+ 
   return (
        <View style={{ flex: 1 }}>
         
@@ -130,7 +203,7 @@ const LoginScreen = ({ navigation }: Props) => {
 
     <KeyboardAwareScrollView
         contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
+        keyboardShouldPersistTaps="always"
         enableOnAndroid
            enableAutomaticScroll={true}    
         extraScrollHeight={32} // небольшой доп. отступ над клавиатурой
@@ -181,37 +254,49 @@ const LoginScreen = ({ navigation }: Props) => {
           ]}
         > */}
                   <View style={styles.buttonContainer}>
-            <BlueButton title="Login" onPress={handleLogin} />
-     
+           <BlueButton title={busy ? 'Please wait...' : 'Login'} onPress={handleLogin} disabled={busy} />
             <BlueButton additionalPadding={0} title="Sign up" onPress={() => navigation.navigate('Register')} />
          </View> 
-        {/* </View>   */}
+       
 
-        {/* <View style={{ height: 10 }} />
-        <BlueButton title="Forgot Password?" onPress={() => navigation.navigate('ForgotPassword')} /> */}
+           <Text
+            onPress={() => loginCore({ email: 'admin@example.com', password: 'securepassword' }, 'AdminDashboards')}
+            style={styles.adminLink}
+          >
+            ➤ Enter Admin Panel
+          </Text>
 
-        {/* <Text onPress={() => navigation.navigate('Register')} style={styles.link}>
-        Don't have an account? Register
-      </Text> */}
-        {/* <Text onPress={() => navigation.navigate('AdminWithdrawals')} style={styles.adminLink}>
-      ➤ Enter Admin Panel
-    </Text> */}
-        <Text onPress={async () => {
+        {/* <Text onPress={async () => {
           try {
             const response = await api.post('/auth/login', {
               email: 'admin@example.com',
               password: 'securepassword',
             });
-            await AsyncStorage.setItem('user', JSON.stringify(response.data));
-            navigation.navigate('AdminDashboards');
+      
+             const { accessToken, refreshToken, user } = response.data;
+            await saveSession({ accessToken, refreshToken, user });
+            setAccessToken(accessToken);
+
+            // ДЛЯ ЛЕГАСИ: записать старый формат
+              await writeLegacyUser(response.data);
+
+          navigation.reset({ index: 0, routes: [{ name: 'AdminDashboards' } as any] });
           } catch (err) {
             Alert.alert('Error', 'Failed to log in as admin@example.com');
           }
         }} style={styles.adminLink}>
           ➤ Enter Admin Panel
-        </Text>
+        </Text> */}
 
-        <Text onPress={async () => {
+
+     <Text
+            onPress={() => loginCore({ email: 'user@example.com', password: 'securepassword' }, 'Home')}
+            style={styles.userLink}
+          >
+            ➤ Login as Test User
+          </Text>
+
+        {/* <Text onPress={async () => {
           try {
 
             const response = await api.post('/auth/login', {
@@ -219,7 +304,14 @@ const LoginScreen = ({ navigation }: Props) => {
               password: 'securepassword',
             });
 
-            await AsyncStorage.setItem('user', JSON.stringify(response.data));
+          //  await AsyncStorage.setItem('user', JSON.stringify(response.data));
+
+             const { accessToken, refreshToken, user } = response.data;
+              await saveSession({ accessToken, refreshToken, user });
+              setAccessToken(accessToken);
+     
+                // ДЛЯ ЛЕГАСИ: записать старый формат
+              await writeLegacyUser(response.data);
 
             const fcmToken = await getFcmToken();
             if (fcmToken) {
@@ -241,43 +333,21 @@ const LoginScreen = ({ navigation }: Props) => {
           }
         }} style={styles.userLink}>
           ➤ Login as Test User
-        </Text>
+        </Text> */}
 
-        <Text onPress={async () => {
-          try {
+         <Text
+            onPress={() => loginCore({ email: 'user2@example.com', password: 'securepassword' }, 'Home')}
+            style={styles.userLink2}
+          >
+            ➤ Login as Test User2
+          </Text>
 
-            const response = await api.post('/auth/login', {
-              email: 'user2@example.com',
-              password: 'securepassword',
-            });
-
-            await AsyncStorage.setItem('user', JSON.stringify(response.data));
-            navigation.navigate('Home');
-
-          } catch (err) {
-            Alert.alert('Error', 'Failed to log in as user2@example.com');
-          }
-        }} style={styles.userLink2}>
-          ➤ Login as Test User2
-        </Text>
-
-        <Text onPress={async () => {
-          try {
-
-            const response = await api.post('/auth/login', {
-              email: 'user3@example.com',
-              password: 'securepassword',
-            });
-
-            await AsyncStorage.setItem('user', JSON.stringify(response.data));
-            navigation.navigate('Home');
-
-          } catch (err) {
-            Alert.alert('Error', 'Failed to log in as user3@example.com');
-          }
-        }} style={styles.userLink3}>
-          ➤ Login as Test User3
-        </Text>
+         <Text
+            onPress={() => loginCore({ email: 'user3@example.com', password: 'securepassword' }, 'Home')}
+            style={styles.userLink3}
+          >
+            ➤ Login as Test User3
+          </Text>
 
         {/* <BlueButton title="Test API" onPress={testApi} color="orange" /> */}
       </View>

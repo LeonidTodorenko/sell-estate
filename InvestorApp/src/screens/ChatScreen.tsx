@@ -17,7 +17,7 @@ const ChatScreen = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [userId, setUserId] = useState('');
-  const [adminId, setAdminId] = useState(''); 
+  const [adminId, setAdminId] = useState('');
 
   useEffect(() => {
     const loadChat = async () => {

@@ -1,10 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity,Alert  } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import AdminProtectedScreen from '../components/AdminProtectedScreen';
 import theme from '../constants/theme';
+import { clearSession } from '../services/sessionStorage';
+import { setAccessToken } from '../api';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -24,6 +26,21 @@ const ROWS = [
 
 const AdminDashboardScreen = () => {
   const navigation = useNavigation<Nav>();
+
+   const handleLogout = async () => {
+    Alert.alert('Confirm Logout', 'Do you really want to log out?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Logout',
+        style: 'destructive',
+        onPress: async () => {
+          await clearSession();
+          setAccessToken(null);
+          navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+        },
+      },
+    ]);
+  };
 
   return (
     <AdminProtectedScreen>
@@ -48,6 +65,14 @@ const AdminDashboardScreen = () => {
             </View>
           </TouchableOpacity>
         ))}
+
+            <TouchableOpacity style={[styles.button, styles.logoutButton]} onPress={handleLogout}>
+          <Text style={styles.icon}>🚪</Text>
+          <View style={styles.centerWrap}>
+            <Text style={styles.buttonText}>LOGOUT</Text>
+          </View>
+        </TouchableOpacity>
+
       </ScrollView>
     </AdminProtectedScreen>
   );
@@ -82,6 +107,9 @@ const styles = StyleSheet.create({
     paddingLeft: RESERVED_LEFT,
     paddingRight: RESERVED_LEFT,
     elevation: 2,
+  },
+   logoutButton: {
+    backgroundColor: '#cc0000', // красный для выхода
   },
   icon: {
     position: 'absolute',

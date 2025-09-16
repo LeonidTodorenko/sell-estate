@@ -1,7 +1,7 @@
-// src/context/AuthContext.tsx
 import React, { createContext, useEffect, useState, useMemo } from 'react';
 import { loadSession, saveSession, clearSession, Session } from '../services/sessionStorage';
-import { api, setAccessToken, tryRefresh } from '../services/http';
+import { api, setAccessToken, tryRefresh } from '../api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type AuthState = 'loading' | 'signedOut' | 'signedIn';
 
@@ -58,6 +58,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     },
     signIn: async (email, password) => {
       const res = await api.post('/auth/login', { email, password });
+      await AsyncStorage.setItem('user', JSON.stringify(res.data));
       const { accessToken, refreshToken, user } = res.data;
       await saveSession({ accessToken, refreshToken, user });
       setAccessToken(accessToken);

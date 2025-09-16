@@ -14,24 +14,32 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+// JWT
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "super-secret-development-key";
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "SellEstateIssuer";
+var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "SellEstateClient";
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
 }).AddJwtBearer(options =>
 {
-    options.RequireHttpsMetadata = false; // отключи на проде
+    options.RequireHttpsMetadata = false; // todo надо будет включить потом на проде, проверить
     options.SaveToken = true;
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = false,
-        ValidateAudience = false, //     ValidateAudience = true,
+        ValidateAudience = false, //     todo для прода 
+                                  // ValidateIssuer = true,
+                                  // ValidateAudience = true,
+                                  // ValidIssuer = jwtIssuer,
+                                  // ValidAudience = jwtAudience,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
        // ValidIssuer = jwtIssuer,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+        ClockSkew = TimeSpan.Zero // без «плюс-5-минут»
     };
 });
 
@@ -45,6 +53,17 @@ builder.Services.AddAuthentication(options =>
 //              .AllowAnyMethod();
 //    });
 //});
+
+// CORS (опционально; для мобильного чаще всего можно AllowAnyOrigin)
+// todo проверить
+//builder.Services.AddCors(options =>
+//{
+//    options.AddPolicy("Mobile", policy =>
+//        policy.AllowAnyOrigin()
+//              .AllowAnyHeader()
+//              .AllowAnyMethod());
+//});
+
 
 builder.Services.AddAuthorization();
 
@@ -60,19 +79,19 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddTransient<EmailService>();
 builder.Services.AddSingleton<CaptchaService>();
 builder.Services.AddScoped<ISuperUserService, SuperUserService>();
-// todo test
+ 
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<SettingsService>();
 builder.Services.AddScoped<IFirebaseNotificationService, FirebaseNotificationService>();
 builder.Services.AddHostedService<ScheduledTaskService>();
-//builder.Services.AddSwaggerGen(c =>
-//{
-//    c.IgnoreObsoleteProperties();
-//});
-
+ 
 var app = builder.Build();
 
 //app.UseCors();
+
+// CORS
+// todo test
+//app.UseCors("Mobile");
 
 app.UseDeveloperExceptionPage(); //todo remove after debug
 //if (app.Environment.IsDevelopment())
@@ -87,7 +106,7 @@ app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
 
-app.UseAuthorization();
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
@@ -98,6 +117,8 @@ app.MapControllers();
 //    await superUserService.EnsureSuperUserExistsAsync();
 //}
 
+
+// Авто-миграция и суперюзер
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -107,7 +128,7 @@ using (var scope = app.Services.CreateScope())
     await superUserService.EnsureSuperUserExistsAsync();
 }
 
-
+// Инициализация системных настроек (как у тебя)
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();

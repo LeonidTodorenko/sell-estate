@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import {
   View, Text, FlatList, StyleSheet,  Dimensions,
+  Alert,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Picker } from '@react-native-picker/picker';
@@ -8,6 +9,9 @@ import api from '../api';
 import { LineChart } from 'react-native-chart-kit';
 import BlueButton from '../components/BlueButton';
 import theme from '../constants/theme';
+
+// import { loadSession, saveSession } from '../services/sessionStorage';
+// import { writeLegacyUser } from '../api';
 
 interface Transaction {
   id: string;
@@ -44,22 +48,49 @@ const MyFinanceScreen = () => {
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [daysBack, setDaysBack] = useState<number>(30);
 
+  
+
   useEffect(() => {
     const loadData = async () => {
+
+       // 1) Берём сессию, а не legacy
+      //let session = await loadSession();
+      //let userId = session?.user?.id ?? session?.user?.userId ?? null;
+
+      //   console.log("session:"); // todo debug
+      //   console.log(session); // todo debug
+      //   console.log("end session:"); // todo debug
+
+      //  console.log("userid:"); // todo debug
+      //   console.log(userId); // todo debug
+      //   console.log("end userid:"); // todo debug
+
       const stored = await AsyncStorage.getItem('user');
       if (!stored) return;
 
       const user = JSON.parse(stored);
       try {
+        // console.log("user:"); // todo debug
+        // console.log(user); // todo debug
+        // console.log("emd:"); // todo debug
         const [trxRes, statRes] = await Promise.all([
           api.get(`/users/transactions/user/${user.userId}`),
           api.get(`/users/${user.userId}/assets-summary`)
         ]);
         setTransactions(trxRes.data);
         setStats(statRes.data);
-      } catch (error) {
-        console.error('Failed to load finance data', error);
-      } finally {
+      }  
+      catch (error: any) {
+            let message = 'Failed to load finance data ';
+            console.error(error);
+            if (error.response && error.response.data) {
+              message = JSON.stringify(error.response.data);
+            } else if (error.message) {
+              message = error.message;
+            }
+            Alert.alert('Error', 'Failed to load finance data ' + message);
+          }
+      finally {
         setLoading(false);
       }
     };
