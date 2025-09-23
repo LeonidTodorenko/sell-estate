@@ -12,18 +12,19 @@ export type Session = {
 export async function saveSession(session: Session) {
     const payload = JSON.stringify(session);
 
-      // 1) Пытаемся максимально безопасные настройки
-  try {
-    await Keychain.setGenericPassword(KEY, payload, {
-      service: KEY,
-      accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED,
-      accessControl: Keychain.ACCESS_CONTROL.BIOMETRY_ANY_OR_DEVICE_PASSCODE,
-      securityLevel: Keychain.SECURITY_LEVEL.SECURE_HARDWARE,
-    });
-    return;
-  } catch (e1) {
-    console.warn('[Keychain] SECURE_HARDWARE + BIOMETRY failed:', e1);
-  }
+      // 1) Пытаемся максимально безопасные настройки 
+      // todo убрали биометрию
+  // try {
+  //   await Keychain.setGenericPassword(KEY, payload, {
+  //     service: KEY,
+  //     accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED,
+  //     accessControl: Keychain.ACCESS_CONTROL.BIOMETRY_ANY_OR_DEVICE_PASSCODE,
+  //     securityLevel: Keychain.SECURITY_LEVEL.SECURE_HARDWARE,
+  //   });
+  //   return;
+  // } catch (e1) {
+  //   console.warn('[Keychain] SECURE_HARDWARE + BIOMETRY failed:', e1);
+  // }
 
    // 2) Ослабляем до программной крипты (без биометрии)
   try {
@@ -37,6 +38,8 @@ export async function saveSession(session: Session) {
   } catch (e2) {
     console.warn('[Keychain] SECURE_SOFTWARE failed:', e2);
   }
+
+ 
 
   // 3) Последний фоллбек — ANY (лишь бы не падало)
   await Keychain.setGenericPassword(KEY, payload, {

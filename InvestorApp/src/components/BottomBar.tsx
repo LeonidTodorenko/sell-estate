@@ -20,9 +20,23 @@ export default function BottomBar() {
   const nav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [open, setOpen] = useState(false);
 
+    const bottomPad = Math.max(insets.bottom, 8);
+  const barHeight = BOTTOM_BAR_HEIGHT + bottomPad;
+
   return (
     <>
-      <View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+        <View
+        style={[
+          styles.wrap,
+          {
+            paddingBottom: bottomPad,
+            height: barHeight,
+            zIndex: 100,      // гарантируем поверх всего
+            elevation: 12,    // тень на Android (оставляем)
+          },
+        ]}
+        pointerEvents="box-none"
+      >
         <BTN label="Home"     emoji="🏠" onPress={() => nav.navigate('Home')} />
         <BTN label="Property" emoji="🔍" onPress={() => nav.navigate('Properties')} />
         <BTN label="Market"   emoji="🛒" onPress={() => nav.navigate('ShareMarketplaces')} />
@@ -71,7 +85,7 @@ const styles = StyleSheet.create({
   wrap: {
     position: 'absolute',
     left: 0, right: 0, bottom: 0,
-    height: BOTTOM_BAR_HEIGHT,
+    // height: BOTTOM_BAR_HEIGHT,  // ← убрать, теперь задаём динамически
     backgroundColor: 'white',
     borderTopWidth: StyleSheet.hairlineWidth,
     borderColor: '#ddd',
@@ -79,13 +93,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-around',
     paddingHorizontal: 8,
-    elevation: 12,
+    // elevation остаётся, но реальная высота теперь динамическая
     shadowColor: '#000',
     shadowOpacity: 0.08,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: -2 },
+    zIndex: 100,
   },
-  btn: { alignItems: 'center', justifyContent: 'center', gap: 2, minWidth: 56, marginTop:15 },
+  btn: { alignItems: 'center', justifyContent: 'center', gap: 2, minWidth: 56, marginTop: 15 },
   emoji: { fontSize: 20 },
   label: { fontSize: 11 },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-end' },

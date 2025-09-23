@@ -127,11 +127,22 @@ const MyFinanceScreen = () => {
       <Text style={styles.notes}>{item.notes}</Text>
     </View>
   );
+ 
+  const formatLabel = (dateStr: string) => {
+    const d = new Date(dateStr);
+    // Вариант 1 (локализовано): "Sep 07"
+    return d.toLocaleDateString(undefined, { month: 'short', day: '2-digit' });
+
+    // Вариант 2 (жёстко "dd.MM"):
+    // const dd = String(d.getDate()).padStart(2, '0');
+    // const mm = String(d.getMonth() + 1).padStart(2, '0');
+    // return `${dd}.${mm}`;
+  };
 
   const equityChart = useMemo(() => {
     if (!stats?.equityHistory?.length) return null;
     return {
-      labels: stats.equityHistory.map(p => new Date(p.date).toLocaleDateString()),
+      labels: stats.equityHistory.map(p => formatLabel(p.date)),
       datasets: [{ data: stats.equityHistory.map(p => p.total) }],
     };
   }, [stats]);
@@ -139,7 +150,7 @@ const MyFinanceScreen = () => {
   const rentChart = useMemo(() => {
     if (!stats?.rentIncomeHistory?.length) return null;
     return {
-      labels: stats.rentIncomeHistory.map(p => new Date(p.date).toLocaleDateString()),
+       labels: stats.rentIncomeHistory.map(p => formatLabel(p.date)),
       datasets: [{ data: stats.rentIncomeHistory.map(p => p.total) }],
     };
   }, [stats]);
@@ -147,7 +158,7 @@ const MyFinanceScreen = () => {
   const combinedChart = useMemo(() => {
     if (!stats?.combinedHistory?.length) return null;
     return {
-      labels: stats.combinedHistory.map(p => new Date(p.date).toLocaleDateString()),
+       labels: stats.combinedHistory.map(p => formatLabel(p.date)),
       datasets: [{ data: stats.combinedHistory.map(p => p.total) }],
     };
   }, [stats]);
