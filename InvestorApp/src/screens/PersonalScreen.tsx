@@ -165,6 +165,8 @@ const PersonalScreen = ({ navigation }: Props) => {
         <View style={{ height: 10 }} />
         <BlueButton title="Upload KYC" onPress={() => navigation.navigate('UploadKyc')} />
         <View style={{ height: 10 }} />
+          <BlueButton title="Invite Friend " onPress={() => navigation.navigate('InviteFriend')} />
+        <View style={{ height: 10 }} />
         <BlueButton title="Top Up Balance" onPress={() => navigation.navigate('TopUp')} />
         <View style={{ height: 10 }} />
         <BlueButton title={`Inbox Messages${unreadCount > 0 ? ` (${unreadCount})` : ''}`} onPress={() => navigation.navigate('Inbox')} />

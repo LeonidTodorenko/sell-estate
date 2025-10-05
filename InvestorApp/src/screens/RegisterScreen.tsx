@@ -23,6 +23,8 @@ const RegisterScreen = ({ navigation }: Props) => {
   const [password, setPassword] = useState('');
   const [secretWord, setSecretWord] = useState('');
 
+  const [referralCode, setReferralCode] = useState('');
+
   // const handleRegister = async () => {
   //   if (!fullName || !email || !password || !secretWord) {
   //     Alert.alert('Registration failed', 'All fields are required');
@@ -76,6 +78,7 @@ const RegisterScreen = ({ navigation }: Props) => {
         pinCode,
         captchaId,
         captchaAnswer: parseInt(captchaAnswer, 10),
+         referralCode: referralCode?.trim() || undefined,
       });
       Alert.alert('Registration successful', 'You can now check your email');
       navigation.navigate('Login');
@@ -123,6 +126,12 @@ const RegisterScreen = ({ navigation }: Props) => {
         placeholder="Secret Word"
         value={secretWord}
         onChangeText={setSecretWord}
+      />
+      <StyledInput
+        style={styles.input}
+        placeholder="Referral code (optional)"
+        value={referralCode}
+        onChangeText={setReferralCode}
       />
 
 <StyledInput

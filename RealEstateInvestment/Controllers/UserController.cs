@@ -680,6 +680,47 @@ namespace RealEstateInvestment.Controllers
                 Details = "New user registered"
             });
 
+            //  обработка реферального кода (если передан)  
+            if (!string.IsNullOrWhiteSpace(req.ReferralCode))
+            {
+                var code = req.ReferralCode.Trim();
+                var codeHash = ReferralCode.Hash(code); // using RealEstateInvestment.Helpers;
+
+                // Ищем инвайт по хэшу
+                var invite = await _context.ReferralInvites
+                    .FirstOrDefaultAsync(x => x.CodeHash == codeHash);
+
+                if (invite == null || invite.Status != ReferralInviteStatus.Pending)
+                    return BadRequest(new { message = "Invalid referral code" });
+
+                // todo проверить
+                // (опционально) разрешать код только на этот email
+                // Если хотите строгую привязку — раскомментируйте
+                // if (!string.Equals(invite.InviteeEmail, user.Email, StringComparison.OrdinalIgnoreCase))
+                //     return BadRequest(new { message = "Referral code email mismatch" });
+
+                if (invite.ExpiresAt <= DateTime.UtcNow)
+                {
+                    invite.Status = ReferralInviteStatus.RevokedOrExpired;
+                    await _context.SaveChangesAsync();
+                    return BadRequest(new { message = "Referral code expired" });
+                }
+
+                // помечаем инвайт погашенным, создаём связь
+                invite.AcceptedAt = DateTime.UtcNow;
+                invite.RedeemedByUserId = user.Id;
+                invite.Status = ReferralInviteStatus.Redeemed;
+
+                _context.Referrals.Add(new Referral
+                {
+                    Id = Guid.NewGuid(),
+                    InviterUserId = invite.InviterUserId,
+                    RefereeUserId = user.Id,
+                    InviteId = invite.Id,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+             
             var token = Guid.NewGuid().ToString();
 
             _context.EmailConfirmationTokens.Add(new EmailConfirmationToken
@@ -690,6 +731,7 @@ namespace RealEstateInvestment.Controllers
                 ExpiresAt = DateTime.UtcNow.AddHours(24)
             });
 
+            // todo url переделать на конфиг
             var confirmUrl = $"https://sell-estate.onrender.com/api/user/confirm-email?token={token}";
 
             await _emailService.SendEmailAsync(user.Email, "Confirm your email",
@@ -742,6 +784,8 @@ namespace RealEstateInvestment.Controllers
 
             [Required]
             public int CaptchaAnswer { get; set; }
+                 
+            public string? ReferralCode { get; set; }
 
             // todo google
             //[Required]

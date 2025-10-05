@@ -29,8 +29,9 @@ namespace RealEstateInvestment.Data
         public DbSet<UserTransaction> UserTransactions { get; set; }
         public DbSet<ChatMessage> ChatMessages { get; set; }
         public DbSet<FcmDeviceToken> FcmDeviceTokens { get; set; }
-
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+        public DbSet<ReferralInvite> ReferralInvites { get; set; }
+        public DbSet<Referral> Referrals { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -58,6 +59,22 @@ namespace RealEstateInvestment.Data
             modelBuilder.Entity<RefreshToken>()
                         .Property(x => x.TokenHash)
                         .IsRequired();
+
+            modelBuilder.Entity<ReferralInvite>(b =>
+            {
+                b.HasKey(x => x.Id);
+                b.HasIndex(x => x.InviterUserId);
+                b.HasIndex(x => x.InviteeEmail);
+                b.HasIndex(x => x.CodeHash).IsUnique(false);
+            });
+
+            modelBuilder.Entity<Referral>(b =>
+            {
+                b.HasKey(x => x.Id);
+                b.HasIndex(x => x.InviterUserId);
+                b.HasIndex(x => x.InviteId);
+                b.HasIndex(x => x.RefereeUserId).IsUnique();  
+            });
         }
 
     }

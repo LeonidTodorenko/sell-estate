@@ -49,10 +49,12 @@ import MyFinanceScreen from '../screens/MyFinanceScreen';
 import RentHistoryScreen from '../screens/RentHistoryScreen';
 import MyRentIncomeScreen from '../screens/MyRentIncomeScreen';
 import MainHomeScreen from '../screens/HomeScreen';
+import InviteFriendScreen from '../screens/InviteFriendScreen';
 
 import GateScreen from '../screens/GateScreen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import BottomBar, { BOTTOM_BAR_HEIGHT } from '../components/BottomBar';
+
 //import SplashScreen from '../screens/SplashScreen'; 
  //import { AuthContext } from '../contexts/AuthContext';
  //import { useLoading } from '../contexts/LoadingContext';
@@ -105,6 +107,7 @@ export type RootStackParamList = {
   RentHistory: { propertyId: string };
   Home: undefined;
   Gate: undefined;
+  InviteFriend: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -200,6 +203,7 @@ export default function AppNavigator() {
         <Stack.Screen name="RentHistory" component={RentHistoryScreen} options={{ title: 'Rent History ' }} />
         <Stack.Screen name="MyRentIncome" component={MyRentIncomeScreen} options={{ title: 'Rental Income ' }} />
         <Stack.Screen name="Home" component={MainHomeScreen} options={{ title: 'Home ' }} />
+        <Stack.Screen name="InviteFriend" component={InviteFriendScreen} options={{ title: 'Invite' }} />
         </Stack.Navigator>
 
         {/* НИЖНИЙ БАР только для «пользовательских» экранов */}
