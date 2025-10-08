@@ -4,6 +4,7 @@ using Microsoft.IdentityModel.Tokens;
 using RealEstateInvestment.Data;
 using RealEstateInvestment.Models;
 using RealEstateInvestment.Services;
+using Resend;
 using System.Text;
 using System.Text.Json.Serialization;
 
@@ -84,7 +85,20 @@ builder.Services.AddHttpClient();
 builder.Services.AddScoped<SettingsService>();
 builder.Services.AddScoped<IFirebaseNotificationService, FirebaseNotificationService>();
 builder.Services.AddHostedService<ScheduledTaskService>();
- 
+
+
+var resendApiKey = builder.Configuration["Resend:ApiKey"];
+if (string.IsNullOrWhiteSpace(resendApiKey))
+{
+    throw new InvalidOperationException("Resend:ApiKey is missing");
+}
+builder.Services.AddSingleton<IResend>(_ =>
+{
+    return ResendClient.Create(resendApiKey);
+});
+builder.Services.AddScoped<EmailService>();
+
+
 var app = builder.Build();
 
 //app.UseCors();
@@ -123,12 +137,11 @@ using (var scope = app.Services.CreateScope())
 {
     var cfg = scope.ServiceProvider.GetRequiredService<IConfiguration>();
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    context.Database.Migrate();
-
+   
     var runMigrations = cfg.GetValue<bool>("RunMigrationsOnStartup"); // false на стенде
     if (runMigrations)
     {
-        context.Database.Migrate();
+      context.Database.Migrate();
     }
 
     var superUserService = scope.ServiceProvider.GetRequiredService<ISuperUserService>();

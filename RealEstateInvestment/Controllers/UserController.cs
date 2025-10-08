@@ -11,9 +11,10 @@ using Microsoft.AspNetCore.Authorization;
 using RealEstateInvestment.Enums;
 using Org.BouncyCastle.Asn1.Ocsp;
 using RealEstateInvestment.Helpers;
+using System.Data;
 
 namespace RealEstateInvestment.Controllers
-{ 
+{
     [ApiController]
     [Authorize]
     [Route("api/users")]
@@ -32,7 +33,7 @@ namespace RealEstateInvestment.Controllers
             _config = config;
             _captchaService = captchaService;
         }
-        
+
         // Get list of users (admin only)
         [HttpGet]
         public async Task<IActionResult> GetUsers()
@@ -144,7 +145,7 @@ namespace RealEstateInvestment.Controllers
 
             return Ok(users);
         }
-         
+
         // place some money to wallet
         [HttpPost("wallet/topup")]
         public async Task<IActionResult> TopUp([FromBody] TopUpRequest req)
@@ -250,7 +251,7 @@ namespace RealEstateInvestment.Controllers
             ).ToListAsync();
 
             decimal pendingApplicationsValue = pendingApplications.Sum(x => x.ShareValue * x.RequestedShares);
-             
+
             // shares placed on market
             var marketOffers = await (
                 from o in _context.ShareOffers
@@ -432,7 +433,7 @@ namespace RealEstateInvestment.Controllers
 
                     // агрегаты
                     rentalIncome = Math.Round(totalRentalIncome, 2),
-                     
+
                     assetHistory,        // общий 
                     equityHistory,       // без аренды
                     rentIncomeHistory,   // только аренда
@@ -451,7 +452,7 @@ namespace RealEstateInvestment.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
-         
+
         // todo move
         public class UpdateProfileRequest
         {
@@ -495,7 +496,7 @@ namespace RealEstateInvestment.Controllers
             await _context.SaveChangesAsync();
             return Ok(new { message = "Profile updated" });
         }
-         
+
         // todo move
         public class ChangePasswordRequest
         {
@@ -544,30 +545,30 @@ namespace RealEstateInvestment.Controllers
 
             return Ok(new { message = "Avatar updated" });
         }
-         
+
         // todo move
         public class AvatarRequest
         {
             public string Base64Image { get; set; }
         }
 
-            [HttpGet("transactions/user/{userId}")]
-            public async Task<IActionResult> GetUserTransactions(Guid userId,
-                                                                [FromQuery] TransactionType? type,
-                                                                [FromQuery] DateTime? from,
-                                                                [FromQuery] DateTime? to)
-            {
-                var query = _context.UserTransactions
-                    .Where(t => t.UserId == userId);
+        [HttpGet("transactions/user/{userId}")]
+        public async Task<IActionResult> GetUserTransactions(Guid userId,
+                                                            [FromQuery] TransactionType? type,
+                                                            [FromQuery] DateTime? from,
+                                                            [FromQuery] DateTime? to)
+        {
+            var query = _context.UserTransactions
+                .Where(t => t.UserId == userId);
 
             if (type.HasValue)
                 query = query.Where(t => t.Type == type.Value);
 
             if (from.HasValue)
-                    query = query.Where(t => t.Timestamp >= from.Value);
+                query = query.Where(t => t.Timestamp >= from.Value);
 
-                if (to.HasValue)
-                    query = query.Where(t => t.Timestamp <= to.Value);
+            if (to.HasValue)
+                query = query.Where(t => t.Timestamp <= to.Value);
 
             var list = await query
                           .OrderByDescending(t => t.Timestamp)
@@ -585,7 +586,7 @@ namespace RealEstateInvestment.Controllers
                           .ToListAsync();
 
             return Ok(list);
-            }
+        }
 
         // google
         //[HttpPost("register")]
@@ -645,6 +646,7 @@ namespace RealEstateInvestment.Controllers
         //    return Ok(new { message = "User registered successfully" });
         //}
 
+        [AllowAnonymous]
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] ProfileRegisterRequest req)
         {
@@ -669,7 +671,10 @@ namespace RealEstateInvestment.Controllers
                 Email = req.Email,
                 PasswordHash = req.Password, // TODO: hash password
                 SecretWord = req.SecretWord,
-                PinCode = req.PinCode
+                PinCode = req.PinCode,
+                IsEmailConfirmed = false,
+                IsBlocked = true,
+                Role = "under-registration"
             };
 
             _context.Users.Add(user);
@@ -680,24 +685,15 @@ namespace RealEstateInvestment.Controllers
                 Details = "New user registered"
             });
 
-            //  обработка реферального кода (если передан)  
             if (!string.IsNullOrWhiteSpace(req.ReferralCode))
             {
-                var code = req.ReferralCode.Trim();
-                var codeHash = ReferralCode.Hash(code); // using RealEstateInvestment.Helpers;
 
+                var codeHash = ReferralCode.Hash(req.ReferralCode.Trim());
                 // Ищем инвайт по хэшу
-                var invite = await _context.ReferralInvites
-                    .FirstOrDefaultAsync(x => x.CodeHash == codeHash);
+                var invite = await _context.ReferralInvites.FirstOrDefaultAsync(x => x.CodeHash == codeHash);
 
                 if (invite == null || invite.Status != ReferralInviteStatus.Pending)
                     return BadRequest(new { message = "Invalid referral code" });
-
-                // todo проверить
-                // (опционально) разрешать код только на этот email
-                // Если хотите строгую привязку — раскомментируйте
-                // if (!string.Equals(invite.InviteeEmail, user.Email, StringComparison.OrdinalIgnoreCase))
-                //     return BadRequest(new { message = "Referral code email mismatch" });
 
                 if (invite.ExpiresAt <= DateTime.UtcNow)
                 {
@@ -706,7 +702,6 @@ namespace RealEstateInvestment.Controllers
                     return BadRequest(new { message = "Referral code expired" });
                 }
 
-                // помечаем инвайт погашенным, создаём связь
                 invite.AcceptedAt = DateTime.UtcNow;
                 invite.RedeemedByUserId = user.Id;
                 invite.Status = ReferralInviteStatus.Redeemed;
@@ -719,8 +714,9 @@ namespace RealEstateInvestment.Controllers
                     InviteId = invite.Id,
                     CreatedAt = DateTime.UtcNow
                 });
+
             }
-             
+
             var token = Guid.NewGuid().ToString();
 
             _context.EmailConfirmationTokens.Add(new EmailConfirmationToken
@@ -731,16 +727,41 @@ namespace RealEstateInvestment.Controllers
                 ExpiresAt = DateTime.UtcNow.AddHours(24)
             });
 
-            // todo url переделать на конфиг
-            var confirmUrl = $"https://sell-estate.onrender.com/api/user/confirm-email?token={token}";
+            await _context.SaveChangesAsync();
 
-            await _emailService.SendEmailAsync(user.Email, "Confirm your email",
-                $"<h2>Welcome!</h2><p>Please confirm your email: <a href='{confirmUrl}'>Confirm Email</a></p>");
 
-            await _emailService.SendToAdminAsync(
-                "New user registered",
-                $"A new user has registered: <strong>{user.FullName}</strong> ({user.Email})"
-            );
+            var baseUrl = _config["App:PublicBaseUrl"]?.TrimEnd('/')
+                 ?? "https://sell-estate.onrender.com/api";
+
+
+            var confirmUrl = $"{baseUrl}/users/confirm-email?token={token}";
+
+
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _emailService.SendEmailAsync(user.Email, "Confirm your email",
+              $"<h2>Welcome!</h2><p>Please confirm your email: <a href='{confirmUrl}'>Confirm Email</a></p>");
+
+                    await _emailService.SendToAdminAsync(
+                        "New user registered",
+                        $"A new user has registered: <strong>{user.FullName}</strong> ({user.Email})"
+                    );
+                }
+                catch (Exception ex)
+                {
+
+                    _context.ActionLogs.Add(new ActionLog
+                    {
+                        UserId = user.Id,
+                        Action = "RegisterEmailSendFailed",
+                        Details = ex.Message
+                    });
+                    await _context.SaveChangesAsync();
+                }
+            });
 
             await _context.SaveChangesAsync();
 
@@ -770,13 +791,12 @@ namespace RealEstateInvestment.Controllers
             [EmailAddress]
             public string Email { get; set; }
 
-            [Required, MinLength(6)]
+            [Required, MinLength(4)]
             public string Password { get; set; }
 
             [Required]
             public string SecretWord { get; set; }
-
-            [Required]
+             
             public string? PinCode { get; set; }
 
             [Required]
@@ -784,7 +804,7 @@ namespace RealEstateInvestment.Controllers
 
             [Required]
             public int CaptchaAnswer { get; set; }
-                 
+
             public string? ReferralCode { get; set; }
 
             // todo google
@@ -792,6 +812,7 @@ namespace RealEstateInvestment.Controllers
             //public string CaptchaToken { get; set; }
         }
 
+        [AllowAnonymous]
         [HttpGet("confirm-email")]
         public async Task<IActionResult> ConfirmEmail([FromQuery] string token)
         {
@@ -806,6 +827,8 @@ namespace RealEstateInvestment.Controllers
                 return NotFound();
 
             user.IsEmailConfirmed = true;
+            user.Role = "investor";
+            user.IsBlocked = false;
 
             _context.EmailConfirmationTokens.Remove(tokenEntry); //delete token after use
             _context.ActionLogs.Add(new ActionLog
@@ -820,6 +843,7 @@ namespace RealEstateInvestment.Controllers
             return Ok(new { message = "Email confirmed!" });
         }
 
+        [AllowAnonymous]
         [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword([FromBody] string email)
         {
@@ -876,7 +900,7 @@ namespace RealEstateInvestment.Controllers
         public IActionResult GetAdminId()
         {
             // todo подумать как переделать на админа для чата или всем админам пока что хардкод
-            var admin = _context.Users.FirstOrDefault(u => u.Id == new Guid("815d8d09-a124-4b79-b38e-75b598316e9f") ); //_context.Users.FirstOrDefault(u => u.Role == "admin" && !u.IsBlocked);
+            var admin = _context.Users.FirstOrDefault(u => u.Id == new Guid("815d8d09-a124-4b79-b38e-75b598316e9f")); //_context.Users.FirstOrDefault(u => u.Role == "admin" && !u.IsBlocked);
             if (admin == null)
                 return NotFound(new { message = "Admin not found" });
 

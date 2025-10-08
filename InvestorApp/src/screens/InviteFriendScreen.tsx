@@ -41,7 +41,7 @@ export default function InviteFriendScreen() {
       // покажем код/ссылку сразу (их нет в списке по безопасности)
       Alert.alert(
         'Invite sent',
-        `Code: ${data.code}\nLink:\n${data.link}\n\n(also emailed to ${data.email})`
+        `Code: ${data.code}\nLink:\n${data.link}\n\n`
       );
       setEmail('');
       load();

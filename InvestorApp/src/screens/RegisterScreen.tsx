@@ -64,6 +64,8 @@ const RegisterScreen = ({ navigation }: Props) => {
       return;
     }
   
+    // todo Добавить валидацию на длину пароля!! и на беке до 10 наверное
+
     // if (!captchaToken) {
     //   Alert.alert('CAPTCHA required', 'Please verify you are human');
     //   return;
@@ -79,7 +81,8 @@ const RegisterScreen = ({ navigation }: Props) => {
         captchaId,
         captchaAnswer: parseInt(captchaAnswer, 10),
          referralCode: referralCode?.trim() || undefined,
-      });
+       },
+  { timeout: 60000 } );
       Alert.alert('Registration successful', 'You can now check your email');
       navigation.navigate('Login');
     } catch (error: any) {

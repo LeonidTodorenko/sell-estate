@@ -1,42 +1,77 @@
 ﻿using MailKit.Net.Smtp;
-using Microsoft.EntityFrameworkCore;
+using MailKit.Security;
 using MimeKit;
+using Microsoft.EntityFrameworkCore;
 using RealEstateInvestment.Data;
 using RealEstateInvestment.Models;
-//using System.Net.Mail;
-//using System.Net;
-//using SmtpClient = MailKit.Net.Smtp.SmtpClient;
-
+using Resend;
+ 
 namespace RealEstateInvestment.Services
 {
     public class EmailService
     {
+        private readonly IResend _resend;
         private readonly AppDbContext _context;
         private readonly IConfiguration _config;
+        private readonly ILogger<EmailService> _logger;
 
-        public EmailService(IConfiguration config, AppDbContext context)
+        public EmailService(IConfiguration config, AppDbContext context, ILogger<EmailService> logger, IResend resend)
         {
             _config = config;
             _context = context;
+            _logger = logger;
+            _resend = resend;
         }
 
         public async Task SendEmailAsync(string toEmail, string subject, string htmlMessage)
         {
+            var from = _config["Email:From"];
+            var provider = _config["Email:Provider"];
+
+            if (!string.Equals(provider, "Resend", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning("Email provider is not 'Resend' — skipping send.");
+                await LogError("Provider not 'Resend'", toEmail);
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(from))
+            {
+                from = "onboarding@resend.dev"; // дефолт без домена
+            }
+
             try
             {
-                var message = new MimeMessage();
-                message.From.Add(new MailboxAddress("Real Estate App", _config["Email:From"]));
-                message.To.Add(new MailboxAddress("", toEmail));
-                message.Subject = subject;
 
-                var bodyBuilder = new BodyBuilder { HtmlBody = htmlMessage };
-                message.Body = bodyBuilder.ToMessageBody();
+                // Быстрый sanity-check: убедимся, что домен из From доступен этому ключу
+                var fromDomain = GetDomainFromAddress(from);
+                if (!string.Equals(fromDomain, "resend.dev", StringComparison.OrdinalIgnoreCase))
+                {
+                    var domainsResp = await _resend.DomainListAsync();
+                    var domains = domainsResp.Content ;
+                    var match = domains.FirstOrDefault(d =>
+                        string.Equals(d.Name, fromDomain, StringComparison.OrdinalIgnoreCase) ||
+                        // если вы подтвердили базовый домен, а шлёте с поддомена:
+                        (fromDomain.EndsWith("." + d.Name, StringComparison.OrdinalIgnoreCase))
+                    );
 
-                using var client = new SmtpClient();
-                await client.ConnectAsync(_config["Email:SmtpServer"], int.Parse(_config["Email:Port"]), true);
-                await client.AuthenticateAsync(_config["Email:Username"], _config["Email:Password"]);
-                await client.SendAsync(message);
-                await client.DisconnectAsync(true);
+                    if (match == null)
+                        _logger.LogWarning("From domain {Domain} не найден у этого API-ключа.", fromDomain);
+                }
+
+
+             
+
+                var msg = new EmailMessage
+                {
+                    From = from,
+                    To = toEmail,
+                    Subject = subject,
+                    HtmlBody = htmlMessage,
+                };
+
+                ResendResponse<Guid> resp = await _resend.EmailSendAsync(msg);
+                _logger.LogInformation("Resend message sent to {To}. Id={Id}", toEmail, resp.Content);
             }
             catch (Exception ex)
             {
@@ -46,52 +81,58 @@ namespace RealEstateInvestment.Services
                     Action = "SendEmailAsync error",
                     Details = ex.Message + toEmail,
                 });
+
+                _logger.LogError(ex, "SendEmailAsync failed for {To}", toEmail);
+                await LogError(ex.Message, toEmail);
+
+                await _context.SaveChangesAsync();
             }
-          
+        }
+
+        private static string GetDomainFromAddress(string from)
+        {
+            // "Name <no-reply@send.todtech.ru>" -> "send.todtech.ru"
+            var angle = from.IndexOf('<');
+            var email = angle >= 0 ? from.Substring(angle + 1).Trim(' ', '>') : from.Trim();
+            var at = email.LastIndexOf('@');
+            return at >= 0 ? email.Substring(at + 1) : email;
         }
 
         public async Task SendToAdminAsync(string subject, string htmlMessage)
         {
-            try
-            {
-                var adminEmail = _config["Email:Admin"];
-                await SendEmailAsync(adminEmail, subject, htmlMessage);
-            }
-            catch (Exception ex)
+            var adminEmail = _config["Email:Admin"];
+            if (string.IsNullOrWhiteSpace(adminEmail))
             {
                 _context.ActionLogs.Add(new ActionLog
                 {
                     UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add some guid later
                     Action = "SendToAdminAsync error",
-                    Details = ex.Message,
+                    Details = "Admin email not configured",
                 });
+
+                await LogError("Admin email not configured", "admin@unknown");
+                await _context.SaveChangesAsync();
+       
+                return;
             }
-          
+
+            await SendEmailAsync(adminEmail, subject, htmlMessage);
         }
-
-        //public async Task SendEmailAsync(string to, string subject, string html)
-        //{
-        //    var smtpClient = new SmtpClient(_config["Email:SmtpServer"])
-        //    {
-        //        Port = int.Parse(_config["Email:Port"]),
-        //        Credentials = new NetworkCredential(
-        //            _config["Email:Username"],
-        //            _config["Email:Password"]
-        //        ),
-        //        EnableSsl = true
-        //    };
-
-        //    var mail = new MailMessage
-        //    {
-        //        From = new MailAddress(_config["Email:From"]),
-        //        Subject = subject,
-        //        Body = html,
-        //        IsBodyHtml = true
-        //    };
-
-        //    mail.To.Add(to);
-
-        //    await smtpClient.SendMailAsync(mail);
-        //}
+           
+        private async Task LogError(string details, string toEmail)
+        {
+            try
+            {
+                _context.ActionLogs.Add(new ActionLog
+                {
+                    UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"),
+                    //UserId = Guid.TryParse(_config["SuperUser:Id"], out var uid) ? uid : Guid.Empty,
+                    Action = "EmailError",
+                    Details = $"{details} | to={toEmail}"
+                });
+                await _context.SaveChangesAsync();
+            }
+            catch { /* не даём логированию уронить поток */ }
+        }
     }
 }

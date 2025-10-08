@@ -56,7 +56,7 @@ namespace RealEstateInvestment.Controllers
             if (sent >= DailyLimit)
                 return BadRequest(new { message = "Invite limit reached. Try later." });
 
-            var code = ReferralCode.Generate(18);
+            var code = ReferralCode.Generate(8);
             var codeHash = ReferralCode.Hash(code);
 
             var invite = new ReferralInvite
@@ -74,7 +74,7 @@ namespace RealEstateInvestment.Controllers
 
             // письмо
             var appBase = _cfg["App:PublicBaseUrl"] ?? "https://sell-estate.onrender.com"; // todo check
-            var registerLink = $"{appBase}/register?ref={Uri.EscapeDataString(code)}";
+            var registerLink = $"https://todtech.ru/invite.html?code={Uri.EscapeDataString(code)}"; // $"{appBase}/register?ref={Uri.EscapeDataString(code)}";
 
             await _email.SendEmailAsync(
                email,
@@ -84,6 +84,16 @@ namespace RealEstateInvestment.Controllers
                    <p><a href=""{registerLink}"">Register with this link</a></p>
                    <p>The code is valid until {invite.ExpiresAt:yyyy-MM-dd HH:mm} UTC.</p>"
             );
+
+            // расскоментируем когда будет сайт или рабочая ссылка
+       //     await _email.SendEmailAsync(
+       //   email,
+       //    "You're invited!",
+       //    $@"<p>You were invited to RealEstate app.</p>
+       //            <p><b>Referral code:</b> {code}</p>
+       //            <p><a href=""{registerLink}"">Register with this link</a></p>
+       //            <p>The code is valid until {invite.ExpiresAt:yyyy-MM-dd HH:mm} UTC.</p>"
+       //);
 
             _db.ActionLogs.Add(new ActionLog
             {
