@@ -20,7 +20,7 @@ namespace RealEstateInvestment.Controllers
         private readonly IConfiguration _cfg;
         private readonly ILogger<ReferralsController> _log;
         private readonly EmailService _email;
-        private int InviteDays => int.TryParse(_cfg["Referral:InviteDays"], out var d) ? d : 7;
+        private int InviteDays => int.TryParse(_cfg["Referral:InviteDays"], out var d) ? d : 5;
         private int DailyLimit => int.TryParse(_cfg["Referral:DailyInviteLimit"], out var n) ? n : 5;
 
         public ReferralsController(AppDbContext db, IConfiguration cfg, ILogger<ReferralsController> log, EmailService email)

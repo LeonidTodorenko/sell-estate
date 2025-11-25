@@ -4,7 +4,6 @@ import {
   Text,
   FlatList,
   StyleSheet,
-  Button,
   Image,
   TouchableOpacity,
   Modal,
@@ -37,6 +36,7 @@ interface Property {
   images?: PropertyImage[];
   priorityInvestorId?: string;
   hasPaymentPlan?: boolean;
+  expectedCompletionDate?: string | null;
 }
 
 interface UserMap {
@@ -147,7 +147,14 @@ useFocusEffect(
             <Text style={styles.name}>{item.title}</Text>
             <Text>Location: {item.location}</Text>
             <Text>Price: {item.price} USD</Text>
-            <Text>Type: {item.listingType === 'sale' ? 'For Sale' : 'For Rent'}</Text>
+            <View style={styles.row}>
+              <Text >Type: {item.listingType === 'sale' ? 'For Sale' : 'For Rent'}</Text>
+              {!!item.expectedCompletionDate && (
+                 <Text style={styles.rightNote}>
+                  🏗 Estimated completion: {new Date(item.expectedCompletionDate).toLocaleDateString()}
+                </Text>
+              )}
+            </View>
             <Text>Available Shares: {item.availableShares}</Text>
             {item.priorityInvestorId && (
               <Text>⭐ Priority Investor: {userMap[item.priorityInvestorId] || item.priorityInvestorId}</Text>
@@ -231,6 +238,17 @@ const styles = StyleSheet.create({
     width: '90%',
     height: '70%',
     resizeMode: 'contain',
+  },
+   row: {
+    flexDirection: 'row',
+    //justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 8,                // RN 0.71+, иначе можно убрать
+  //  marginTop: 4,
+  },
+  rightNote: {
+    textAlign: 'left',
+    maxWidth: '70%',
   },
 });
 

@@ -17,7 +17,7 @@ interface KycDoc {
 
 type RouteProps = RouteProp<RootStackParamList, 'UserKycView'>;
 
-const UserKycViewScreen = () => {
+const AdminKycViewScreen = () => {
   const route = useRoute<RouteProps>();
   const { userId } = route.params;
   const [docs, setDocs] = useState<KycDoc[]>([]);
@@ -100,4 +100,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default UserKycViewScreen;
+export default AdminKycViewScreen;

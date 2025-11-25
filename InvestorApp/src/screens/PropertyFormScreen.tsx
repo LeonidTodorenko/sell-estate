@@ -101,16 +101,24 @@ const PropertyFormScreen = ({ route, navigation }: Props) => {
     }
 
     try {
-      if (existing?.id) {
-        await api.put(`/properties/${existing.id}`, payload);
-        Alert.alert('Success', 'Property updated');
+       const res = existing?.id
+        ? await api.put(`/properties/${existing.id}`, payload )
+        : await api.post('/properties', payload );
+
+      if (res.status === 202) {
+        Alert.alert('Sent to moderation', 'Price change needs approval.');
+        navigation.goBack();
+        return;
+      }
+      if (res.status >= 200 && res.status < 300) {
+        Alert.alert('Success', existing?.id ? 'Property updated' : 'Property created');
         navigation.goBack();
       } else {
-        await api.post('/properties', payload);
-        Alert.alert('Success', 'Property created');
-        navigation.goBack();
+        const msg = res.data?.message ?? 'Failed to save';
+        Alert.alert('Error', msg);
       }
-    }     catch (error: any) {
+    }    
+     catch (error: any) {
           let message = 'Failed to save property ';
           console.error(error);
           if (error.response && error.response.data) {
@@ -242,7 +250,7 @@ const PropertyFormScreen = ({ route, navigation }: Props) => {
           display={Platform.OS === 'ios' ? 'spinner' : 'default'}
           onChange={(event, selectedDate) => {
             setShowLastPayoutDatePicker(false);
-            if (selectedDate) setDeadline(selectedDate);
+            if (selectedDate) setLastPayoutDate(selectedDate);
           }}
         />
       )}

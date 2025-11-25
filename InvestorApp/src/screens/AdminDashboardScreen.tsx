@@ -9,7 +9,7 @@ import { clearSession } from '../services/sessionStorage';
 import { setAccessToken } from '../api';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
-
+ 
 const ROWS = [
   { icon: '💵', label: 'WITHDRAWALS', route: 'AdminWithdrawals' as keyof RootStackParamList },
   { icon: '👤', label: 'MANAGE USERS', route: 'AdminUsers' },
@@ -17,12 +17,16 @@ const ROWS = [
   { icon: '🆔', label: 'KYC REVIEW', route: 'AdminKyc' },
   { icon: '📊', label: 'STATISTICS', route: 'AdminStats' },
   { icon: '🏠', label: 'MANAGE PROPERTIES', route: 'AdminProperties' },
-  { icon: '🏠', label: 'ADMIN MESSAGES', route: 'AdminMessages' },
+  { icon: '👥', label: 'USERS', route: 'UsersLists' },
+  { icon: '📩', label: 'ADMIN MESSAGES', route: 'AdminMessages' },
+  { icon: '💹', label: 'FINCANCE FLOW', route: 'AdminFinanceFlows' },
   { icon: '💬', label: 'USER CHATS', route: 'AdminChat' },
   { icon: '📜', label: 'ADMIN LOGS', route: 'AdminLogs' },
   { icon: '⚙️', label: 'SYSTEM PARAMETERS', route: 'AdminSystemSettings' },
   { icon: '🧑‍💻', label: 'SUPERUSER INFO', route: 'SuperUser' },
+  { icon: '🪪', label: 'MY KYC DOCS', route: 'AdminKycView' },
 ];
+ 
 
 const AdminDashboardScreen = () => {
   const navigation = useNavigation<Nav>();

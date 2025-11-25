@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RealEstateInvestment.Data;
+using RealEstateInvestment.Helpers;
 using RealEstateInvestment.Models;
 using RealEstateInvestment.Services;
 using System.ComponentModel.DataAnnotations;
@@ -15,11 +16,15 @@ namespace RealEstateInvestment.Controllers
     {
         private readonly AppDbContext _context;
         private readonly ISuperUserService _superUserService;
+        private readonly ICashFlowService _cashFlowService;
+        private readonly IAdminAuditReportService _auditReport;
 
-        public AdminStatsController(ISuperUserService superUserService, AppDbContext context)
+        public AdminStatsController(ISuperUserService superUserService, AppDbContext context, ICashFlowService cashFlowService, IAdminAuditReportService auditReport)
         {
             _context = context;
             _superUserService = superUserService;
+            _cashFlowService = cashFlowService;
+            _auditReport = auditReport;
         }
 
         [HttpGet]
@@ -219,6 +224,36 @@ namespace RealEstateInvestment.Controllers
         {
             public string Value { get; set; }
         }
+
          
+        [HttpPost("reports/audit/send")]
+        public async Task<IActionResult> SendAuditReport([FromBody] AuditReportRequest req)
+        {
+            //var me = await CurrentUserAsync();
+            //if (me == null) return Unauthorized();
+
+            //todo проверка  Admin + SuperAdmin
+            //if (!me.IsSuperAdmin(_cfg))
+            //return Forbid();
+
+            if (req.From == default || req.To == default || req.From > req.To)
+                return BadRequest(new { message = "Invalid period" });
+
+            await _auditReport.GenerateAndSendAdminAuditAsync(req.From, req.To);
+            return Ok(new { message = "Audit report sent" });
+        }
+         
+
+        // todo move
+        public class AuditReportRequest
+        {
+            public DateTime From { get; set; }
+            public DateTime To { get; set; }
+        }
+
+
+
+
+
     }
 }

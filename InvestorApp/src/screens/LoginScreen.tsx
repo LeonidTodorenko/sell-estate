@@ -391,7 +391,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     alignItems: 'center',     
     paddingHorizontal: 20,
-    paddingVertical: 24,
+    paddingVertical: 20,
   },
   container: {
      //  width: '100%',

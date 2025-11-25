@@ -1,7 +1,10 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using RealEstateInvestment.Enums;
+using System.ComponentModel.DataAnnotations;
 
 namespace RealEstateInvestment.Models
 {
+  
+
     public class User
     {
         [Key]
@@ -20,6 +23,11 @@ namespace RealEstateInvestment.Models
         public string SecretWord { get; set; }
 
         public string Role { get; set; } = "investor"; // investor, admin
+
+        public UserRole UserRole { get; set; }
+
+
+        public PermissionFlags Permissions { get; set; } = PermissionFlags.None;
 
         public string KycStatus { get; set; } = "pending"; // pending, verified, rejected
 
@@ -42,4 +50,9 @@ namespace RealEstateInvestment.Models
 
         // public ICollection<Investment> Investments { get; set; } = new List<Investment>();
     }
+     
+
+
+ 
+
 }

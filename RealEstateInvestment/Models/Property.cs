@@ -51,5 +51,7 @@ namespace RealEstateInvestment.Models
 
         public decimal? BuybackPricePerShare { get; set; }
 
+        
+
     }
 }

@@ -25,6 +25,7 @@ import UploadKycScreen from '../screens/UploadKycScreen';
 import TopUpScreen from '../screens/TopUpScreen';
 import PropertyMapScreen from '../screens/PropertyMapScreen';
 import UserKycViewScreen from '../screens/UserKycViewScreen';
+import AdminKycViewScreen from '../screens/AdminKycViewScreen';
 import AdminKycUploadScreen from '../screens/AdminKycUploadScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
 import ChangePasswordScreen from '../screens/ChangePasswordScreen';
@@ -54,6 +55,10 @@ import InviteFriendScreen from '../screens/InviteFriendScreen';
 import GateScreen from '../screens/GateScreen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import BottomBar, { BOTTOM_BAR_HEIGHT } from '../components/BottomBar';
+import UsersListScreen from '../screens/UsersListScreen';
+import UserEditScreen from '../screens/UserEditScreen';
+import AdminFinanceFlowsScreen from '../screens/AdminFinanceFlowsScreen';
+import AdminFinanceMonthScreen from '../screens/AdminFinanceMonthScreen';
 
 //import SplashScreen from '../screens/SplashScreen'; 
  //import { AuthContext } from '../contexts/AuthContext';
@@ -82,6 +87,7 @@ export type RootStackParamList = {
   TopUp: undefined;
   PropertyMap: { latitude: number; longitude: number; title: string };
   UserKycView: { userId: string };
+  AdminKycView: { userId: string };
   AdminKycUpload: { userId: string };
   EditProfile: undefined;
   ChangePassword: undefined;
@@ -107,7 +113,17 @@ export type RootStackParamList = {
   RentHistory: { propertyId: string };
   Home: undefined;
   Gate: undefined;
+   AdminFinanceFlows: undefined;
+  AdminFinanceMonth: { ym: string };
   InviteFriend: undefined;
+    UsersLists: undefined;
+  UserEdit: {
+    id: string;
+    fullName: string;
+    email: string;
+    userRole: number;       // 0 Investor, 1 Moderator, 2 Admin
+    permissions: number;    // битовая маска флагов
+  };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -118,8 +134,7 @@ const HIDE_BAR_ROUTES = new Set<string>([
   // все админские:
   'AdminDashboards','AdminUsers','AdminInvestments','AdminKyc','AdminStats',
   'AdminProperties','AdminWithdrawals','AdminLogs','AdminMessages',
-  'AdminKycUpload','AdminSystemSettings','SuperUser','AdminChat'
-]);
+  'AdminKycUpload','AdminSystemSettings','SuperUser','AdminChat','UsersLists','UserEdit','AdminFinanceFlowsScreen']);
 
 
 export default function AppNavigator() {
@@ -179,6 +194,7 @@ export default function AppNavigator() {
         <Stack.Screen name="TopUp" component={TopUpScreen} options={{ title: 'Top Up Balance' }} />
         <Stack.Screen name="PropertyMap" component={PropertyMapScreen} options={{ title: 'Map' }} />
         <Stack.Screen name="UserKycView" component={UserKycViewScreen} options={{ title: 'User Kyc' }} />
+        <Stack.Screen name="AdminKycView" component={AdminKycViewScreen} options={{ title: 'Admin Kyc' }} />
         <Stack.Screen name="AdminKycUpload" component={AdminKycUploadScreen} options={{ title: 'Admin Kyc Upload' }} />
         <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ title: 'Edit Profile ' }} />
         <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ title: 'Change Password' }} />
@@ -204,6 +220,10 @@ export default function AppNavigator() {
         <Stack.Screen name="MyRentIncome" component={MyRentIncomeScreen} options={{ title: 'Rental Income ' }} />
         <Stack.Screen name="Home" component={MainHomeScreen} options={{ title: 'Home ' }} />
         <Stack.Screen name="InviteFriend" component={InviteFriendScreen} options={{ title: 'Invite' }} />
+        <Stack.Screen name="UserEdit" component={UserEditScreen} options={{ title: 'User Edit' }} />
+         <Stack.Screen name="UsersLists" component={UsersListScreen} options={{ title: 'Users List' }} />
+         <Stack.Screen name="AdminFinanceFlows" component={AdminFinanceFlowsScreen} options={{ title: 'Finance Flows' }} />
+          <Stack.Screen name="AdminFinanceMonth" component={AdminFinanceMonthScreen} options={{ title: 'Finance Month' }} />
         </Stack.Navigator>
 
         {/* НИЖНИЙ БАР только для «пользовательских» экранов */}

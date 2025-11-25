@@ -32,6 +32,8 @@ namespace RealEstateInvestment.Data
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
         public DbSet<ReferralInvite> ReferralInvites { get; set; }
         public DbSet<Referral> Referrals { get; set; }
+        public DbSet<ModerationRequest> ModerationRequests { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -73,7 +75,14 @@ namespace RealEstateInvestment.Data
                 b.HasKey(x => x.Id);
                 b.HasIndex(x => x.InviterUserId);
                 b.HasIndex(x => x.InviteId);
-                b.HasIndex(x => x.RefereeUserId).IsUnique();  
+                b.HasIndex(x => x.RefereeUserId).IsUnique();
+            });
+
+            modelBuilder.Entity<ModerationRequest>(b =>
+            {
+                b.HasKey(x => x.Id);
+                b.HasIndex(x => new { x.Target, x.TargetId, x.Field, x.Status });
+                b.HasIndex(x => x.Fingerprint);
             });
         }
 

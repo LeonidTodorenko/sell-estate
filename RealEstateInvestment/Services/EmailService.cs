@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateInvestment.Data;
 using RealEstateInvestment.Models;
 using Resend;
- 
+
 namespace RealEstateInvestment.Services
 {
     public class EmailService
@@ -48,7 +48,7 @@ namespace RealEstateInvestment.Services
                 if (!string.Equals(fromDomain, "resend.dev", StringComparison.OrdinalIgnoreCase))
                 {
                     var domainsResp = await _resend.DomainListAsync();
-                    var domains = domainsResp.Content ;
+                    var domains = domainsResp.Content;
                     var match = domains.FirstOrDefault(d =>
                         string.Equals(d.Name, fromDomain, StringComparison.OrdinalIgnoreCase) ||
                         // если вы подтвердили базовый домен, а шлёте с поддомена:
@@ -60,7 +60,7 @@ namespace RealEstateInvestment.Services
                 }
 
 
-             
+
 
                 var msg = new EmailMessage
                 {
@@ -112,13 +112,102 @@ namespace RealEstateInvestment.Services
 
                 await LogError("Admin email not configured", "admin@unknown");
                 await _context.SaveChangesAsync();
-       
+
                 return;
             }
 
             await SendEmailAsync(adminEmail, subject, htmlMessage);
         }
-           
+
+        public async Task SendEmailWithAttachmentAsync(
+      string toEmail,
+      string subject,
+      string htmlMessage,
+      string attachmentFileName,
+      byte[] attachmentBytes,
+      string attachmentContentType = "application/pdf")
+        {
+            var from = _config["Email:From"];
+            if (string.IsNullOrWhiteSpace(from))
+                from = "no-reply@example.com";
+
+            var host = _config["Email:Smtp:Host"];
+            var portStr = _config["Email:Smtp:Port"];
+            var user = _config["Email:Smtp:User"];
+            var pass = _config["Email:Smtp:Password"];
+            var useSslStr = _config["Email:Smtp:UseSsl"];
+
+            if (string.IsNullOrWhiteSpace(host))
+            {
+                _logger.LogError("SMTP host is not configured for SendEmailWithAttachmentAsync");
+                await LogError("SMTP host not configured (attachment email)", toEmail);
+                return;
+            }
+
+            int port = 587;
+            if (!string.IsNullOrWhiteSpace(portStr))
+                int.TryParse(portStr, out port);
+
+            bool useSsl = false;
+            if (!string.IsNullOrWhiteSpace(useSslStr))
+                bool.TryParse(useSslStr, out useSsl);
+
+            try
+            {
+                var message = new MimeMessage();
+                message.From.Add(MailboxAddress.Parse(from));
+                message.To.Add(MailboxAddress.Parse("todor.leo@gmail.com")); // toEmail
+                message.Subject = subject;
+
+                var builder = new BodyBuilder
+                {
+                    HtmlBody = htmlMessage
+                };
+
+                // добавляем PDF-вложение
+                builder.Attachments.Add(
+                    attachmentFileName,
+                    attachmentBytes,
+                    ContentType.Parse(attachmentContentType)
+                );
+
+                message.Body = builder.ToMessageBody();
+
+                using (var client = new SmtpClient())
+                {
+                    var secure = useSsl ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTls;
+
+                    await client.ConnectAsync(host, port, secure);
+
+                    if (!string.IsNullOrWhiteSpace(user))
+                    {
+                        await client.AuthenticateAsync(user, pass);
+                    }
+
+                    await client.SendAsync(message);
+                    await client.DisconnectAsync(true);
+                }
+
+                _logger.LogInformation("SMTP email with attachment sent to {To}", toEmail);
+            }
+            catch (Exception ex)
+            {
+                _context.ActionLogs.Add(new ActionLog
+                {
+                    UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"),
+                    Action = "SendEmailWithAttachmentAsync error",
+                    Details = ex.Message + " | to=" + toEmail,
+                });
+
+                _logger.LogError(ex, "SendEmailWithAttachmentAsync failed for {To}", toEmail);
+                await LogError(ex.Message, toEmail);
+
+                await _context.SaveChangesAsync();
+            }
+        }
+
+
+
         private async Task LogError(string details, string toEmail)
         {
             try

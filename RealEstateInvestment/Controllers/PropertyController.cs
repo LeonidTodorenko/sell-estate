@@ -2,6 +2,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json.Linq;
+using Org.BouncyCastle.Asn1.Ocsp;
+using Org.BouncyCastle.Ocsp;
 using RealEstateInvestment.Data;
 using RealEstateInvestment.Enums;
 using RealEstateInvestment.Helpers;
@@ -157,49 +159,49 @@ namespace RealEstateInvestment.Controllers
             return Ok(new { message = "Image stored in database" });
         }
 
-        [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateProperty(Guid id, [FromBody] Property updated)
-        {
-            var existing = await _context.Properties.FindAsync(id);
-            if (existing == null) return NotFound();
+        //[HttpPut("{id}")]
+        //public async Task<IActionResult> UpdateProperty(Guid id, [FromBody] Property updated)
+        //{
+        //    var existing = await _context.Properties.FindAsync(id);
+        //    if (existing == null) return NotFound();
 
 
-            if (updated.TotalShares <= 0)
-                return BadRequest(new { message = "TotalShares must be greater than 0" });
+        //    if (updated.TotalShares <= 0)
+        //        return BadRequest(new { message = "TotalShares must be greater than 0" });
 
-            if (updated.AvailableShares < 0)
-                return BadRequest(new { message = "AvailableShares cannot be negative" });
+        //    if (updated.AvailableShares < 0)
+        //        return BadRequest(new { message = "AvailableShares cannot be negative" });
 
-            if (updated.AvailableShares > updated.TotalShares)
-                return BadRequest(new { message = "AvailableShares cannot exceed TotalShares" });
+        //    if (updated.AvailableShares > updated.TotalShares)
+        //        return BadRequest(new { message = "AvailableShares cannot exceed TotalShares" });
 
-            if (updated.Price <= 0)
-                return BadRequest(new { message = "Price must be positive" });
+        //    if (updated.Price <= 0)
+        //        return BadRequest(new { message = "Price must be positive" });
 
-            var sharePrice = updated.Price / updated.TotalShares;
-            if (sharePrice < 1000)
-                return BadRequest(new { message = $"Share price (${sharePrice:F2}) is too low. Must be at least $1000." });
+        //    var sharePrice = updated.Price / updated.TotalShares;
+        //    if (sharePrice < 1000)
+        //        return BadRequest(new { message = $"Share price (${sharePrice:F2}) is too low. Must be at least $1000." });
 
 
-            existing.Title = updated.Title;
-            existing.Location = updated.Location;
-            existing.Price = updated.Price;
-            existing.TotalShares = updated.TotalShares;
-            existing.UpfrontPayment = updated.UpfrontPayment;
-            existing.ApplicationDeadline = updated.ApplicationDeadline;
-            existing.Latitude = updated.Latitude;
-            existing.Longitude = updated.Longitude;
-            existing.BuybackPricePerShare = updated.BuybackPricePerShare;
-            existing.RealPrice = updated.RealPrice;
-            _context.ActionLogs.Add(new ActionLog
-            {
-                UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add admin guid later
-                Action = "UpdateProperty",
-                Details = "Update Property id: " + id.ToString()
-            });
-            await _context.SaveChangesAsync();
-            return Ok(new { message = "Property updated" });
-        }
+        //    existing.Title = updated.Title;
+        //    existing.Location = updated.Location;
+        //    existing.Price = updated.Price;
+        //    existing.TotalShares = updated.TotalShares;
+        //    existing.UpfrontPayment = updated.UpfrontPayment;
+        //    existing.ApplicationDeadline = updated.ApplicationDeadline;
+        //    existing.Latitude = updated.Latitude;
+        //    existing.Longitude = updated.Longitude;
+        //    existing.BuybackPricePerShare = updated.BuybackPricePerShare;
+        //    existing.RealPrice = updated.RealPrice;
+        //    _context.ActionLogs.Add(new ActionLog
+        //    {
+        //        UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add admin guid later
+        //        Action = "UpdateProperty",
+        //        Details = "Update Property id: " + id.ToString()
+        //    });
+        //    await _context.SaveChangesAsync();
+        //    return Ok(new { message = "Property updated" });
+        //}
 
 
         [HttpDelete("{id}")]
@@ -573,6 +575,64 @@ namespace RealEstateInvestment.Controllers
             return Ok(result);
         }
 
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateProperty(Guid id, [FromBody] Property updated,
+    [FromServices] IModerationService moderation, [FromServices] AppDbContext db)
+        {
+            var existing = await _context.Properties.FindAsync(id);
+            if (existing == null) return NotFound();
+
+            // общие валидации (как у вас сейчас) — оставляем
+
+            var userId = User.GetUserId();
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+            var canDirectPrice = user?.Permissions.Has(PermissionFlags.ApprovePropertyPriceChange) == true;
+
+            // ======== обработка цены ========
+            if (updated.Price != existing.Price)
+            {
+                if (canDirectPrice)
+                {
+                    existing.Price = updated.Price;
+                }
+                else
+                {
+                    // создаём заявку и НЕ меняем existing.Price
+                    var req =   await moderation.CreateOrReturnPendingAsync(
+                        ChangeTarget.Property, id, "Price",
+                        oldValue: existing.Price.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                        newValue: updated.Price.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                        requestedBy: userId
+                    );
+
+                    // всё остальное (неценовые поля) обновим, а цену — нет
+                }
+            }
+
+            // ======== прочие поля можно менять сразу (или тоже увести в модерацию по мере надобности) ========
+            existing.Title = updated.Title;
+            existing.Location = updated.Location;
+            existing.TotalShares = updated.TotalShares;
+            existing.AvailableShares = updated.AvailableShares;
+            existing.UpfrontPayment = updated.UpfrontPayment;
+            existing.ApplicationDeadline = updated.ApplicationDeadline;
+            existing.Latitude = updated.Latitude;
+            existing.Longitude = updated.Longitude;
+            existing.BuybackPricePerShare = updated.BuybackPricePerShare;
+            existing.RealPrice = updated.RealPrice;
+            existing.ExpectedCompletionDate = updated.ExpectedCompletionDate;
+            existing.MonthlyRentalIncome = updated.MonthlyRentalIncome;
+            existing.LastPayoutDate = updated.LastPayoutDate;
+            existing.ListingType = updated.ListingType;
+
+            await _context.SaveChangesAsync();
+
+            // Если заявка была создана — вернём 202, иначе 200
+            if (!canDirectPrice && updated.Price != existing.Price)
+                return Accepted(new { message = "Price change sent for moderation" }); // , requestId = req.Id
+
+            return Ok(new { message = "Property updated" });
+        }
 
 
 
