@@ -6,6 +6,7 @@ using Org.BouncyCastle.Ocsp;
 using Org.BouncyCastle.Utilities;
 using RealEstateInvestment.Data;
 using RealEstateInvestment.Enums;
+using RealEstateInvestment.Helpers;
 using RealEstateInvestment.Models;
 using RealEstateInvestment.Services;
 
@@ -302,16 +303,21 @@ namespace RealEstateInvestment.Controllers
         {
             Guid buyerId = req.BuyerId;
             int sharesToBuy = req.SharesToBuy;
-            var offer = await _context.ShareOffers.FindAsync(id);
-            if (offer == null || !offer.IsActive) return NotFound();
 
-            if (sharesToBuy > offer.SharesForSale)
-                return BadRequest("Not enough shares in offer");
+            var offer = await _context.ShareOffers.FindAsync(id);
+            if (offer == null || !offer.IsActive)
+                return NotFound("Offer not found or inactive");
+
+            // для простоты и соответствия UI — покупаем только весь лот
+            if (sharesToBuy <= 0 || sharesToBuy != offer.SharesForSale)
+                return BadRequest("You must buy the entire lot.");
 
             var buyer = await _context.Users.FindAsync(buyerId);
             var seller = await _context.Users.FindAsync(offer.SellerId);
-            if (buyer == null || seller == null) return BadRequest();
+            if (buyer == null || seller == null)
+                return BadRequest("Buyer or seller not found");
 
+            // PIN / пароль
             if (!string.IsNullOrEmpty(buyer.PinCode))
             {
                 if (req.PinOrPassword != buyer.PinCode && req.PinOrPassword != buyer.PasswordHash)
@@ -323,23 +329,119 @@ namespace RealEstateInvestment.Controllers
                     return BadRequest("Invalid password");
             }
 
-            if (!offer.BuyoutPricePerShare.HasValue && offer.BuyoutPricePerShare.Value <= 0) // todo test
+            if (!offer.BuyoutPricePerShare.HasValue || offer.BuyoutPricePerShare.Value <= 0)
                 return BadRequest("Invalid offer price");
 
+            var property = await _context.Properties.FindAsync(offer.PropertyId);
+            if (property == null)
+                return BadRequest("Property not found");
+
             var totalCost = sharesToBuy * offer.BuyoutPricePerShare.Value;
-            if (buyer.WalletBalance < totalCost) return BadRequest("Insufficient balance");
+            if (buyer.WalletBalance < totalCost)
+                return BadRequest("Insufficient balance");
 
-            // Трансфер средств
+            // === 1. Покупатель платит полную цену ===
             buyer.WalletBalance -= totalCost;
-            seller.WalletBalance += totalCost;
 
-            // Уменьшаем кол-во доступных шеров в оффере
-            //offer.SharesForSale -= sharesToBuy;
-            //if (offer.SharesForSale == 0) offer.IsActive = false;
+            // === 2. Считаем себестоимость и прибыль продавца ===
+            // При создании оффера мы посчитали LockedInvestedAmount для всех выставленных шеров
+            decimal costBasis = offer.LockedInvestedAmount;
+            decimal profit = totalCost - costBasis;
 
+            decimal platformFee = 0m;
+            decimal referralReward = 0m;
+            decimal clubIncome = 0m;
+
+            // === 3. Если прибыль > 0 — применяем клубную / реферальную комиссию ===
+            if (profit > 0m)
+            {
+                // totalAssets продавца -> статус клуба
+                decimal totalAssets = await CalculateTotalAssets(seller.Id);
+                var status = UserFeeHelper.GetStatus(totalAssets);
+                var (baseFeePercent, withReferralFeePercent) = UserFeeHelper.GetUserFeePercents(status);
+
+                // реферальная связь (если продавца кто-то пригласил)
+                var referral = await _context.Referrals
+                    .Where(r => r.RefereeUserId == seller.Id && r.RewardValidUntil > DateTime.UtcNow)
+                    .FirstOrDefaultAsync();
+
+                bool hasReferrer = referral != null;
+                decimal effectiveFeePercent = hasReferrer ? withReferralFeePercent : baseFeePercent;
+
+                platformFee = Math.Round(profit * effectiveFeePercent, 2);
+                if (platformFee < 0) platformFee = 0;
+
+                // делим комиссию между реферером и клубом (суперпользователь)
+                referralReward = 0m;
+                clubIncome = platformFee;
+
+                var superUserId = _superUserService.GetSuperUserId();
+                var superUser = await _context.Users.FindAsync(superUserId);
+                if (superUser == null)
+                    return BadRequest("Super user not configured");
+
+                if (hasReferrer && referral!.ReferrerRewardPercent > 0m && platformFee > 0m)
+                {
+                    referralReward = Math.Round(platformFee * referral.ReferrerRewardPercent, 2);
+                    clubIncome = platformFee - referralReward;
+                    if (clubIncome < 0) clubIncome = 0;
+                }
+
+                // рефереру
+                if (referralReward > 0m)
+                {
+                    var refUser = await _context.Users.FindAsync(referral!.InviterUserId);
+                    if (refUser != null)
+                    {
+                        refUser.WalletBalance += referralReward;
+
+                        _context.UserTransactions.Add(new UserTransaction
+                        {
+                            Id = Guid.NewGuid(),
+                            UserId = refUser.Id,
+                            Type = TransactionType.ReferralReward,
+                            Amount = referralReward,
+                            PropertyId = property.Id,
+                            PropertyTitle = property.Title,
+                            Timestamp = DateTime.UtcNow,
+                            Notes = $"Referral reward from share sale profit of user {seller.Email} on '{property.Title}'"
+                        });
+                    }
+                }
+
+                // клуб (суперпользователь)
+                if (clubIncome > 0m)
+                {
+                    var superUserId2 = _superUserService.GetSuperUserId();
+                    var superUser2 = await _context.Users.FindAsync(superUserId2);
+                    if (superUser2 == null)
+                        return BadRequest("Super user not configured");
+
+                    superUser2.WalletBalance += clubIncome;
+
+                    _context.UserTransactions.Add(new UserTransaction
+                    {
+                        Id = Guid.NewGuid(),
+                        UserId = superUser2.Id,
+                        Type = TransactionType.ClubFeeIncome,
+                        Amount = clubIncome,
+                        PropertyId = property.Id,
+                        PropertyTitle = property.Title,
+                        Timestamp = DateTime.UtcNow,
+                        Notes = $"Club fee from share sale profit of user {seller.Email} on '{property.Title}'"
+                    });
+                }
+            }
+
+            // === 4. Продавец получает сумму после вычета комиссии ===
+            decimal sellerReceives = totalCost - platformFee;
+            seller.WalletBalance += sellerReceives;
+
+            // === 5. Оффер закрываем (лот целиком продан) ===
+            offer.SharesForSale = 0;
             offer.IsActive = false;
 
-            //  добавляем покупателю
+            // === 6. Добавляем покупателю инвестицию ===
             var buyerInvestment = await _context.Investments
                 .FirstOrDefaultAsync(i => i.UserId == buyerId && i.PropertyId == offer.PropertyId);
 
@@ -362,13 +464,7 @@ namespace RealEstateInvestment.Controllers
                 buyerInvestment.InvestedAmount += totalCost;
             }
 
-            _context.ActionLogs.Add(new ActionLog
-            {
-                UserId = buyerId,
-                Action = "buy share",
-                Details = "sharesToBuy: " + sharesToBuy + "offer " + id
-            });
-
+            // === 7. Trade history ===
             _context.ShareTransactions.Add(new ShareTransaction
             {
                 BuyerId = buyer.Id,
@@ -379,29 +475,28 @@ namespace RealEstateInvestment.Controllers
                 Timestamp = DateTime.UtcNow
             });
 
-            var property = await _context.Properties.FindAsync(offer.PropertyId);
-
-            if (property == null)
-                return BadRequest("Propery not found");
-
+            // === 8. Сообщения и UserTransactions (как раньше, только Notes чуть богаче) ===
             _context.Messages.Add(new Message
             {
                 RecipientId = seller.Id,
-                Title = "Your lot  is sold",
-                Content = $"Item \"{property.Title}\" was sold. Sum: {totalCost:F2} USD."
+                Title = "Your lot is sold",
+                Content = $"Item \"{property.Title}\" was sold. Sum: {totalCost:F2} USD. " +
+                          $"Net after fees: {sellerReceives:F2} USD."
             });
+
             _context.UserTransactions.Add(new UserTransaction
             {
                 Id = Guid.NewGuid(),
                 UserId = seller.Id,
                 Type = TransactionType.ShareMarketSell,
-                Amount = totalCost,
+                Amount = totalCost, // полная сумма сделки
                 Shares = sharesToBuy,
                 PropertyId = property.Id,
                 PropertyTitle = property.Title,
                 Timestamp = DateTime.UtcNow,
-                Notes = "Lot  is sold"
+                Notes = $"Share market sell. CostBasis={costBasis:F2}, Profit={profit:F2}, PlatformFee={platformFee:F2}"
             });
+
             _context.UserTransactions.Add(new UserTransaction
             {
                 Id = Guid.NewGuid(),
@@ -412,9 +507,10 @@ namespace RealEstateInvestment.Controllers
                 PropertyId = property.Id,
                 PropertyTitle = property.Title,
                 Timestamp = DateTime.UtcNow,
-                Notes = "Lot buy"
+                Notes = "Share market buy"
             });
 
+            // уведомления участникам торгов (оставляем как было)
             var bidParticipants = await _context.ShareOfferBids
                 .Where(b => b.OfferId == offer.Id && b.BidderId != buyer.Id)
                 .Select(b => b.BidderId)
@@ -426,15 +522,23 @@ namespace RealEstateInvestment.Controllers
                 _context.Messages.Add(new Message
                 {
                     RecipientId = bidderId,
-                    Title = " Lot is sold",
+                    Title = "Lot is sold",
                     Content = $"Lot \"{property.Title}\", the item you bid on was sold to another user."
                 });
             }
+
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = buyerId,
+                Action = "BuyShare",
+                Details = $"Offer={id}, Shares={sharesToBuy}, Total={totalCost:F2}, Profit={profit:F2}, Fee={platformFee:F2}"
+            });
 
             await _context.SaveChangesAsync();
 
             return Ok("Shares purchased successfully.");
         }
+
 
         [AllowAnonymous]
         [HttpGet("transactions")]
@@ -747,6 +851,96 @@ namespace RealEstateInvestment.Controllers
                 .ToListAsync();
 
             return Ok(bids);
+        }
+
+        [HttpGet("{userId}/club-info")]
+        public async Task<IActionResult> GetClubInfo(Guid userId)
+        {
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null)
+                return NotFound(new { message = "User not found" });
+
+            // 1) Считаем totalAssets для клубного уровня
+            decimal totalAssets = await CalculateTotalAssets(userId);
+
+            // 2) Получаем клубный статус
+            var status = UserFeeHelper.GetStatus(totalAssets);
+
+            // 3) Проценты комиссии при продаже на маркете (по прибыли)
+            var (baseFee, withReferralFee) = UserFeeHelper.GetUserFeePercents(status);
+
+            // 4) Процент и срок реферальной награды, если пользователь сам кого-то приглашает
+            var (referrerRewardPercent, referrerRewardYears) = UserFeeHelper.GetReferrerRewardByTotal(totalAssets);
+
+            bool canInvite = referrerRewardPercent > 0m && totalAssets >= 10_000m;
+
+            return Ok(new
+            {
+                totalAssets = Math.Round(totalAssets, 2),
+                status = status.ToString(),      // "Blue", "Silver", "Gold", "Diamond"
+                baseFee,                         // 0.10, 0.09, ...
+                withReferralFee,                 // 0.07, 0.06, ...
+                canInvite,
+                referrerRewardPercent,           // 0.01..0.05
+                referrerRewardYears              // 1..5
+            });
+        }
+
+
+        // Локальный расчёт totalAssets для продавца
+        private async Task<decimal> CalculateTotalAssets(Guid userId)
+        {
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null) return 0m;
+
+            // investments
+            var totalInvested = await (
+                from i in _context.Investments
+                join p in _context.Properties on i.PropertyId equals p.Id
+                where i.UserId == userId && i.Shares > 0
+                select new
+                {
+                    i.Shares,
+                    p.Price,
+                    p.TotalShares,
+                    ShareValue = p.Price / p.TotalShares
+                }
+            ).ToListAsync();
+
+            decimal investmentValue = totalInvested.Sum(x => x.ShareValue * x.Shares);
+
+            // pending applications
+            var pendingApplications = await (
+                from a in _context.InvestmentApplications
+                join p in _context.Properties on a.PropertyId equals p.Id
+                where a.UserId == userId && a.Status == "pending"
+                select new
+                {
+                    a.RequestedShares,
+                    ShareValue = p.Price / p.TotalShares
+                }
+            ).ToListAsync();
+
+            decimal pendingApplicationsValue = pendingApplications.Sum(x => x.ShareValue * x.RequestedShares);
+
+            // offers on market
+            var marketOffers = await (
+                from o in _context.ShareOffers
+                join p in _context.Properties on o.PropertyId equals p.Id
+                where o.SellerId == userId && o.IsActive
+                select new
+                {
+                    o.SharesForSale,
+                    ShareValue = p.Price / p.TotalShares
+                }
+            ).ToListAsync();
+
+            decimal marketValue = marketOffers.Sum(x => x.ShareValue * x.SharesForSale);
+
+            decimal wallet = user.WalletBalance;
+
+            decimal totalAssets = wallet + investmentValue + pendingApplicationsValue + marketValue;
+            return totalAssets;
         }
 
         // Принять предложение todo удалить метод?

@@ -30,6 +30,14 @@ const PersonalScreen = ({ navigation }: Props) => {
   const [pendingApplicationsValue, setPendingApplicationsValue] = useState<number | null>(null);
   const [rentalIncome, setRentalIncome] = useState<number | null>(null);
 
+  const [clubStatus, setClubStatus] = useState<string | null>(null);
+  const [clubFeePercent, setClubFeePercent] = useState<number | null>(null);
+  const [hasReferrer, setHasReferrer] = useState<boolean | null>(null);
+ 
+  const [baseFeePercent, setBaseFeePercent] = useState<number | null>(null);
+  const [referralFeePercent, setReferralFeePercent] = useState<number | null>(null);
+  
+
   const fetchTotalAssets = async (userId: string) => {
     try {
       const res = await api.get(`/users/${userId}/total-assets`);
@@ -41,10 +49,26 @@ const PersonalScreen = ({ navigation }: Props) => {
       setMarketValue(res.data.marketValue);
       setPendingApplicationsValue(res.data.pendingApplicationsValue);
 
+      setClubStatus(res.data.clubStatus ?? null);
+      setClubFeePercent(
+        typeof res.data.clubFeePercent === 'number' ? res.data.clubFeePercent : null
+      );
+      setHasReferrer(
+        typeof res.data.hasReferrer === 'boolean' ? res.data.hasReferrer : null
+      );
+
+      setBaseFeePercent(
+        typeof res.data.baseFeePercent === 'number' ? res.data.baseFeePercent : null
+      );
+      setReferralFeePercent(
+        typeof res.data.referralFeePercent === 'number' ? res.data.referralFeePercent : null
+      );
     } catch (error: any) {
       console.error('Failed to fetch total assets', error);
     }
   };
+
+
 
   useFocusEffect(
     useCallback(() => {
@@ -159,6 +183,37 @@ const PersonalScreen = ({ navigation }: Props) => {
       {rentalIncome !== null && rentalIncome !== 0 && (
         <Text>Rental Income: {rentalIncome.toFixed(2)}</Text>
       )}
+
+
+
+        {clubStatus && (
+        <View style={{ marginTop: 12, marginBottom: 8 }}>
+          <Text style={{ fontWeight: 'bold' }}>Club status: {clubStatus}</Text>
+
+          {baseFeePercent !== null && referralFeePercent !== null && (
+            <Text>
+              Standard marketplace profit fee: {(baseFeePercent * 100).toFixed(1)}%{'\n'}
+              Discounted fee (for referred users): {(referralFeePercent * 100).toFixed(1)}%
+            </Text>
+          )}
+
+          {clubFeePercent !== null && hasReferrer !== null && (
+            <Text>
+              Your current fee: {(clubFeePercent * 100).toFixed(1)}% (
+              {hasReferrer ? 'you were invited, discounted fee applied' : 'no referrer, standard fee'}
+              ).
+            </Text>
+          )}
+
+          {hasReferrer !== null && (
+            <Text>
+              Referral linked: {hasReferrer ? 'yes' : 'no'}
+            </Text>
+          )}
+        </View>
+      )}
+
+
 
       <View style={styles.buttons}>
         <BlueButton title="Edit Profile" onPress={() => navigation.navigate('EditProfile')} />

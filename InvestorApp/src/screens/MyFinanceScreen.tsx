@@ -38,6 +38,12 @@ interface AssetStats {
   equityHistory: HistoryPoint[];       // активы без аренды
   rentIncomeHistory: HistoryPoint[];   // только аренда
   combinedHistory: HistoryPoint[];     // equity + rent
+
+   clubStatus?: string;
+  hasReferrer?: boolean;
+  clubFeePercent?: number;
+  baseFeePercent?: number;
+  referralFeePercent?: number;
 }
 
 const MyFinanceScreen = () => {
@@ -111,13 +117,20 @@ const MyFinanceScreen = () => {
     setFiltered(filteredNow);
   }, [transactions, typeFilter, daysBack]);
 
+  // const getColor = (type: string) => {
+  //   const t = type.toLowerCase();
+  //   if (['deposit', 'investment', 'share_market_sell'].includes(t)) return 'green';
+  //   if (['withdrawal', 'share_market_buy', 'buyback'].includes(t)) return 'red';
+  //   if (t === 'rent_income' || t === 'rentincome') return 'green';
+  //   return 'black';
+  // };
+
   const getColor = (type: string) => {
-    const t = type.toLowerCase();
-    if (['deposit', 'investment', 'share_market_sell'].includes(t)) return 'green';
-    if (['withdrawal', 'share_market_buy', 'buyback'].includes(t)) return 'red';
-    if (t === 'rent_income' || t === 'rentincome') return 'green';
-    return 'black';
-  };
+  const t = type.toLowerCase();
+  if (['deposit', 'share_market_sell', 'rent_income', 'referral_reward', 'club_fee_income'].includes(t))    return 'green';
+  if (['withdrawal', 'share_market_buy', 'buyback', 'investment', 'referral_code_purchase'].includes(t))    return 'red';
+  return 'black';
+};
 
   const renderItem = ({ item }: { item: Transaction }) => (
     <View style={styles.card}>
@@ -175,6 +188,27 @@ const MyFinanceScreen = () => {
               <Text>Wallet Balance: ${stats.walletBalance.toFixed(2)}</Text>
               <Text>Investments Value: ${stats.investmentValue.toFixed(2)}</Text>
               <Text>Rental Income: ${stats.rentalIncome.toFixed(2)}</Text>
+              
+              {stats.clubStatus && (
+                <Text>
+                  Club status: {stats.clubStatus}
+                  {typeof stats.clubFeePercent === 'number' &&
+                    ` (fee ${(stats.clubFeePercent * 100).toFixed(1)}%)`}
+                </Text>
+              )}
+
+              {typeof stats.hasReferrer === 'boolean' && (
+                <Text>Referral linked: {stats.hasReferrer ? 'yes' : 'no'}</Text>
+              )}
+
+              {typeof stats.baseFeePercent === 'number' && typeof stats.referralFeePercent === 'number' && (
+              <Text>
+                Platform fee on profit: base {(stats.baseFeePercent * 100).toFixed(1)}%
+                {stats.hasReferrer && ` (with referrer: ${(stats.referralFeePercent * 100).toFixed(1)}%)`}
+              </Text>
+            )}
+
+
             </View>
           )}
 

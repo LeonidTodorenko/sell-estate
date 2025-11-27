@@ -13,5 +13,8 @@ namespace RealEstateInvestment.Models
         public DateTime? AcceptedAt { get; set; }
         public Guid? RedeemedByUserId { get; set; }
         public ReferralInviteStatus Status { get; set; } = ReferralInviteStatus.Pending;
+         
+        public decimal ReferrerRewardPercent { get; set; }     // 0.01 .. 0.05
+        public int ReferrerRewardYears { get; set; }           // 1..5
     }
 }

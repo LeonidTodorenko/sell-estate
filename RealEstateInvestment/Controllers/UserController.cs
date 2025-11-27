@@ -230,15 +230,14 @@ namespace RealEstateInvestment.Controllers
 
             decimal investmentValue = totalInvested.Sum(x => x.ShareValue * x.Shares);
 
-            // rental income
+            // rental income (текущий теоретический месячный доход)
             decimal rentalIncome = totalInvested.Sum(x =>
                 x.MonthlyRentalIncome > 0 && x.TotalShares > 0
                     ? (x.MonthlyRentalIncome / x.TotalShares) * x.Shares
                     : 0
             );
 
-
-            //applications
+            // applications
             var pendingApplications = await (
                 from a in _context.InvestmentApplications
                 join p in _context.Properties on a.PropertyId equals p.Id
@@ -272,6 +271,15 @@ namespace RealEstateInvestment.Controllers
             // total sum
             decimal totalAssets = wallet + investmentValue + pendingApplicationsValue + marketValue;
 
+            // === Клубный статус + проценты ===
+            var status = UserFeeHelper.GetStatus(totalAssets);
+            var (baseFee, withRefFee) = UserFeeHelper.GetUserFeePercents(status);
+
+            bool hasReferrer = await _context.Referrals
+                .AnyAsync(r => r.RefereeUserId == userId && r.RewardValidUntil > DateTime.UtcNow);
+
+            var clubFeePercent = hasReferrer ? withRefFee : baseFee;
+
             return Ok(new
             {
                 walletBalance = wallet,
@@ -279,9 +287,16 @@ namespace RealEstateInvestment.Controllers
                 pendingApplicationsValue,
                 marketValue,
                 rentalIncome,
-                totalAssets
+                totalAssets,
+
+                clubStatus = status.ToString(),
+                hasReferrer,
+                clubFeePercent,
+                baseFeePercent = baseFee,
+                referralFeePercent = withRefFee
             });
         }
+
 
         [HttpGet("me/rent-income-history")]
         [Authorize]
@@ -425,11 +440,20 @@ namespace RealEstateInvestment.Controllers
                     combinedHistory.Add(new { date = d, total = Math.Round(lastEq + lastRent, 2) });
                 }
 
+                var totalAssets = Math.Round(user.WalletBalance + investmentValue, 2);
+
+                // статус
+                var status = UserFeeHelper.GetStatus(totalAssets);
+                var (baseFee, withRefFee) = UserFeeHelper.GetUserFeePercents(status);
+                bool hasReferrer = await _context.Referrals
+                    .AnyAsync(r => r.RefereeUserId == id && r.RewardValidUntil > DateTime.UtcNow);
+                var clubFeePercent = hasReferrer ? withRefFee : baseFee;
+
                 return Ok(new
                 {
                     walletBalance = user.WalletBalance,
                     investmentValue = Math.Round(investmentValue, 2),
-                    totalAssets = Math.Round(user.WalletBalance + investmentValue, 2),
+                    totalAssets,
 
                     // агрегаты
                     rentalIncome = Math.Round(totalRentalIncome, 2),
@@ -437,8 +461,16 @@ namespace RealEstateInvestment.Controllers
                     assetHistory,        // общий 
                     equityHistory,       // без аренды
                     rentIncomeHistory,   // только аренда
-                    combinedHistory      // equity + rent
+                    combinedHistory,      // equity + rent
+
+                    clubStatus = status.ToString(),
+                    hasReferrer,
+                    clubFeePercent,
+                    baseFeePercent = baseFee,
+                    referralFeePercent = withRefFee
                 });
+
+                
             }
             catch (Exception ex)
             {
@@ -712,7 +744,9 @@ namespace RealEstateInvestment.Controllers
                     InviterUserId = invite.InviterUserId,
                     RefereeUserId = user.Id,
                     InviteId = invite.Id,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = DateTime.UtcNow,
+                    ReferrerRewardPercent = invite.ReferrerRewardPercent,
+                    RewardValidUntil = DateTime.UtcNow.AddYears(invite.ReferrerRewardYears)
                 });
 
             }
@@ -900,12 +934,16 @@ namespace RealEstateInvestment.Controllers
         public IActionResult GetAdminId()
         {
             // todo подумать как переделать на админа для чата или всем админам пока что хардкод
+            // todo добавить базового админа в настройки апп, чтобы было 2 админа - 1 просто админ а второй технический супер админ
             var admin = _context.Users.FirstOrDefault(u => u.Id == new Guid("815d8d09-a124-4b79-b38e-75b598316e9f")); //_context.Users.FirstOrDefault(u => u.Role == "admin" && !u.IsBlocked);
             if (admin == null)
                 return NotFound(new { message = "Admin not found" });
 
             return Ok(new { adminId = admin.Id });
         }
+
+     
+
 
 
     }

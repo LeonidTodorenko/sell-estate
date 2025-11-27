@@ -8,6 +8,10 @@
         ShareMarketSell,
         Deposit,
         Withdrawal,
-        RentIncome
+        RentIncome,
+        ReferralCodePurchase,
+
+        ReferralReward,   // реферальный бонус пригласителю
+        ClubFeeIncome     // клубная комиссия, которая идёт суперпользователю
     }
 }
