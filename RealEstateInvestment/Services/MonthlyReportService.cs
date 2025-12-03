@@ -138,6 +138,25 @@ namespace RealEstateInvestment.Services
                     .OrderBy(t => t.Timestamp)
                     .ToList();
 
+                //расчёт сумм по типам:
+                var totalDeposits = monthTx.Where(t => t.Type == TransactionType.Deposit).Sum(t => t.Amount);
+                var totalWithdrawals = monthTx.Where(t => t.Type == TransactionType.Withdrawal).Sum(t => t.Amount);
+                var totalInvestments = monthTx.Where(t => t.Type == TransactionType.Investment).Sum(t => t.Amount);
+                var totalShareBuys = monthTx.Where(t => t.Type == TransactionType.ShareMarketBuy).Sum(t => t.Amount);
+                var totalShareSells = monthTx.Where(t => t.Type == TransactionType.ShareMarketSell).Sum(t => t.Amount);
+                var totalBuybacks = monthTx.Where(t => t.Type == TransactionType.Buyback).Sum(t => t.Amount);
+                var totalRentIncomeOps = monthTx.Where(t => t.Type == TransactionType.RentIncome).Sum(t => t.Amount);
+
+                // общий кэш-флоу за месяц (как двигание денег на кошельке, без переоценки активов):
+                var netCashflow =
+                    totalDeposits
+                  + totalShareSells
+                  + totalRentIncomeOps
+                  - totalInvestments
+                  - totalShareBuys
+                  - totalWithdrawals
+                  - totalBuybacks;
+
                 // === 4) Сформируем текущие холдинги (по объектам) ===
                 var rawHoldings = await _db.Investments
                     .Where(i => i.UserId == userId && i.Shares > 0)
@@ -199,18 +218,26 @@ namespace RealEstateInvestment.Services
 
                 // === 5) Генерим PDF (пока БЕЗ картинок) ===
                 var pdfBytes = GeneratePdfReport(
-                    user,
-                    periodStart,
-                    periodEnd,
-                    assetsStart,
-                    assetsEnd,
-                    equityStart,
-                    equityEnd,
-                    totalRentForPeriod,
-                    totalPnl,
-                    equityPnl,
-                    monthTx,
-                    holdings
+                        user,
+                        periodStart,
+                        periodEnd,
+                        assetsStart,
+                        assetsEnd,
+                        equityStart,
+                        equityEnd,
+                        totalRentForPeriod,
+                        totalPnl,
+                        equityPnl,
+                        monthTx,
+                        holdings,
+                        totalDeposits,
+                        totalWithdrawals,
+                        totalInvestments,
+                        totalShareBuys,
+                        totalShareSells,
+                        totalBuybacks,
+                        totalRentIncomeOps,
+                        netCashflow
                 );
 
                 var title = $"Monthly report {periodStart:yyyy-MM}";
@@ -239,19 +266,27 @@ namespace RealEstateInvestment.Services
 
         // === PDF генерация через QuestPDF ===
         private byte[] GeneratePdfReport(
-            User user,
-            DateTime from,
-            DateTime to,
-            decimal assetsStart,
-            decimal assetsEnd,
-            decimal equityStart,
-            decimal equityEnd,
-            decimal rentForPeriod,
-            decimal totalPnl,
-            decimal equityPnl,
-            List<UserTransaction> txs,
-            List<HoldingRow> holdings
-        )
+                      User user,
+                      DateTime from,
+                      DateTime to,
+                      decimal assetsStart,
+                      decimal assetsEnd,
+                      decimal equityStart,
+                      decimal equityEnd,
+                      decimal rentForPeriod,
+                      decimal totalPnl,
+                      decimal equityPnl,
+                      List<UserTransaction> txs,
+                      List<HoldingRow> holdings,
+                      decimal totalDeposits,
+                      decimal totalWithdrawals,
+                      decimal totalInvestments,
+                      decimal totalShareBuys,
+                      decimal totalShareSells,
+                      decimal totalBuybacks,
+                      decimal totalRentIncomeOps,
+                      decimal netCashflow
+                  )
         {
             var culture = System.Globalization.CultureInfo.InvariantCulture;
 
@@ -314,6 +349,61 @@ namespace RealEstateInvestment.Services
                             {
                                 txt.Span("Rent income this month: ").SemiBold().FontSize(10);
                                 txt.Span($"{rentForPeriod.ToString("F2", culture)} USD").FontSize(10);
+                            });
+
+
+                            // операции
+
+                            summary.Item().Text("Operations this month").FontSize(12).SemiBold().Underline();
+
+                            summary.Item().Text(txt =>
+                            {
+                                txt.Span("Deposits: ").SemiBold().FontSize(10);
+                                txt.Span($"{totalDeposits.ToString("F2", culture)} USD").FontSize(10);
+                            });
+
+                            summary.Item().Text(txt =>
+                            {
+                                txt.Span("Withdrawals: ").SemiBold().FontSize(10);
+                                txt.Span($"{totalWithdrawals.ToString("F2", culture)} USD").FontSize(10);
+                            });
+
+                            summary.Item().Text(txt =>
+                            {
+                                txt.Span("Investments (primary): ").SemiBold().FontSize(10);
+                                txt.Span($"{totalInvestments.ToString("F2", culture)} USD").FontSize(10);
+                            });
+
+                            summary.Item().Text(txt =>
+                            {
+                                txt.Span("Share market BUY: ").SemiBold().FontSize(10);
+                                txt.Span($"{totalShareBuys.ToString("F2", culture)} USD").FontSize(10);
+                            });
+
+                            summary.Item().Text(txt =>
+                            {
+                                txt.Span("Share market SELL: ").SemiBold().FontSize(10);
+                                txt.Span($"{totalShareSells.ToString("F2", culture)} USD").FontSize(10);
+                            });
+
+                            summary.Item().Text(txt =>
+                            {
+                                txt.Span("Buyback operations: ").SemiBold().FontSize(10);
+                                txt.Span($"{totalBuybacks.ToString("F2", culture)} USD").FontSize(10);
+                            });
+
+                            summary.Item().Text(txt =>
+                            {
+                                txt.Span("Rent income (transactions): ").SemiBold().FontSize(10);
+                                txt.Span($"{totalRentIncomeOps.ToString("F2", culture)} USD").FontSize(10);
+                            });
+
+                            summary.Item().Text(txt =>
+                            {
+                                txt.Span("Net cashflow this month: ").SemiBold().FontSize(10)
+                                   .FontColor(netCashflow >= 0 ? Colors.Green.Darken2 : Colors.Red.Darken2);
+                                txt.Span($"{netCashflow.ToString("F2", culture)} USD").FontSize(10)
+                                   .FontColor(netCashflow >= 0 ? Colors.Green.Darken2 : Colors.Red.Darken2);
                             });
                         });
 

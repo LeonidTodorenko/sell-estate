@@ -126,10 +126,10 @@ export default function AdminFinanceMonthScreen({ route }: Props) {
     return (
       <View style={styles.rowItem}>
         <Text style={[styles.date, isOutflow && { color: '#b00020' }]}>{dateStr}</Text>
-        <Text style={[styles.kind, isOutflow ? styles.kindOut : styles.kindIn]}>
+        {/* <Text style={[styles.kind, isOutflow ? styles.kindOut : styles.kindIn]}>
         {item.kind.replace(':', ' · ')}
-        </Text>
-        <Text style={styles.label} numberOfLines={1}>
+        </Text> */}
+        <Text style={styles.kind} numberOfLines={1}>
         {item.propertyTitle ? ` · ${item.propertyTitle}` : ''}{item.label}
         </Text>
         <Text style={[styles.amount, isOutflow ? styles.neg : styles.pos]}>

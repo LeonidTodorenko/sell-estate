@@ -276,7 +276,7 @@ namespace RealEstateInvestment.Controllers
             var (baseFee, withRefFee) = UserFeeHelper.GetUserFeePercents(status);
 
             bool hasReferrer = await _context.Referrals
-                .AnyAsync(r => r.RefereeUserId == userId && r.RewardValidUntil > DateTime.UtcNow);
+                .AnyAsync(r => r.InviterUserId == userId && r.RewardValidUntil > DateTime.UtcNow);
 
             var clubFeePercent = hasReferrer ? withRefFee : baseFee;
 
@@ -350,16 +350,19 @@ namespace RealEstateInvestment.Controllers
 
                 // Текущая стоимость инвестиций
                 var investments = await _context.Investments
-                    .Where(i => i.UserId == id)
-                    .Include(i => i.Property)
-                    .ToListAsync();
+                       .Where(i => i.UserId == id && i.Shares > 0)
+                       .Include(i => i.Property)
+                       .ToListAsync();
 
                 decimal investmentValue = investments.Sum(inv =>
                 {
-                    var pps = inv.Property.BuybackPricePerShare ?? (inv.InvestedAmount / inv.Shares);
-                    return inv.Shares * pps;
-                });
+                    if (inv.Property == null || inv.Property.TotalShares <= 0)
+                        return 0m;
 
+                    var shareValue = inv.Property.Price / inv.Property.TotalShares; // актуальная цена 1 доли
+                    return inv.Shares * shareValue;
+                });
+                  
                 // Все транзакции пользователя по времени
                 var transactions = await _context.UserTransactions
                     .Where(t => t.UserId == id)
@@ -446,7 +449,7 @@ namespace RealEstateInvestment.Controllers
                 var status = UserFeeHelper.GetStatus(totalAssets);
                 var (baseFee, withRefFee) = UserFeeHelper.GetUserFeePercents(status);
                 bool hasReferrer = await _context.Referrals
-                    .AnyAsync(r => r.RefereeUserId == id && r.RewardValidUntil > DateTime.UtcNow);
+                    .AnyAsync(r => r.InviterUserId == id && r.RewardValidUntil > DateTime.UtcNow);
                 var clubFeePercent = hasReferrer ? withRefFee : baseFee;
 
                 return Ok(new

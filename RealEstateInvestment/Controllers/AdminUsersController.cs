@@ -55,5 +55,4 @@ namespace RealEstateInvestment.Controllers
             return await _db.Users.FirstOrDefaultAsync(x => x.Id == id);
         }
     }
-
 }

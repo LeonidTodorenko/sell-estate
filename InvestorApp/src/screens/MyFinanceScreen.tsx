@@ -144,12 +144,12 @@ const MyFinanceScreen = () => {
   const formatLabel = (dateStr: string) => {
     const d = new Date(dateStr);
     // Вариант 1 (локализовано): "Sep 07"
-    return d.toLocaleDateString(undefined, { month: 'short', day: '2-digit' });
+   // return d.toLocaleDateString(undefined, { month: 'short', day: '2-digit' });
 
     // Вариант 2 (жёстко "dd.MM"):
-    // const dd = String(d.getDate()).padStart(2, '0');
-    // const mm = String(d.getMonth() + 1).padStart(2, '0');
-    // return `${dd}.${mm}`;
+     const dd = String(d.getDate()).padStart(2, '0');
+     const mm = String(d.getMonth() + 1).padStart(2, '0');
+     return `${dd}.${mm}`;
   };
 
   const equityChart = useMemo(() => {
@@ -243,7 +243,7 @@ const MyFinanceScreen = () => {
               <Text style={styles.chartTitle}>📈 Asset Growth (without rent)</Text>
               <LineChart
                 data={equityChart}
-                width={Dimensions.get('window').width - 32}
+                width={Dimensions.get('window').width  }
                 height={220}
                 yAxisSuffix=" $"
                 chartConfig={{
@@ -254,7 +254,7 @@ const MyFinanceScreen = () => {
                   color: (opacity = 1) => `rgba(0, 128, 255, ${opacity})`,
                   labelColor: () => '#000',
                 }}
-                style={{ marginVertical: 20, borderRadius: 16 }}
+                style={{ marginLeft:5, marginVertical: 20, borderRadius: 16 }}
               />
             </>
           )}
@@ -264,7 +264,7 @@ const MyFinanceScreen = () => {
               <Text style={styles.chartTitle}>🏠 Rent Income</Text>
               <LineChart
                 data={rentChart}
-                width={Dimensions.get('window').width - 32}
+                width={Dimensions.get('window').width }
                 height={220}
                 yAxisSuffix=" $"
                 chartConfig={{
@@ -275,7 +275,7 @@ const MyFinanceScreen = () => {
                   color: (opacity = 1) => `rgba(0, 200, 0, ${opacity})`,
                   labelColor: () => '#000',
                 }}
-                style={{ marginBottom: 20, borderRadius: 16 }}
+                style={{marginLeft:5, marginBottom: 20, borderRadius: 16 }}
               />
             </>
           )}
@@ -285,7 +285,7 @@ const MyFinanceScreen = () => {
               <Text style={styles.chartTitle}>🧮 Overall Growth (Assets + Rent)</Text>
               <LineChart
                 data={combinedChart}
-                width={Dimensions.get('window').width - 32}
+                width={Dimensions.get('window').width }
                 height={220}
                 yAxisSuffix=" $"
                 chartConfig={{
@@ -296,7 +296,7 @@ const MyFinanceScreen = () => {
                   color: (opacity = 1) => `rgba(128, 0, 255, ${opacity})`,
                   labelColor: () => '#000',
                 }}
-                style={{ marginBottom: 30, borderRadius: 16 }}
+                style={{ marginLeft:5,marginBottom: 30, borderRadius: 16 }}
               />
             </>
           )}

@@ -9,7 +9,7 @@ export  const API_BASE_URL =
     
      ? 
      // 'http://10.0.2.2:7019/api'
-      'https://sell-estate.onrender.com/api'
+       'https://sell-estate.onrender.com/api'
     : 'https://sell-estate.onrender.com/api';
 
 export const api = axios.create({
