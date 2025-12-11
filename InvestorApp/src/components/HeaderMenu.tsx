@@ -52,7 +52,7 @@ const HeaderMenu: React.FC = () => {
   return (
     <>
       {/* Кнопка-бургер в хедере */}
-      <TouchableOpacity onPress={() => setVisible(true)} style={styles.button}>
+      <TouchableOpacity onPress={() => setVisible(true)} style={styles.button} hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} >
         <View style={styles.burger}>
           <View style={styles.line} />
           <View style={styles.line} />
@@ -88,12 +88,12 @@ const HeaderMenu: React.FC = () => {
 
 const styles = StyleSheet.create({
   button: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+      paddingHorizontal: 20,
+    paddingVertical: 12,
   },
   burger: {
-    width: 22,
-    height: 16,
+    width: 24,
+    height: 18,
     justifyContent: 'space-between',
   },
   line: {

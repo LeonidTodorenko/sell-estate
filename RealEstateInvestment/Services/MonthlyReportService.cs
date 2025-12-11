@@ -105,7 +105,7 @@ namespace RealEstateInvestment.Services
                 // === 3) Значения на начало и конец месяца ===
                 decimal assetsStart = 0m, assetsEnd = 0m;
                 decimal equityStart = 0m, equityEnd = 0m;
-                periodStart = new DateTime(2024,01,01);
+                // todo test periodStart = new DateTime(2024,01,01);
                 string startStr = periodStart.ToString("yyyy-MM-dd");
                 string endStr = periodEnd.ToString("yyyy-MM-dd");
 

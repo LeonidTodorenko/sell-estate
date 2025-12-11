@@ -156,7 +156,7 @@ namespace RealEstateInvestment.Services
             {
                 var message = new MimeMessage();
                 message.From.Add(MailboxAddress.Parse(from));
-                message.To.Add(MailboxAddress.Parse("todor.leo@gmail.com")); //   test toEmail
+                message.To.Add(MailboxAddress.Parse(toEmail)); //  todo test toEmail "todor.leo@gmail.com"
                 message.Subject = subject;
 
                 var builder = new BodyBuilder
