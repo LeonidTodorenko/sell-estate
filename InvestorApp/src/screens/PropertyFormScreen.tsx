@@ -32,6 +32,7 @@ const PropertyFormScreen = ({ route, navigation }: Props) => {
   const [buybackPricePerShare, setBuybackPricePerShare] = useState(existing?.buybackPricePerShare?.toString() || '');
   const [latitude, setLatitude] = useState(existing?.latitude?.toString() || '');
   const [longitude, setLongitude] = useState(existing?.longitude?.toString() || '');
+   const [videoUrl, setVideoUrl] = useState(existing?.videoUrl || '');
 
   //const [deadline, setDeadline] = useState(existing?.applicationDeadline?.split('T')[0] || '');
   const [deadline, setDeadline] = useState<Date>(existing?.applicationDeadline ? new Date(existing.applicationDeadline) : new Date());
@@ -66,6 +67,7 @@ const PropertyFormScreen = ({ route, navigation }: Props) => {
     setBuybackPricePerShare(existing?.buybackPricePerShare?.toString() || '');
     setLatitude(existing?.latitude?.toString() || '');
     setLongitude(existing?.longitude?.toString() || '');
+     setVideoUrl(existing?.videoUrl || '');
   }, [route.params]);
 
   useFocusEffect(initializeForm);
@@ -75,6 +77,12 @@ const PropertyFormScreen = ({ route, navigation }: Props) => {
       Alert.alert('Validation', 'Please fill all required fields');
       return;
     }
+
+       if (videoUrl && !videoUrl.startsWith('http')) {
+      Alert.alert('Validation', 'Video URL must start with http/https');
+      return;
+    }
+
 
     let  payload: any = {
       title,
@@ -92,6 +100,7 @@ const PropertyFormScreen = ({ route, navigation }: Props) => {
       monthlyRentalIncome: parseFloat(monthlyRentalIncome) || 0,
       lastPayoutDate: lastPayoutDate.toISOString(),//new Date(lastPayoutDate).toISOString(),
       //realPrice: parseFloat(realPrice) || parseFloat(price),
+        videoUrl: videoUrl.trim() || null,
     };
 
     if (existing?.id) {
@@ -255,6 +264,15 @@ const PropertyFormScreen = ({ route, navigation }: Props) => {
         />
       )}
       {/* <StyledInput style={styles.input} placeholder="Last Payout Date (YYYY-MM-DD)" value={lastPayoutDate} onChangeText={setLastPayoutDate} /> */}
+
+           <Text>Video URL (YouTube)</Text>
+        <StyledInput
+          style={styles.input}
+          placeholder="https://www.youtube.com/watch?v=..."
+          value={videoUrl}
+          onChangeText={setVideoUrl}
+          autoCapitalize="none"
+        />
 
       <BlueButton   title={existing ? 'Update' : 'Create'} onPress={handleSubmit} />
        <View style={{ height: 50 }} />

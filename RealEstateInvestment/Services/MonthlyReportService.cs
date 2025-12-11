@@ -105,7 +105,7 @@ namespace RealEstateInvestment.Services
                 // === 3) Значения на начало и конец месяца ===
                 decimal assetsStart = 0m, assetsEnd = 0m;
                 decimal equityStart = 0m, equityEnd = 0m;
-
+                periodStart = new DateTime(2024,01,01);
                 string startStr = periodStart.ToString("yyyy-MM-dd");
                 string endStr = periodEnd.ToString("yyyy-MM-dd");
 
@@ -312,6 +312,19 @@ namespace RealEstateInvestment.Services
 
                     page.Content().Column(col =>
                     {
+
+
+                        col.Item()
+                            .ShowOnce()
+                            .AlignRight()
+                            .Text(t =>
+                            {
+                                t.Span("This report consists of ").FontSize(9);
+                                t.TotalPages().FontSize(9).SemiBold();
+                                t.Span(" pages.").FontSize(9).FontColor(Colors.Grey.Darken2);
+                            });
+
+
                         // Summary
                         col.Item().PaddingBottom(10).Column(summary =>
                         {
@@ -507,11 +520,11 @@ namespace RealEstateInvestment.Services
                             table.ColumnsDefinition(cols =>
                             {
                                 cols.ConstantColumn(70);  // Date
-                                cols.ConstantColumn(80);  // Type
+                                cols.ConstantColumn(50);  // Type
                                 cols.RelativeColumn(1);   // Property
                                 cols.ConstantColumn(70);  // Amount
-                                cols.ConstantColumn(50);  // Shares
-                                cols.RelativeColumn(1);   // Notes
+                                cols.ConstantColumn(40);  // Shares
+                                cols.RelativeColumn(1.8f);   // Notes
                             });
 
                             table.Header(header =>
@@ -534,9 +547,18 @@ namespace RealEstateInvestment.Services
                             foreach (var t in txs)
                             {
                                 table.Cell().Element(CellBody).Text(t.Timestamp.ToString("yyyy-MM-dd"));
-                                table.Cell().Element(CellBody).Text(t.Type.ToString());
+                                table.Cell().Element(CellBody)
+                                        //  .AlignCenter()  
+                                        .Text(ShortenType(t.Type));
+                                //table.Cell().Element(CellBody).Text(t.Type.ToString());
                                 table.Cell().Element(CellBody).Text(t.PropertyTitle ?? "");
-                                table.Cell().Element(CellBody).AlignRight().Text(t.Amount.ToString("F2", culture));
+
+                                var amountText = FormatAmount(t.Type, t.Amount, culture);
+                                var amountColor = GetAmountColor(t.Type);
+                                //table.Cell().Element(CellBody).AlignRight().Text(amountText);
+                                table.Cell().Element(CellBody).AlignRight().Text(amountText).FontColor(amountColor);
+                                //table.Cell().Element(CellBody).AlignRight().Text(t.Amount.ToString("F2", culture));
+
                                 table.Cell().Element(CellBody).AlignRight().Text(t.Shares?.ToString() ?? "");
                                 table.Cell().Element(CellBody).Text(t.Notes ?? "");
 
@@ -548,16 +570,89 @@ namespace RealEstateInvestment.Services
                         });
                     });
 
-                    page.Footer().AlignRight().Text(x =>
+                    //page.Footer().AlignRight().Text(x =>
+                    //{
+                    //    x.Span("Generated at ").FontSize(8);
+                    //    x.Span($"{DateTime.UtcNow:yyyy-MM-dd HH:mm} UTC").FontSize(8).Italic();
+
+
+                    //});
+
+                    page.Footer().Row(row =>
                     {
-                        x.Span("Generated at ").FontSize(8);
-                        x.Span($"{DateTime.UtcNow:yyyy-MM-dd HH:mm} UTC").FontSize(8).Italic();
+                        // слева — время генерации
+                        row.RelativeItem().AlignLeft().Text(x =>
+                        {
+                            x.Span("Generated at ").FontSize(8);
+                            x.Span($"{DateTime.UtcNow:yyyy-MM-dd HH:mm} UTC")
+                             .FontSize(8)
+                             .Italic();
+                        });
+
+                        // справа — "Page X / Y"
+                        row.ConstantItem(120).AlignRight().Text(t =>
+                        {
+                            t.Span("Page ").FontSize(8);
+                            t.CurrentPageNumber().FontSize(8);
+                            t.Span(" / ").FontSize(8);
+                            t.TotalPages().FontSize(8);
+                        });
                     });
+
+
+
                 });
             });
 
             return doc.GeneratePdf();
         }
+
+        // 4 символа + многоточие
+        private static string ShortenType(TransactionType type)
+        {
+            var s = type.ToString();
+            if (string.IsNullOrEmpty(s))
+                return string.Empty;
+
+
+            return s.Length <= 4 ? s : s.Substring(0, 4) + "…";
+        }
+
+        // какие типы считаем "оттоком" (деньги уходят с кошелька)
+        private static bool IsOutflow(TransactionType type)
+        {
+            switch (type)
+            {
+                case TransactionType.Withdrawal:
+                case TransactionType.Investment:
+                case TransactionType.ShareMarketBuy:
+                case TransactionType.Buyback:
+                case TransactionType.ReferralCodePurchase:
+                    return true;
+
+                default:
+                    return false;
+            }
+        }
+
+        // формат суммы для колонки AMOUNT
+        private static string FormatAmount(TransactionType type, decimal amount, IFormatProvider culture)
+        {
+            var abs = Math.Abs(amount);
+
+            if (IsOutflow(type))
+            {
+                return $"(-{abs.ToString("F2", culture)})";
+            }
+
+            return abs.ToString("F2", culture);
+        }
+
+        private static string GetAmountColor(TransactionType type)
+        {
+            return IsOutflow(type) ? Colors.Red.Darken2 : Colors.Green.Darken2;
+        }
+
 
         // служебная модель для «витрины активов»
         class HoldingRow

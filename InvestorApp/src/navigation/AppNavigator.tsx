@@ -60,6 +60,8 @@ import UserEditScreen from '../screens/UserEditScreen';
 import AdminFinanceFlowsScreen from '../screens/AdminFinanceFlowsScreen';
 import AdminFinanceMonthScreen from '../screens/AdminFinanceMonthScreen';
 
+import HeaderMenu from '../components/HeaderMenu';
+
 //import SplashScreen from '../screens/SplashScreen'; 
  //import { AuthContext } from '../contexts/AuthContext';
  //import { useLoading } from '../contexts/LoadingContext';
@@ -171,8 +173,20 @@ export default function AppNavigator() {
         onStateChange={() => setRouteName(navRef.current?.getCurrentRoute()?.name)}
       >
         <Stack.Navigator initialRouteName="Gate" screenOptions={screenOptions}>
-          <Stack.Screen name="Gate" component={GateScreen} options={{ headerShown: false }} />
-         <Stack.Screen name="Login" component={LoginScreen} options={{ title: 'Enter' }} />
+        <Stack.Screen name="Gate" component={GateScreen} options={{ headerShown: false }} />
+        {/* <Stack.Screen name="Login" component={LoginScreen} options={{ title: '' }} /> */}
+        <Stack.Screen
+            name="Login"
+            component={LoginScreen}
+            options={{
+              headerTitle: '',
+              headerTransparent: true,        // чтобы фон картинки был виден под хедером
+              headerShadowVisible: false,     // без нижней полоски
+              // headerStyle: { backgroundColor: 'rgba(0,0,0,0.3)' },
+              headerTintColor: '#fff',        // цвет иконок/текста в хедере
+              headerRight: () => <HeaderMenu />
+            }}
+          />
         <Stack.Screen name="Register" component={RegisterScreen} options={{ title: 'Register' }} />
         <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'Account' }} />
         <Stack.Screen name="Investments" component={InvestmentsScreen} options={{ title: 'Stake' }} />

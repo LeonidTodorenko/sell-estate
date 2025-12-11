@@ -18,6 +18,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useCallback } from 'react';
 import BlueButton from '../components/BlueButton';
 import theme from '../constants/theme';
+import { Linking } from 'react-native';
 
 interface PropertyImage {
   id: string;
@@ -37,6 +38,7 @@ interface Property {
   priorityInvestorId?: string;
   hasPaymentPlan?: boolean;
   expectedCompletionDate?: string | null;
+    videoUrl?: string | null;
 }
 
 interface UserMap {
@@ -118,7 +120,9 @@ useFocusEffect(
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <View style={styles.card}>
-            {item.images && item.images.length > 0 && (
+
+
+            {/* {item.images && item.images.length > 0 && (
               <View style={styles.carouselContainer}>
                 <Swiper
                   style={styles.swiper}
@@ -143,18 +147,78 @@ useFocusEffect(
                   {imageIndex + 1}/{item.images.length}
                 </Text>
               </View>
+            )} */}
+
+            {item.images && item.images.length > 0 && (
+              <View style={styles.carouselContainer}>
+                <Swiper
+                  style={styles.swiper}
+                  height={180}
+                  showsPagination={true}
+                  loop={false}
+                  onIndexChanged={(index) => setImageIndex(index)}
+                >
+                  {item.images.map((image) => (
+                    <TouchableOpacity
+                      key={image.id}
+                      onPress={() => {
+                        setModalImage(image.base64Data);
+                        setModalVisible(true);
+                      }}
+                    >
+                      <Image
+                        source={{ uri: image.base64Data }}
+                        style={styles.carouselContainerImage}
+                      />
+                    </TouchableOpacity>
+                  ))}
+                </Swiper>
+
+                {/* Индекс слайдов */}
+                <Text style={styles.carouselContainerText}>
+                  {imageIndex + 1}/{item.images.length}
+                </Text>
+
+                {/* Ярлык для видео — только если ссылка есть */}
+                {item.videoUrl && (
+                  <TouchableOpacity
+                    style={styles.videoBadge}
+                    onPress={async () => {
+                      try {
+                        const url = item.videoUrl!;
+                        //const supported = await Linking.canOpenURL(url);
+                        // if (supported) {
+                           await Linking.openURL(url);
+                        // } else {
+                        //   Alert.alert('Error', 'Cannot open video URL');
+                        // }
+                      } catch (e) {
+                        Alert.alert('Error', 'Failed to open video');
+                      }
+                    }}
+                  >
+                    <Text style={styles.videoBadgeText}>▶ Video</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             )}
+
+
+
             <Text style={styles.name}>{item.title}</Text>
             <Text>Location: {item.location}</Text>
             <Text>Price: {item.price} USD</Text>
             <View style={styles.row}>
               <Text >Type: {item.listingType === 'sale' ? 'For Sale' : 'For Rent'}</Text>
-              {!!item.expectedCompletionDate && (
-                 <Text style={styles.rightNote}>
-                  🏗 Estimated completion: {new Date(item.expectedCompletionDate).toLocaleDateString()}
-                </Text>
-              )}
+           
             </View>
+            <View style={styles.row}>
+              {!!item.expectedCompletionDate && (
+                            <Text style={styles.rightNote}>
+                             Estimated completion: {new Date(item.expectedCompletionDate).toLocaleDateString()}
+                            </Text>
+                          )}
+              </View>
             <Text>Available Shares: {item.availableShares}</Text>
             {item.priorityInvestorId && (
               <Text>⭐ Priority Investor: {userMap[item.priorityInvestorId] || item.priorityInvestorId}</Text>
@@ -250,6 +314,22 @@ const styles = StyleSheet.create({
     textAlign: 'left',
     maxWidth: '70%',
   },
+    
+  videoBadge: {
+    position: 'absolute',
+    right: 10,
+    top: 10,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  videoBadgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+
 });
 
 export default PropertyListScreen;

@@ -46,6 +46,11 @@ export default function App() {
          <AuthProvider>
       <SafeAreaView style={styles.container}>
         <StatusBar backgroundColor={theme.colors.background} barStyle="dark-content" />
+        {/* <StatusBar
+          translucent
+          backgroundColor="transparent"
+          barStyle="light-content"
+        /> */}
         <AppNavigator />
       </SafeAreaView>
       </AuthProvider>

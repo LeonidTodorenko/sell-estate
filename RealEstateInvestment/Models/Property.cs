@@ -33,6 +33,9 @@ namespace RealEstateInvestment.Models
 
         public DateTime? ExpectedCompletionDate { get; set; }
 
+        [MaxLength(500)]
+        public string? VideoUrl { get; set; }
+
         //  Payment Plan 
         public decimal UpfrontPayment { get; set; }  // Initial payment
         public DateTime ApplicationDeadline { get; set; } // Application deadline

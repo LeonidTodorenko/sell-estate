@@ -395,6 +395,7 @@ namespace RealEstateInvestment.Controllers
                     p.BuybackPricePerShare,
                     p.Latitude,
                     p.Longitude,
+                    p.VideoUrl,
                     CurrentStep = p.PaymentPlans
                            .Where(pp => pp.DueDate > now)
                            .OrderBy(pp => pp.DueDate)
@@ -624,6 +625,7 @@ namespace RealEstateInvestment.Controllers
             existing.MonthlyRentalIncome = updated.MonthlyRentalIncome;
             existing.LastPayoutDate = updated.LastPayoutDate;
             existing.ListingType = updated.ListingType;
+            existing.VideoUrl = updated.VideoUrl;
 
             await _context.SaveChangesAsync();
 
@@ -632,6 +634,42 @@ namespace RealEstateInvestment.Controllers
                 return Accepted(new { message = "Price change sent for moderation" }); // , requestId = req.Id
 
             return Ok(new { message = "Property updated" });
+        }
+
+        // todo move
+        public class UpdateVideoUrlRequest
+        {
+            public string? VideoUrl { get; set; }
+        }
+
+        [HttpPost("{id}/video-url")]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> SetVideoUrl(Guid id, [FromBody] UpdateVideoUrlRequest request)
+        {
+            var property = await _context.Properties.FindAsync(id);
+            if (property == null)
+                return NotFound(new { message = "Property not found" });
+             
+            if (!string.IsNullOrWhiteSpace(request.VideoUrl) &&
+                !request.VideoUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+            {
+                return BadRequest(new { message = "VideoUrl must be a valid URL" });
+            }
+
+            property.VideoUrl = string.IsNullOrWhiteSpace(request.VideoUrl)
+                ? null           
+                : request.VideoUrl.Trim();
+
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = User.GetUserId(),
+                Action = "SetPropertyVideoUrl",
+                Details = $"Property {property.Title} ({property.Id}) video url set to '{property.VideoUrl}'"
+            });
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Video URL updated" });
         }
 
 
