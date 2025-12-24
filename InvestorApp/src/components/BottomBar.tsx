@@ -53,10 +53,10 @@ export default function BottomBar() {
                 <Text style={styles.sheetText}>👤 Profile</Text>
               </Pressable>
               <Pressable style={styles.sheetItem} onPress={() => { setOpen(false); nav.navigate('MyInvestments'); }}>
-                <Text style={styles.sheetText}>📈 My Investments</Text>
+                <Text style={styles.sheetText}>📈 Investment</Text>
               </Pressable>
               <Pressable style={styles.sheetItem} onPress={() => { setOpen(false); nav.navigate('MyFinance'); }}>
-                <Text style={styles.sheetText}>💼 My Finance</Text>
+                <Text style={styles.sheetText}>💼 Statistics</Text>
               </Pressable>
               <Pressable style={styles.sheetItem} onPress={() => { setOpen(false); nav.navigate('Withdraw'); }}>
                 <Text style={styles.sheetText}>🏦 Withdraw</Text>

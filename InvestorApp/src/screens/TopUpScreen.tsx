@@ -43,7 +43,7 @@ const TopUpScreen = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Top Up Balance</Text>
+      <Text style={styles.title}>Transfer Money</Text>
       <StyledInput
         style={styles.input}
         placeholder="Enter amount"
@@ -58,7 +58,7 @@ const TopUpScreen = () => {
         value={pinOrPassword}
         onChangeText={setPinOrPassword}
       />
-      <BlueButton title="Top Up" onPress={handleTopUp} />
+      <BlueButton title="Transfer Money" onPress={handleTopUp} />
     </View>
   );
 };

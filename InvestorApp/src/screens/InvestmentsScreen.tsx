@@ -79,7 +79,7 @@ const InvestmentsScreen = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>My Investments  </Text>
+      <Text style={styles.title}>Investment  </Text>
       <FlatList
         data={investments}
         renderItem={({ item }) => (
@@ -125,8 +125,8 @@ const InvestmentsScreen = () => {
                 </Text>
               </View>
             )}
-            <BlueButton icon="📄" title=" View Payment Plan" onPress={() => navigation.navigate('PaymentPlan', { propertyId: item.propertyId, readonly: true })} />
-            <View style={{ height: 10 }} />
+            {/* <BlueButton icon="📄" title=" View Payment Plan" onPress={() => navigation.navigate('PaymentPlan', { propertyId: item.propertyId, readonly: true })} />
+            <View style={{ height: 10 }} /> */}
             <BlueButton icon="💸" title=" Sell My Shares" onPress={() => navigation.navigate('SellMyShares', { propertyId: item.propertyId, propertyName: item.propertyTitle, })} />
             <View style={{ height: 10 }} />
             <BlueButton icon="📄"

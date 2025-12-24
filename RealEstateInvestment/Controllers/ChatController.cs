@@ -1,11 +1,14 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RealEstateInvestment.Data;
+using RealEstateInvestment.Helpers;
 using RealEstateInvestment.Models;
 
 namespace RealEstateInvestment.Controllers
 {
     [ApiController]
+    [Authorize]
     [Route("api/chat")]
     public class ChatController : ControllerBase
     {
@@ -16,12 +19,31 @@ namespace RealEstateInvestment.Controllers
             _context = context;
         }
 
-        [HttpPost("send")]
-        public async Task<IActionResult> SendMessage([FromBody] ChatMessage message)
+        public class SendChatRequest
         {
-            _context.ChatMessages.Add(message);
+            public Guid RecipientId { get; set; }
+            public string Content { get; set; } = "";
+        }
+
+        [HttpPost("send")]
+        public async Task<IActionResult> SendMessage([FromBody] SendChatRequest req)
+        {
+            var senderId = User.GetUserId();
+            if (senderId == Guid.Empty) return Unauthorized();
+            if (string.IsNullOrWhiteSpace(req.Content)) return BadRequest(new { message = "Empty message" });
+
+            var msg = new ChatMessage
+            {
+                Id = Guid.NewGuid(),
+                SenderId = senderId,
+                RecipientId = req.RecipientId,
+                Content = req.Content.Trim(),
+                SentAt = DateTime.UtcNow
+            };
+
+            _context.ChatMessages.Add(msg);
             await _context.SaveChangesAsync();
-            return Ok();
+            return Ok(msg);
         }
 
         [HttpGet("conversation/{userId1}/{userId2}")]

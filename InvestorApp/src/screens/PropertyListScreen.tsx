@@ -19,6 +19,7 @@ import { useCallback } from 'react';
 import BlueButton from '../components/BlueButton';
 import theme from '../constants/theme';
 import { Linking } from 'react-native';
+import WebView from 'react-native-webview';
 
 interface PropertyImage {
   id: string;
@@ -52,6 +53,9 @@ const PropertyListScreen = () => {
   const [modalImage, setModalImage] = useState<string | null>(null);
   const [imageIndex, setImageIndex] = useState(0);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const [videoModalVisible, setVideoModalVisible] = useState(false);
+const [videoUrl, setVideoUrl] = useState<string | null>(null);
+ 
 
 useFocusEffect(
   useCallback(() => {
@@ -148,7 +152,7 @@ useFocusEffect(
                 </Text>
               </View>
             )} */}
-
+          <Text style={styles.name}>{item.title}</Text>
             {item.images && item.images.length > 0 && (
               <View style={styles.carouselContainer}>
                 <Swiper
@@ -181,31 +185,30 @@ useFocusEffect(
 
                 {/* Ярлык для видео — только если ссылка есть */}
                 {item.videoUrl && (
-                  <TouchableOpacity
+             <TouchableOpacity
                     style={styles.videoBadge}
-                    onPress={async () => {
-                      try {
-                        const url = item.videoUrl!;
-                        //const supported = await Linking.canOpenURL(url);
-                        // if (supported) {
-                           await Linking.openURL(url);
-                        // } else {
-                        //   Alert.alert('Error', 'Cannot open video URL');
-                        // }
-                      } catch (e) {
-                        Alert.alert('Error', 'Failed to open video');
+                    onPress={() => {
+                      // Конвертируем YouTube shorts → нормальное watch?v= format
+                      let url = item.videoUrl!;
+                      if (url.includes("youtube.com/shorts")) {
+                        const id = url.split("/shorts/")[1].split("?")[0];
+                        url = `https://www.youtube.com/watch?v=${id}`;
                       }
+
+                      setVideoUrl(url);
+                      setVideoModalVisible(true);
                     }}
                   >
                     <Text style={styles.videoBadgeText}>▶ Video</Text>
                   </TouchableOpacity>
+
                 )}
               </View>
             )}
 
 
 
-            <Text style={styles.name}>{item.title}</Text>
+            
             <Text>Location: {item.location}</Text>
             <Text>Price: {item.price} USD</Text>
             <View style={styles.row}>
@@ -225,7 +228,7 @@ useFocusEffect(
             )}
             <BlueButton
             icon="📍"
-              title=" View on Map"
+              title="Location"
               onPress={() =>
                 navigation.navigate('PropertyMap', {
                   latitude: item.latitude,
@@ -262,7 +265,34 @@ useFocusEffect(
           )}
         </View>
       </Modal>
+      <Modal
+        visible={videoModalVisible}
+        transparent={false}
+        animationType="slide"
+        onRequestClose={() => setVideoModalVisible(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: '#000' }}>
+          <TouchableOpacity
+            onPress={() => setVideoModalVisible(false)}
+            style={{ padding: 12, backgroundColor: '#222' }}
+          >
+            <Text style={{ color: '#fff', fontSize: 16 }}>✖ Close</Text>
+          </TouchableOpacity>
+
+          {videoUrl && (
+            <WebView
+              source={{ uri: videoUrl }}
+              style={{ flex: 1 }}
+              allowsFullscreenVideo
+              javaScriptEnabled
+              domStorageEnabled
+            />
+          )}
+        </View>
+      </Modal>
+
     </View>
+    
   );
 };
 
@@ -279,7 +309,7 @@ const styles = StyleSheet.create({
   name: { fontWeight: 'bold', fontSize: 16 },
   carouselContainer: {
     alignItems: 'center',
-    marginVertical: 10,
+    marginVertical: 1,
   },
   carouselContainerImage: {
     width: 320,

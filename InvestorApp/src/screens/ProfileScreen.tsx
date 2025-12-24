@@ -203,15 +203,15 @@ const ProfileScreen = ({ navigation }: Props) => {
         <BlueButton title="Profile" onPress={() => navigation.navigate('Personal')} />
         {/* <BlueButton title="Edit Profile" onPress={() => navigation.navigate('EditProfile')} /> */}
         <View style={{ height: 10 }} />
-        <BlueButton title="Browse Properties" onPress={() => navigation.navigate('Properties')} />
+        <BlueButton title="Properties" onPress={() => navigation.navigate('Properties')} />
         <View style={{ height: 10 }} />
-        <BlueButton title="My Investments Applications" onPress={() => navigation.navigate('InvestmentApplications')} />
+        <BlueButton title="Investment Applications" onPress={() => navigation.navigate('InvestmentApplications')} />
         <View style={{ height: 10 }} />
-        <BlueButton title="My Investments" onPress={() => navigation.navigate('Investments')} />
+        <BlueButton title="Investment" onPress={() => navigation.navigate('Investments')} />
         <View style={{ height: 10 }} />
         <BlueButton title="Withdraw Funds" onPress={() => navigation.navigate('Withdraw')} />
         <View style={{ height: 10 }} />
-        <BlueButton title="My Finance" onPress={() => navigation.navigate('MyFinance')} />
+        <BlueButton title="Statistics" onPress={() => navigation.navigate('MyFinance')} />
         {/* <View style={{ height: 10 }} />
         <BlueButton title="Stake History" onPress={() => navigation.navigate('MyInvestments')} />  */}
         <View style={{ height: 10 }} />

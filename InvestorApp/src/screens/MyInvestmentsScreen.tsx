@@ -63,7 +63,7 @@ const MyInvestmentsScreen = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>My Investments</Text>
+      <Text style={styles.title}>Investment</Text>
 
       <View style={styles.filters}>
   <View style={styles.filterGroup}>

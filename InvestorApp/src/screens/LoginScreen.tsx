@@ -231,7 +231,7 @@ const LoginScreen = ({ navigation }: Props) => {
 
    <View style={{ height: currentHero  }} />
       <View style={styles.container}>
-        <Text style={styles.title}>Login to real-estate app</Text>
+        <Text style={styles.title}>Welcome to real estate app</Text>
         <StyledInput
           style={styles.input}
           placeholder="Email"

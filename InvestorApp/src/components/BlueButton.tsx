@@ -14,11 +14,12 @@ type BlueButtonProps = {
    disabled?: boolean;
      width?: number | string | 'full';
      additionalPadding?: number; 
+       showArrow?: boolean;
 };
 
-const BlueButton: React.FC<BlueButtonProps> = ({ title, onPress, icon, variant='primary', style,disabled = false,width,additionalPadding }) => {
+const BlueButton: React.FC<BlueButtonProps> = ({ title, onPress, icon, variant='primary', style,disabled = false,width,additionalPadding,showArrow = true }) => {
   const bgColors = {
-    primary: '#1e90ff',
+    primary: 'white',
     red: '#d9534f',
     green: '#28a745',
     gray: '#6c757d',
@@ -26,7 +27,7 @@ const BlueButton: React.FC<BlueButtonProps> = ({ title, onPress, icon, variant='
   };
 
     const bg = disabled ? '#cccccc' : bgColors[variant];
-  const textColor = disabled ? '#666666' : '#f4f4f4';
+  //const textColor = disabled ? 'black' : 'black';
 
     let resolvedWidth: number | string | undefined;
   if (width === 'full') {
@@ -38,45 +39,64 @@ const BlueButton: React.FC<BlueButtonProps> = ({ title, onPress, icon, variant='
     const resolvedReservedLeft = additionalPadding ?? RESERVED_LEFT;
 
   return (
-    <TouchableOpacity
-      activeOpacity={disabled ? 1 : 0.85}
+     <TouchableOpacity
+      activeOpacity={0.85} //  activeOpacity={disabled ? 1 : 0.85}
+      disabled={disabled}
       onPress={disabled ? undefined : onPress}
       style={[
         {
           backgroundColor: bg,
-          paddingVertical: 9,
+          paddingVertical: 14,
           paddingHorizontal: 16,
-          marginBottom: 8,
+          marginBottom: 10,
+          borderRadius: 10,
           paddingLeft: resolvedReservedLeft,
           paddingRight: resolvedReservedLeft,
-          // paddingLeft: icon ? RESERVED_LEFT : 16,
-          // paddingRight: icon ? RESERVED_LEFT : 16,
-          elevation: 2,
-          opacity: disabled ? 0.7 : 1,
-            width: resolvedWidth,
+          // 3D эффект
+          shadowColor: '#000',
+          shadowOpacity: 0.15,
+          shadowRadius: 4,
+          shadowOffset: { width: 0, height: 3 },
+          elevation: 4,
+
+          width: resolvedWidth,
+          opacity: disabled ? 0.6 : 1,
         },
         style,
       ]}
-       disabled={disabled}
     >
-      {icon ? (
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        {/* Текст слева */}
         <Text
           style={{
-            position: 'absolute',
-            left: ICON_LEFT_PADDING,
-            top: '80%',
-            transform: [{ translateY: -ICON_SIZE / 2 }],
-            fontSize: ICON_SIZE,
+            fontSize: 15,
+            fontWeight: '600',
+            color: '#2a1602',
           }}
         >
-          {icon}
-        </Text>
-      ) : null}
-
-      <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ color: textColor, fontWeight: 'bold', letterSpacing: 0.5 }}>
           {title}
+             {/* {icon} todo убрали иконку пока */}
         </Text>
+
+        {/* Стрелка справа */}
+        {showArrow && (
+          <Text
+            style={{
+              fontSize: 18,
+              fontWeight: '700',
+              color: '#2a1602',
+              marginLeft: 8,
+            }}
+          >
+            ›
+          </Text>
+        )}
       </View>
     </TouchableOpacity>
   );

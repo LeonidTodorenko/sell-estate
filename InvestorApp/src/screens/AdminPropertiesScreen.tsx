@@ -247,7 +247,7 @@ const AdminPropertiesScreen = () => {
 
 
           <View style={styles.buttonRow}>
-            <BlueButton    icon="📍" title="  View on Map" onPress={() => {
+            <BlueButton    icon="📍" title="Location" onPress={() => {
               if (typeof item.latitude === 'number' && typeof item.longitude === 'number') {
                 navigation.navigate('PropertyMap', {
                   latitude: item.latitude,

@@ -180,7 +180,7 @@ const MyFinanceScreen = () => {
     <FlatList
       ListHeaderComponent={
         <>
-          <Text style={styles.title}>My Finances</Text>
+          <Text style={styles.title}>Statistics</Text>
 
           {stats && (
             <View style={styles.summaryBox}>

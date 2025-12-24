@@ -112,18 +112,17 @@ export default function MainHomeScreen({ navigation }: any) {
       <View style={{ height: 12 }} />
 
       <BlueButton icon="👤" title="Personal (settings)" onPress={() => navigation.navigate('Personal')} />
-      <BlueButton icon="📄" title="Profile (account)" onPress={() => navigation.navigate('Profile')} />
+      
+      <BlueButton icon="🏘️" title="Properties" onPress={() => navigation.navigate('Properties')} />
+
+      <BlueButton icon="💹" title="Share" onPress={() => navigation.navigate('ShareMarketplaces')} />
 
       <View style={{ height: 8 }} />
-      <BlueButton icon="🏘️" title="Browse Properties" onPress={() => navigation.navigate('Properties')} />
-      <BlueButton icon="💹" title="Share Marketplace" onPress={() => navigation.navigate('ShareMarketplaces')} />
+      <BlueButton icon="💬" title={`Inbox${unread ? ` (${unread})` : ''}`} onPress={() => navigation.navigate('Inbox')} />
 
       <View style={{ height: 8 }} />
-      <BlueButton icon="💬" title={`Inbox / Chat${unread ? ` (${unread})` : ''}`} onPress={() => navigation.navigate('Inbox')} />
-
-      <View style={{ height: 8 }} />
-      <BlueButton icon="📊" title="My Finance" onPress={() => navigation.navigate('MyFinance')} />
-      <BlueButton icon="💼" title="My Investments" onPress={() => navigation.navigate('Investments')} />
+      <BlueButton icon="📊" title="Statistics" onPress={() => navigation.navigate('MyFinance')} />
+      <BlueButton icon="💼" title="Investment" onPress={() => navigation.navigate('Investments')} />
     </ScrollView>
   );
 }

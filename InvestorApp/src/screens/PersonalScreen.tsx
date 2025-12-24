@@ -217,12 +217,14 @@ const PersonalScreen = ({ navigation }: Props) => {
 
       <View style={styles.buttons}>
         <BlueButton title="Edit Profile" onPress={() => navigation.navigate('EditProfile')} />
+            <View style={{ height: 10 }} />
+            <BlueButton icon="📄" title="Profile (account)" onPress={() => navigation.navigate('Profile')} />
         <View style={{ height: 10 }} />
         <BlueButton title="Upload KYC" onPress={() => navigation.navigate('UploadKyc')} />
         <View style={{ height: 10 }} />
           <BlueButton title="Invite Friend " onPress={() => navigation.navigate('InviteFriend')} />
         <View style={{ height: 10 }} />
-        <BlueButton title="Top Up Balance" onPress={() => navigation.navigate('TopUp')} />
+        <BlueButton title="Transfer Money" onPress={() => navigation.navigate('TopUp')} />
         <View style={{ height: 10 }} />
         <BlueButton title={`Inbox Messages${unreadCount > 0 ? ` (${unreadCount})` : ''}`} onPress={() => navigation.navigate('Inbox')} />
         <View style={{ height: 10 }} />

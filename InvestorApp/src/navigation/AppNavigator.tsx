@@ -189,7 +189,7 @@ export default function AppNavigator() {
           />
         <Stack.Screen name="Register" component={RegisterScreen} options={{ title: 'Register' }} />
         <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'Account' }} />
-        <Stack.Screen name="Investments" component={InvestmentsScreen} options={{ title: 'Stake' }} />
+        <Stack.Screen name="Investments" component={InvestmentsScreen} options={{ title: 'Investment' }} />
         <Stack.Screen name="Properties" component={PropertyListScreen} options={{ title: 'Properties' }} />
         <Stack.Screen name="BuyShares" component={BuySharesScreen} options={{ title: 'Buy Shares' }} />
         <Stack.Screen name="Withdraw" component={WithdrawScreen} options={{ title: 'Withdraw Funds' }} />
@@ -205,7 +205,7 @@ export default function AppNavigator() {
         <Stack.Screen name="PropertyForm" component={PropertyFormScreen} options={{ title: 'Property Form' }} />
         <Stack.Screen name="PropertyDetail" component={PropertyDetailScreen} options={{ title: 'Property details' }} />
         <Stack.Screen name="UploadKyc" component={UploadKycScreen} options={{ title: 'Upload KYC' }} />
-        <Stack.Screen name="TopUp" component={TopUpScreen} options={{ title: 'Top Up Balance' }} />
+        <Stack.Screen name="TopUp" component={TopUpScreen} options={{ title: 'Transfer Money' }} />
         <Stack.Screen name="PropertyMap" component={PropertyMapScreen} options={{ title: 'Map' }} />
         <Stack.Screen name="UserKycView" component={UserKycViewScreen} options={{ title: 'User Kyc' }} />
         <Stack.Screen name="AdminKycView" component={AdminKycViewScreen} options={{ title: 'Admin Kyc' }} />
@@ -229,7 +229,7 @@ export default function AppNavigator() {
         <Stack.Screen name="Chat" component={ChatScreen} options={{ title: 'Chat' }} />
         <Stack.Screen name="AdminChat" component={AdminChatScreen} options={{ title: 'Chat' }} />
         <Stack.Screen name="MyInvestments" component={MyInvestmentsScreen} options={{ title: 'Stack history' }} />
-        <Stack.Screen name="MyFinance" component={MyFinanceScreen} options={{ title: 'My Finance' }} />
+        <Stack.Screen name="MyFinance" component={MyFinanceScreen} options={{ title: 'Statistics' }} />
         <Stack.Screen name="RentHistory" component={RentHistoryScreen} options={{ title: 'Rent History ' }} />
         <Stack.Screen name="MyRentIncome" component={MyRentIncomeScreen} options={{ title: 'Rental Income ' }} />
         <Stack.Screen name="Home" component={MainHomeScreen} options={{ title: 'Home ' }} />
