@@ -120,7 +120,7 @@ export default function UserTransactionsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: theme.colors.background },
-  title: { fontSize: 22, fontWeight: 'bold', marginBottom: 10, textAlign: 'center', color: '#2a1602' },
+  title: { fontSize: 22, fontWeight: 'bold', marginBottom: 10, textAlign: 'center', color: '#2a1602', display: 'none'  },
   picker: { marginBottom: 10 },
   dateRow: {
     flexDirection: 'row',

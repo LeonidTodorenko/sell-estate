@@ -80,6 +80,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 10,
+     display: 'none' 
   },
   tableContainer: {
     marginTop: 10,

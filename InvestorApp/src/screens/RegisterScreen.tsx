@@ -7,6 +7,7 @@ import StyledInput from '../components/StyledInput';
 import api from '../api';
 import BlueButton from '../components/BlueButton';
 import theme from '../constants/theme';
+import { TouchableOpacity } from 'react-native';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Register'>;
 
@@ -24,6 +25,8 @@ const RegisterScreen = ({ navigation }: Props) => {
   const [secretWord, setSecretWord] = useState('');
 
   const [referralCode, setReferralCode] = useState('');
+
+  const [acceptTerms, setAcceptTerms] = useState(false);
 
   // const handleRegister = async () => {
   //   if (!fullName || !email || !password || !secretWord) {
@@ -59,6 +62,10 @@ const RegisterScreen = ({ navigation }: Props) => {
   };
 
   const handleRegister = async () => {
+    if (!acceptTerms) {
+      Alert.alert('Registration failed', 'Please accept the Terms to continue');
+      return;
+    }
     if (!fullName || !email || !password || !secretWord) {
       Alert.alert('Registration failed', 'All fields are required');
       return;
@@ -137,14 +144,28 @@ const RegisterScreen = ({ navigation }: Props) => {
         onChangeText={setReferralCode}
       />
 
-<StyledInput
-  style={styles.input}
-  placeholder="PIN Code (optional, 4 digits)"
-  keyboardType="numeric"
-  maxLength={4}
-  value={pinCode}
-  onChangeText={setPinCode}
-/>
+      <StyledInput
+        style={styles.input}
+        placeholder="PIN Code (optional, 4 digits)"
+        keyboardType="numeric"
+        maxLength={4}
+        value={pinCode}
+        onChangeText={setPinCode}
+      />
+
+      <TouchableOpacity
+        onPress={() => setAcceptTerms(v => !v)}
+        style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}
+      >
+        <View style={{
+          width: 20, height: 20, borderWidth: 1, borderColor: '#999',
+          marginRight: 10, alignItems: 'center', justifyContent: 'center'
+        }}>
+          {acceptTerms ? <Text>✓</Text> : null}
+        </View>
+
+        <Text>I agree to the Terms (Offer)</Text>
+      </TouchableOpacity>
 
       {/* <View style={styles.captchaContainer}>
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
@@ -197,7 +218,8 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 20
+    , display: 'none' 
   },
   input: {
     borderWidth: 1,

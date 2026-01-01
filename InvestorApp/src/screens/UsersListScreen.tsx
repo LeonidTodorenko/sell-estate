@@ -128,7 +128,7 @@ export default function UsersListScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: theme.colors.background },
-  title: { fontSize: 22, fontWeight: '700', textAlign: 'center', marginBottom: 12 },
+  title: { fontSize: 22, fontWeight: '700', textAlign: 'center', marginBottom: 12, display: 'none'  },
   row: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   input: { marginBottom: 0 },
   card: {

@@ -128,7 +128,7 @@ const EditProfileScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20,backgroundColor: theme.colors.background },
-  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
+  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, textAlign: 'center', display: 'none'  },
   input: {
     borderWidth: 1,
     borderColor: '#ccc',

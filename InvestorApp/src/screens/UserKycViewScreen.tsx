@@ -84,7 +84,7 @@ const AdminKycViewScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 ,backgroundColor: theme.colors.background},
-  title: { fontSize: 20, fontWeight: 'bold', marginBottom: 12, textAlign: 'center' },
+  title: { fontSize: 20, fontWeight: 'bold', marginBottom: 12, textAlign: 'center', display: 'none'  },
   card: {
     borderWidth: 1,
     borderColor: '#ccc',

@@ -9,7 +9,7 @@ import loginBackground from '../assets/images/login.jpg';
 import { useLoading } from '../contexts/LoadingContext';
 import StyledInput from '../components/StyledInput';
 import { getFcmToken } from '../firebase';
-import BlueButton from '../components/BlueButton';
+import BlueBaseButton from '../components/BlueBaseButton';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { saveSession } from '../services/sessionStorage';
 import { API_BASE_URL, setAccessToken, writeLegacyUser } from '../api';
@@ -254,8 +254,8 @@ const LoginScreen = ({ navigation }: Props) => {
           ]}
         > */}
                   <View style={styles.buttonContainer}>
-           <BlueButton title={busy ? 'Please wait...' : 'Login'} onPress={handleLogin} disabled={busy} />
-            <BlueButton additionalPadding={0} title="Sign up" onPress={() => navigation.navigate('Register')} />
+           <BlueBaseButton title={busy ? 'Please wait...' : 'Login'} onPress={handleLogin} disabled={busy} />
+            <BlueBaseButton  title="Sign up" onPress={() => navigation.navigate('Register')} />  
          </View> 
        
 

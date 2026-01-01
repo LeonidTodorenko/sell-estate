@@ -105,7 +105,7 @@ const UploadKycScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 ,backgroundColor: theme.colors.background},
-  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 20 },
+  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, display: 'none'  },
   input: {
     borderWidth: 1,
     borderColor: '#ccc',

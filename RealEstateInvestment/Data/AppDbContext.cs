@@ -54,6 +54,15 @@ namespace RealEstateInvestment.Data
             }
 
             modelBuilder.Entity<User>().HasIndex(u => u.Email).IsUnique();
+            
+            modelBuilder.Entity<User>()
+                        .HasIndex(u => u.ClientNumber)
+                        .IsUnique();
+
+            modelBuilder.Entity<User>()
+                         .HasIndex(u => u.PhoneNumber)
+                         .IsUnique()
+                         .HasFilter("\"PhoneNumber\" IS NOT NULL AND \"PhoneNumber\" <> ''");
 
             modelBuilder.Entity<RefreshToken>()
                         .HasIndex(x => x.UserId);

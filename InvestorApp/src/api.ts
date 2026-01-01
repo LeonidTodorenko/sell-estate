@@ -2,13 +2,13 @@
 import axios from 'axios';
 import { Platform } from 'react-native';
 import { saveSession, loadSession } from './services/sessionStorage';
-
+import { handleApiError } from './utils/apiError'; 
 
 export  const API_BASE_URL =
   Platform.OS === 'android'
     
      ? 
-     // 'http://10.0.2.2:7019/api'
+      //'http://10.0.2.2:7019/api'
        'https://sell-estate.onrender.com/api'
     : 'https://sell-estate.onrender.com/api';
 
@@ -17,6 +17,11 @@ export const api = axios.create({
   timeout: 15000,
   headers: { 'Content-Type': 'application/json' },
 });
+type ApiExtraConfig = {
+  silentError?: boolean;
+  errorContext?: string;
+  errorTitle?: string;
+};
 
 // ======== Access token в оперативной памяти ========
 let accessTokenInMemory: string | null = null;
@@ -87,14 +92,17 @@ export async function tryRefresh(
 api.interceptors.response.use(
   (r) => r,
   async (error) => {
-    const original = error?.config as any;
+   const original = (error?.config ?? {}) as any & ApiExtraConfig;
     const url = (original?.url || '').toLowerCase();
-    
+     
+      const isAuthEndpoint =
+      url.includes('/auth/login') || url.includes('/auth/refresh') || url.includes('/auth/logout');
 
-     // если это auth-запрос — ничего не рефрешим
-    if (url?.includes('/auth/login') || url?.includes('/auth/refresh') || url?.includes('/auth/logout')) {
+        // если это auth-запрос — ничего не рефрешим и не спамим алертами глобально
+    if (isAuthEndpoint) {
       return Promise.reject(error);
     }
+
 
     const status = error?.response?.status;
     if (status === 401 && !original?._retry) {
@@ -116,8 +124,14 @@ api.interceptors.response.use(
           return null;
         })();
 
-      const newAccess = await refreshingPromise;
-      refreshingPromise = null;
+            let newAccess: string | null = null;
+          try {
+            newAccess = await refreshingPromise;
+          } finally {
+            refreshingPromise = null;
+          }
+
+          
 
       if (newAccess) {
         // подменяем заголовок и ретраим запрос
@@ -127,6 +141,25 @@ api.interceptors.response.use(
         updateLegacyToken(newAccess);
         return api(original);
       }
+
+       // если refresh не смог — можно показать единое сообщение (и дальше reject)
+      // но только если не silent
+      setAccessToken(null); 
+      if (!original.silentError) {
+        handleApiError(error, original.errorContext ?? 'Session expired. Please login again.', {
+          title: original.errorTitle ?? 'Authorization',
+          showDetails: __DEV__,
+        });
+      }
+
+      return Promise.reject(error);
+    }
+   // ---- Все остальные ошибки: единый обработчик ----
+    if (!original.silentError) {
+      handleApiError(error, original.errorContext, {
+        title: original.errorTitle ?? 'Request Failed',
+        showDetails: __DEV__,
+      });
     }
 
     return Promise.reject(error);

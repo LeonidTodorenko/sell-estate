@@ -88,6 +88,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 20,
     textAlign: 'center',
+      display: 'none' 
   },
   input: {
     borderWidth: 1,

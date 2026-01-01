@@ -529,7 +529,7 @@ export default ShareMarketplaceScreen;
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16,backgroundColor: theme.colors.background },
-  header: { fontSize: 22, fontWeight: 'bold', marginBottom: 12 },
+  header: { fontSize: 22, fontWeight: 'bold', marginBottom: 12, display: 'none'  },
   card: {
     borderWidth: 1,
     borderColor: '#ccc',

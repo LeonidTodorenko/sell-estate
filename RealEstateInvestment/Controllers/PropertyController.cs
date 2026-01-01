@@ -82,7 +82,7 @@ namespace RealEstateInvestment.Controllers
                 _context.Properties.Add(property);
                 _context.ActionLogs.Add(new ActionLog
                 {
-                    UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add admin guid later
+                    UserId = new Guid("2273adeb-483c-4104-a3a9-585b3dad9e27"), // todo add admin guid later
                     Action = "CreateProperty",
                     Details = $"Created: {property.Title} with shares: {property.TotalShares}"
                 });
@@ -109,7 +109,7 @@ namespace RealEstateInvestment.Controllers
             property.Status = status;
             _context.ActionLogs.Add(new ActionLog
             {
-                UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add admin guid later
+                UserId = new Guid("2273adeb-483c-4104-a3a9-585b3dad9e27"), // todo add admin guid later
                 Action = "ChangePropertyStatus",
                 Details = "Property changed: " + status + " Id:" + id.ToString()
             });
@@ -150,7 +150,7 @@ namespace RealEstateInvestment.Controllers
             property.ImageBase64 = request.Base64Image;
             _context.ActionLogs.Add(new ActionLog
             {
-                UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add admin guid later
+                UserId = new Guid("2273adeb-483c-4104-a3a9-585b3dad9e27"), // todo add admin guid later
                 Action = "UploadBase64",
                 Details = "Image loaded, property id: " + id.ToString()
             });
@@ -195,7 +195,7 @@ namespace RealEstateInvestment.Controllers
         //    existing.RealPrice = updated.RealPrice;
         //    _context.ActionLogs.Add(new ActionLog
         //    {
-        //        UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add admin guid later
+        //        UserId = new Guid("2273adeb-483c-4104-a3a9-585b3dad9e27"), // todo add admin guid later
         //        Action = "UpdateProperty",
         //        Details = "Update Property id: " + id.ToString()
         //    });
@@ -218,7 +218,7 @@ namespace RealEstateInvestment.Controllers
             _context.Properties.Remove(property);
             _context.ActionLogs.Add(new ActionLog
             {
-                UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add admin guid later
+                UserId = new Guid("2273adeb-483c-4104-a3a9-585b3dad9e27"), // todo add admin guid later
                 Action = "DeleteProperty",
                 Details = "Delete Property id: " + id.ToString()
             });
@@ -278,7 +278,7 @@ namespace RealEstateInvestment.Controllers
             property.ListingType = listingType;
             _context.ActionLogs.Add(new ActionLog
             {
-                UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo fix
+                UserId = new Guid("2273adeb-483c-4104-a3a9-585b3dad9e27"), // todo fix
                 Action = "ChangeListingType",
                 Details = $"Changed listing type to {listingType} for property {id}"
             });
@@ -348,7 +348,7 @@ namespace RealEstateInvestment.Controllers
 
             _context.ActionLogs.Add(new ActionLog
             {
-                UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo admin GUID
+                UserId = new Guid("2273adeb-483c-4104-a3a9-585b3dad9e27"), // todo admin GUID
                 Action = "PropertyDeclinedDueToPaymentFailure",
                 Details = $"Property {property.Title} ({property.Id}) declined. Refunded {investmentsRefunded} investments totaling {totalRefunded} USD."
             });

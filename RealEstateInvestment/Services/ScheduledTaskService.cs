@@ -259,7 +259,7 @@
 
                         context.ActionLogs.Add(new ActionLog
                         {
-                            UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"),
+                            UserId = new Guid("2273adeb-483c-4104-a3a9-585b3dad9e27"),
                             Action = acceptedAny ? "InvestmentStepAccepted" : "InvestmentStepRejected",
                             Details = $"PropertyId: {property.Id}, Step DueDate: {step.DueDate}, Accepted: {acceptedAny}"
                         });
@@ -274,7 +274,7 @@
                         //    {
                         //        context.ActionLogs.Add(new ActionLog
                         //        {
-                        //            UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo admin guid
+                        //            UserId = new Guid("2273adeb-483c-4104-a3a9-585b3dad9e27"), // todo admin guid
                         //            Action = "ScheduledPaymentValidationSuccess",
                         //            Details = $"Validated payments for property: {property.Title}"
                         //        });
@@ -283,7 +283,7 @@
                         //    {
                         //        context.ActionLogs.Add(new ActionLog
                         //        {
-                        //            UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"),
+                        //            UserId = new Guid("2273adeb-483c-4104-a3a9-585b3dad9e27"),
                         //            Action = "ScheduledPaymentValidationError",
                         //            Details = $"Failed to validate property: {property.Title}, StatusCode: {response.StatusCode}"
                         //        });
@@ -293,7 +293,7 @@
                         //{
                         //    context.ActionLogs.Add(new ActionLog
                         //    {
-                        //        UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"),
+                        //        UserId = new Guid("2273adeb-483c-4104-a3a9-585b3dad9e27"),
                         //        Action = "ScheduledPaymentValidationException",
                         //        Details = $"Exception validating property: {property.Title}, Error: {ex.Message}"
                         //    });
@@ -324,7 +324,7 @@
                 {
                     context.ActionLogs.Add(new ActionLog
                     {
-                        UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add some guid later
+                        UserId = new Guid("2273adeb-483c-4104-a3a9-585b3dad9e27"), // todo add some guid later
                         Action = "FirebaseNotificationService send error",
                         Details = ex.Message,
                     });

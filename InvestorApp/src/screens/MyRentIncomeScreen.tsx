@@ -49,7 +49,7 @@ const MyRentIncomeScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16,backgroundColor: theme.colors.background },
-  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 12 },
+  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 12, display: 'none'  },
   card: {
     borderWidth: 1,
     borderColor: '#ccc',

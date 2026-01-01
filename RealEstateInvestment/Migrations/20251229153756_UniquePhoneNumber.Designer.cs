@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using RealEstateInvestment.Data;
@@ -11,9 +12,11 @@ using RealEstateInvestment.Data;
 namespace RealEstateInvestment.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251229153756_UniquePhoneNumber")]
+    partial class UniquePhoneNumber
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -766,10 +769,6 @@ namespace RealEstateInvestment.Migrations
                     b.Property<string>("AvatarBase64")
                         .HasColumnType("text");
 
-                    b.Property<string>("ClientNumber")
-                        .IsRequired()
-                        .HasColumnType("text");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -812,12 +811,6 @@ namespace RealEstateInvestment.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<DateTime?>("TermsAcceptedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("TermsVersion")
-                        .HasColumnType("text");
-
                     b.Property<int>("UserRole")
                         .HasColumnType("integer");
 
@@ -825,9 +818,6 @@ namespace RealEstateInvestment.Migrations
                         .HasColumnType("numeric");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("ClientNumber")
-                        .IsUnique();
 
                     b.HasIndex("Email")
                         .IsUnique();

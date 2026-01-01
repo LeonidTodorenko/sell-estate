@@ -164,7 +164,7 @@ export default TradeHistoryScreen;
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16,backgroundColor: theme.colors.background },
-  title: { fontSize: 22, fontWeight: 'bold', marginBottom: 12, textAlign: 'center' },
+  title: { fontSize: 22, fontWeight: 'bold', marginBottom: 12, textAlign: 'center', display: 'none'  },
   picker: { backgroundColor: '#eee', marginVertical: 10 },
   card: {
     padding: 12,

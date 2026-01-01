@@ -77,7 +77,7 @@ namespace RealEstateInvestment.Services
             {
                 _context.ActionLogs.Add(new ActionLog
                 {
-                    UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add some guid later
+                    UserId = new Guid("2273adeb-483c-4104-a3a9-585b3dad9e27"), // todo add some guid later
                     Action = "SendEmailAsync error",
                     Details = ex.Message + toEmail,
                 });
@@ -105,7 +105,7 @@ namespace RealEstateInvestment.Services
             {
                 _context.ActionLogs.Add(new ActionLog
                 {
-                    UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add some guid later
+                    UserId = new Guid("2273adeb-483c-4104-a3a9-585b3dad9e27"), // todo add some guid later
                     Action = "SendToAdminAsync error",
                     Details = "Admin email not configured",
                 });
@@ -184,7 +184,7 @@ namespace RealEstateInvestment.Services
                         await client.AuthenticateAsync(user, pass);
                     }
 
-                    await client.SendAsync(message);
+                   await client.SendAsync(message);
                     await client.DisconnectAsync(true);
                 }
 
@@ -194,7 +194,7 @@ namespace RealEstateInvestment.Services
             {
                 _context.ActionLogs.Add(new ActionLog
                 {
-                    UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"),
+                    UserId = new Guid("2273adeb-483c-4104-a3a9-585b3dad9e27"),
                     Action = "SendEmailWithAttachmentAsync error",
                     Details = ex.Message + " | to=" + toEmail,
                 });
@@ -214,7 +214,7 @@ namespace RealEstateInvestment.Services
             {
                 _context.ActionLogs.Add(new ActionLog
                 {
-                    UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"),
+                    UserId = new Guid("2273adeb-483c-4104-a3a9-585b3dad9e27"),
                     //UserId = Guid.TryParse(_config["SuperUser:Id"], out var uid) ? uid : Guid.Empty,
                     Action = "EmailError",
                     Details = $"{details} | to={toEmail}"

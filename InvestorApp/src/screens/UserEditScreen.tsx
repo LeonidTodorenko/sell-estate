@@ -377,7 +377,7 @@ function FlagRow({ label, checked, onPress }:{
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: theme.colors.background },
-  title: { fontSize: 20, fontWeight: '700', textAlign: 'center', marginBottom: 12 },
+  title: { fontSize: 20, fontWeight: '700', textAlign: 'center', marginBottom: 12, display: 'none'  },
 
   badgeRow: { flexDirection: 'row', marginBottom: 12, gap: 8 },
   badge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20 },

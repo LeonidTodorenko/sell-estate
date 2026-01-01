@@ -204,7 +204,34 @@ useFocusEffect(
 
                 )}
               </View>
-            )}
+             )}
+{/* Links under carousel */}
+<View style={styles.linksRow}>
+  <TouchableOpacity
+    onPress={() =>
+      navigation.navigate('PropertyMap', {
+        latitude: item.latitude,
+        longitude: item.longitude,
+        title: item.title,
+      })
+    }
+    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+  >
+    <Text style={styles.linkText}>📍 Location</Text>
+  </TouchableOpacity>
+
+  <Text style={styles.linkSeparator}>•</Text>
+
+  <TouchableOpacity
+    onPress={() => navigation.navigate('PaymentPlan', { propertyId: item.id, readonly: true })}
+    disabled={!item.hasPaymentPlan}
+    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+  >
+    <Text style={[styles.linkText, !item.hasPaymentPlan && styles.linkDisabled]}>
+      📄 Payment plan
+    </Text>
+  </TouchableOpacity>
+</View>
 
 
 
@@ -226,7 +253,7 @@ useFocusEffect(
             {item.priorityInvestorId && (
               <Text>⭐ Priority Investor: {userMap[item.priorityInvestorId] || item.priorityInvestorId}</Text>
             )}
-            <BlueButton
+            {/* <BlueButton
             icon="📍"
               title="Location"
               onPress={() =>
@@ -239,7 +266,9 @@ useFocusEffect(
             />
             <View style={{ height: 10 }} />
             <BlueButton icon="📄" title=" View Payment Plan" onPress={() => navigation.navigate('PaymentPlan', { propertyId: item.id, readonly: true })} />
-            <View style={{ height: 10 }} />
+
+            <View style={{ height: 10 }} /> */}
+   <View style={{ height: 10 }} />
             <BlueButton icon="💸"
               title={item.hasPaymentPlan ? "Invest" : "Object not active"}
               disabled={!item.hasPaymentPlan}
@@ -298,7 +327,7 @@ useFocusEffect(
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 ,backgroundColor: theme.colors.background},
-  title: { fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 },
+  title: { fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 20, display: 'none'  },
   card: {
     borderWidth: 1,
     borderColor: '#ccc',
@@ -359,6 +388,31 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
+linksRow: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 12, // если RN старый — замени на marginRight у элементов
+  marginTop: 6,
+  marginBottom: 8,
+},
+
+linkText: {
+  color: theme.colors.primary, // или '#007bff'
+  textDecorationLine: 'underline',
+  fontSize: 14,
+  fontWeight: '600',
+},
+
+linkSeparator: {
+  color: '#999',
+  fontSize: 14,
+},
+
+linkDisabled: {
+  color: '#aaa',
+  textDecorationLine: 'none',
+},
 
 });
 

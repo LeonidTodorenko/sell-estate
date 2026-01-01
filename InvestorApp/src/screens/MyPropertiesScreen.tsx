@@ -51,7 +51,7 @@ const MyPropertiesScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16,backgroundColor: theme.colors.background },
-  title: { fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 },
+  title: { fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 20, display: 'none'  },
   card: {
     borderWidth: 1,
     borderColor: '#ccc',

@@ -12,6 +12,7 @@ using RealEstateInvestment.Enums;
 using Org.BouncyCastle.Asn1.Ocsp;
 using RealEstateInvestment.Helpers;
 using System.Data;
+using Org.BouncyCastle.Ocsp;
 
 namespace RealEstateInvestment.Controllers
 {
@@ -25,13 +26,15 @@ namespace RealEstateInvestment.Controllers
         private readonly EmailService _emailService;
         private readonly IConfiguration _config;
         private readonly CaptchaService _captchaService;
+        private readonly IOnboardingDocumentService _onboardingDoc;
 
-        public UserController(AppDbContext context, EmailService emailService, IConfiguration config, CaptchaService captchaService)
+        public UserController(AppDbContext context, EmailService emailService, IConfiguration config, CaptchaService captchaService,IOnboardingDocumentService onboardingDoc)
         {
             _context = context;
             _emailService = emailService;
             _config = config;
             _captchaService = captchaService;
+            _onboardingDoc = onboardingDoc;
         }
 
         // Get list of users (admin only)
@@ -479,7 +482,7 @@ namespace RealEstateInvestment.Controllers
             {
                 _context.ActionLogs.Add(new ActionLog
                 {
-                    UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"),
+                    UserId = new Guid("2273adeb-483c-4104-a3a9-585b3dad9e27"),
                     Action = "GetUserAssetSummary error",
                     Details = ex.Message,
                 });
@@ -688,6 +691,10 @@ namespace RealEstateInvestment.Controllers
             if (string.IsNullOrWhiteSpace(req.Email) || string.IsNullOrWhiteSpace(req.Password))
                 return BadRequest(new { message = "Email and password are required" });
 
+            // todo fix and check !!!
+            //if (!req.AcceptTerms)
+            //    return BadRequest(new { message = "You must accept the Terms to register." });
+             
             var existing = await _context.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == req.Email.ToLower());
             if (existing != null)
                 return BadRequest(new { message = "Email already in use" });
@@ -700,6 +707,14 @@ namespace RealEstateInvestment.Controllers
             if (!string.IsNullOrWhiteSpace(req.PinCode) && !Regex.IsMatch(req.PinCode, @"^\d{4}$"))
                 return BadRequest(new { message = "PIN code must be exactly 4 digits" });
 
+            string clientNumber;
+            do
+            {
+                clientNumber = ClientNumberGenerator.Generate(9);
+            }
+            while (await _context.Users.AnyAsync(u => u.ClientNumber == clientNumber));
+
+
             var user = new User
             {
                 FullName = req.FullName,
@@ -709,7 +724,11 @@ namespace RealEstateInvestment.Controllers
                 PinCode = req.PinCode,
                 IsEmailConfirmed = false,
                 IsBlocked = true,
-                Role = "under-registration"
+                Role = "under-registration",
+                TermsAcceptedAt = DateTime.UtcNow,
+                TermsVersion = string.IsNullOrWhiteSpace(req.TermsVersion) ? "v1" : req.TermsVersion.Trim(),
+                ClientNumber = clientNumber
+
             };
 
             _context.Users.Add(user);
@@ -769,23 +788,31 @@ namespace RealEstateInvestment.Controllers
 
             var baseUrl = _config["App:PublicBaseUrl"]?.TrimEnd('/')
                  ?? "https://sell-estate.onrender.com/api";
-
-
+             
             var confirmUrl = $"{baseUrl}/users/confirm-email?token={token}";
 
-
+            var pdf = _onboardingDoc.GenerateRegistrationConfirmation(user);
 
             _ = Task.Run(async () =>
             {
                 try
                 {
-                    await _emailService.SendEmailAsync(user.Email, "Confirm your email",
-              $"<h2>Welcome!</h2><p>Please confirm your email: <a href='{confirmUrl}'>Confirm Email</a></p>");
+                  
+                    await _emailService.SendEmailWithAttachmentAsync(
+                     user.Email,
+                     "Welcome! Your Client ID",
+                     $"<p>Hello, {System.Net.WebUtility.HtmlEncode(user.FullName)}!</p>" +
+                     $"<p>Your Client ID: <b>{user.ClientNumber}</b></p>" +
+                     $"<p>Please confirm your email: <a href='{confirmUrl}'>Confirm Email</a></p>",
+                     $"registration-confirmation-{user.ClientNumber}.pdf",
+                     pdf
+                 );
 
                     await _emailService.SendToAdminAsync(
-                        "New user registered",
-                        $"A new user has registered: <strong>{user.FullName}</strong> ({user.Email})"
-                    );
+                      "New user registered",
+                      $"A new user has registered: <strong>{user.FullName}</strong> ({user.Email}), Client ID: <b>{user.ClientNumber}</b>"
+                  );
+
                 }
                 catch (Exception ex)
                 {
@@ -799,6 +826,7 @@ namespace RealEstateInvestment.Controllers
                     await _context.SaveChangesAsync();
                 }
             });
+             
 
             await _context.SaveChangesAsync();
 
@@ -843,6 +871,9 @@ namespace RealEstateInvestment.Controllers
             public int CaptchaAnswer { get; set; }
 
             public string? ReferralCode { get; set; }
+
+            public bool AcceptTerms { get; set; }
+            public string? TermsVersion { get; set; } // "v1"
 
             // todo google
             //[Required]

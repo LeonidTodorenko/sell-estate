@@ -266,6 +266,7 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     textAlign: 'center',
     marginVertical: 20,
+     display: 'none' 
   },
   buttons: {
     marginTop: 10,

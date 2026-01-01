@@ -130,6 +130,7 @@ builder.Services.AddScoped<IModerationService, ModerationService>();
 builder.Services.AddHostedService<ScheduledTaskService>();
 builder.Services.AddScoped<IMonthlyReportService, MonthlyReportService>();
 builder.Services.AddScoped<IAdminAuditReportService, AdminAuditReportService>();
+builder.Services.AddScoped<IOnboardingDocumentService, OnboardingDocumentService>();
 builder.Services.AddHostedService<MonthlyReportsHostedService>();
 
 

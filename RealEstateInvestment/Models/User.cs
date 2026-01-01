@@ -26,7 +26,6 @@ namespace RealEstateInvestment.Models
 
         public UserRole UserRole { get; set; }
 
-
         public PermissionFlags Permissions { get; set; } = PermissionFlags.None;
 
         public string KycStatus { get; set; } = "pending"; // pending, verified, rejected
@@ -44,6 +43,10 @@ namespace RealEstateInvestment.Models
         public string? AvatarBase64 { get; set; }
 
         public bool IsEmailConfirmed { get; set; } = false;
+
+        public string ClientNumber { get; set; } = null!; 
+        public DateTime? TermsAcceptedAt { get; set; }
+        public string? TermsVersion { get; set; } 
 
         [RegularExpression(@"^\d{4}$", ErrorMessage = "PIN code must be exactly 4 digits")]
         public string? PinCode { get; set; }

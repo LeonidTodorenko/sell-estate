@@ -173,9 +173,9 @@ export default function InviteFriendScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: theme.colors.background },
-  title: { fontSize: 22, fontWeight: '700', marginBottom: 12, textAlign: 'center' },
+  title: { fontSize: 22, fontWeight: '700', marginBottom: 12, textAlign: 'center', display: 'none'  },
   subTitle: { fontSize: 18, fontWeight: '600', marginTop: 16, marginBottom: 8 },
-  input: { marginBottom: 10 },
+  input: { marginBottom: 10,  borderRadius: 8, borderWidth: StyleSheet.hairlineWidth,  borderColor: '#777' },
   empty: { textAlign: 'center', color: '#777', marginTop: 16 },
   card: {
     padding: 12,

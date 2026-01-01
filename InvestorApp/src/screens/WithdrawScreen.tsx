@@ -49,7 +49,7 @@ const WithdrawScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: 'center', padding: 20,backgroundColor: theme.colors.background },
-  title: { fontSize: 20, marginBottom: 20, textAlign: 'center', fontWeight: 'bold' },
+  title: { fontSize: 20, marginBottom: 20, textAlign: 'center', fontWeight: 'bold', display: 'none'  },
   input: {
     borderWidth: 1,
     borderColor: '#ccc',

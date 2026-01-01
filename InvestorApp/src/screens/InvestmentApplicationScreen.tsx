@@ -90,7 +90,7 @@ export default function InvestmentApplicationScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20,backgroundColor: theme.colors.background },
-  title: { fontSize: 22, fontWeight: 'bold', textAlign: 'center', marginBottom: 20, color: '#2a1602' },
+  title: { fontSize: 22, fontWeight: 'bold', textAlign: 'center', marginBottom: 20, color: '#2a1602', display: 'none'  },
   card: {
     backgroundColor: 'white',
     padding: 15,

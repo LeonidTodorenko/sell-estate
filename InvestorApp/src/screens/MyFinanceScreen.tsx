@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import {
   View, Text, FlatList, StyleSheet,  Dimensions,
-  Alert,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Picker } from '@react-native-picker/picker';
@@ -9,6 +8,7 @@ import api from '../api';
 import { LineChart } from 'react-native-chart-kit';
 import BlueButton from '../components/BlueButton';
 import theme from '../constants/theme';
+import { handleApiError } from '../utils/apiError';
 
 // import { loadSession, saveSession } from '../services/sessionStorage';
 // import { writeLegacyUser } from '../api';
@@ -49,7 +49,7 @@ interface AssetStats {
 const MyFinanceScreen = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [filtered, setFiltered] = useState<Transaction[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [stats, setStats] = useState<AssetStats | null>(null);
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [daysBack, setDaysBack] = useState<number>(30);
@@ -80,22 +80,15 @@ const MyFinanceScreen = () => {
         // console.log(user); // todo debug
         // console.log("emd:"); // todo debug
         const [trxRes, statRes] = await Promise.all([
-          api.get(`/users/transactions/user/${user.userId}`),
-          api.get(`/users/${user.userId}/assets-summary`)
+          api.get(`/users/transactions/user/${user.userId}`, {  errorContext: 'Failed to load transactions',  errorTitle: 'Transactions',} as any),
+          api.get(`/users/${user.userId}/assets-summary`, {  errorContext: 'Failed to load assets-summary',  errorTitle: 'Assets-summary',} as any)
         ]);
         setTransactions(trxRes.data);
         setStats(statRes.data);
       }  
-      catch (error: any) {
-            let message = 'Failed to load finance data ';
-            console.error(error);
-            if (error.response && error.response.data) {
-              message = JSON.stringify(error.response.data);
-            } else if (error.message) {
-              message = error.message;
-            }
-            Alert.alert('Error', 'Failed to load finance data ' + message);
-          }
+      catch (e) {
+        handleApiError(e, 'Failed to load finance data');
+      }
       finally {
         setLoading(false);
       }
@@ -308,7 +301,7 @@ const MyFinanceScreen = () => {
 
 const styles = StyleSheet.create({
   container: { padding: 16, paddingBottom: 40 ,backgroundColor: theme.colors.background},
-  title: { fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 12 },
+  title: { fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 12, display: 'none'  },
   summaryBox: {
     backgroundColor: '#eef',
     padding: 12,

@@ -645,7 +645,7 @@ namespace RealEstateInvestment.Controllers
             offer.IsActive = false;
             _context.ActionLogs.Add(new ActionLog
             {
-                UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add admin guid later
+                UserId = new Guid("2273adeb-483c-4104-a3a9-585b3dad9e27"), // todo add admin guid later
                 Action = "CancelOffer",
                 Details = $"Offer: {id}, Fee: {fee} transferred to superuser"
             });
@@ -663,7 +663,7 @@ namespace RealEstateInvestment.Controllers
         //    offer.ExpirationDate = offer.ExpirationDate.AddDays(days);
         //    _context.ActionLogs.Add(new ActionLog
         //    {
-        //        UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add admin guid later
+        //        UserId = new Guid("2273adeb-483c-4104-a3a9-585b3dad9e27"), // todo add admin guid later
         //        Action = "ExtendOffer",
         //        Details = "days: " + days + "offer " + id
         //    });
@@ -728,7 +728,7 @@ namespace RealEstateInvestment.Controllers
 
         //    _context.ActionLogs.Add(new ActionLog
         //    {
-        //        UserId = new Guid("a7b4b538-03d3-446e-82ef-635cbd7bcc6e"), // todo add admin guid later
+        //        UserId = new Guid("2273adeb-483c-4104-a3a9-585b3dad9e27"), // todo add admin guid later
         //        Action = "UpdateOfferPrice",
         //        Details = "Old: " + offer.PricePerShare.ToString() + "New: " + newPrice.ToString()
         //    });
