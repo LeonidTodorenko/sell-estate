@@ -38,6 +38,8 @@ interface ShareOfferBid {
   createdAt: string;
 }
 
+type SortType = '' | 'max' | 'min' | 'exp';
+
 const ShareMarketplaceScreen = () => {
   const [offers, setOffers] = useState<ShareOffer[]>([]);
   const [filteredOffers, setFilteredOffers] = useState<ShareOffer[]>([]);
@@ -59,6 +61,15 @@ const ShareMarketplaceScreen = () => {
   const [pinModalVisible, setPinModalVisible] = useState(false);
   const [pinOrPassword, setPinOrPassword] = useState('');
 const [pendingAction, setPendingAction] = useState<null | ((pin: string) => void)>(null);
+
+const [sortOpen, setSortOpen] = useState(false);
+const [sortValue, setSortValue] = useState<SortType>('');
+const [sortItems, setSortItems] = useState([
+  { label: 'Default (no sort)', value: '' as SortType },
+  { label: 'Max Price', value: 'max' as SortType },
+  { label: 'Min Price', value: 'min' as SortType },
+  { label: 'Expiring Soon', value: 'exp' as SortType },
+]);
 
   const confirmWithPin = (action: (pin: string) => void) => {
     setPendingAction(() => action);
@@ -225,12 +236,30 @@ const [pendingAction, setPendingAction] = useState<null | ((pin: string) => void
     setFilteredOffers(sorted);
   };
 
-  useEffect(() => {
-    const filtered = offers.filter(o =>
-      (selectedProperty === '' || o.propertyTitle === selectedProperty)
+  // useEffect(() => {
+  //   const filtered = offers.filter(o =>
+  //     (selectedProperty === '' || o.propertyTitle === selectedProperty)
+  //   );
+  //   setFilteredOffers(filtered);
+  // }, [offers, selectedProperty]);
+useEffect(() => {
+  let list = offers.filter(o =>
+    selectedProperty === '' || o.propertyTitle === selectedProperty
+  );
+  if (sortValue === 'max') {
+    list = [...list].sort((a, b) => (b.startPricePerShare ?? 0) - (a.startPricePerShare ?? 0));
+  } else if (sortValue === 'min') {
+    list = [...list].sort((a, b) => (a.startPricePerShare ?? 0) - (b.startPricePerShare ?? 0));
+  } else if (sortValue === 'exp') {
+    list = [...list].sort(
+      (a, b) => new Date(a.expirationDate).getTime() - new Date(b.expirationDate).getTime()
     );
-    setFilteredOffers(filtered);
-  }, [offers, selectedProperty]);
+  }
+
+  setFilteredOffers(list);
+}, [offers, selectedProperty, sortValue]);
+
+
 
   // const handleAcceptBid = async (bid: ShareOfferBid) => {
   //   Alert.alert(
@@ -345,11 +374,26 @@ const [pendingAction, setPendingAction] = useState<null | ((pin: string) => void
           dropDownContainerStyle={{ borderColor: '#ccc' }}
         />
 
-        <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginTop: 8 }}>
+        {/* <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginTop: 8 }}>
           <BlueButton additionalPadding={1} width="110"  title=" Max Price" onPress={() => applySort('max')} />
           <BlueButton additionalPadding={1} width="110" title=" Min Price" onPress={() => applySort('min')} />
           <BlueButton additionalPadding={1} width="110" title="Expiring Soon" onPress={() => applySort('exp')} />
-        </View>
+        </View> */}
+        <Text style={{ marginTop: 8, marginBottom: 4 }}>Sort:</Text>
+
+        <DropDownPicker
+          open={sortOpen}
+          value={sortValue}
+          items={sortItems}
+          setOpen={setSortOpen}
+          setValue={setSortValue}
+          setItems={setSortItems}
+          placeholder="Select sort…"
+          containerStyle={{ marginBottom: 10, zIndex: 900 }}
+          style={{ borderColor: '#ccc' }}
+          dropDownContainerStyle={{ borderColor: '#ccc' }}
+        />
+
         {selectedProperty !== '' && (
           <Text style={{ marginTop: 8, fontStyle: 'italic' }}>
           There are {totalSharesForSelected} shares listed for this property

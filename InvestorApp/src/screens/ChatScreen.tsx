@@ -15,6 +15,8 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
 import theme from '../constants/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs'; 
 
 interface ChatMessage {
   id: string;
@@ -32,6 +34,11 @@ const ChatScreen = () => {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  const tabBarHeight = React.useContext(BottomTabBarHeightContext) ?? 0;
+  const insets = useSafeAreaInsets();
+
+  const bottomOffset = tabBarHeight + insets.bottom;
 
   const listRef = useRef<FlatList<ChatMessage>>(null);
 
@@ -159,8 +166,8 @@ const ChatScreen = () => {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={tabBarHeight}
     >
       {/* Список сообщений */}
       <FlatList
@@ -169,7 +176,7 @@ const ChatScreen = () => {
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         inverted
-        contentContainerStyle={{ paddingVertical: 10 }}
+        contentContainerStyle={{ paddingVertical: 10 , paddingBottom: bottomOffset + 70}}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListEmptyComponent={
           <View style={{ padding: 16, alignItems: 'center' }}>
@@ -179,7 +186,7 @@ const ChatScreen = () => {
       />
 
       {/* Панель ввода снизу */}
-      <View style={styles.composer}>
+       <View style={[styles.composer, { paddingBottom: bottomOffset }]}>
         <TextInput
           style={[styles.input, { maxHeight: 110 }]}
           value={input}

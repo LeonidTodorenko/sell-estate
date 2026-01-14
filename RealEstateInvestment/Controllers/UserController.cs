@@ -382,50 +382,53 @@ namespace RealEstateInvestment.Controllers
                 decimal runningRent = 0m; // только аренда
                 decimal totalRentalIncome = 0m;
 
-                foreach (var tx in transactions)
-                {
-                    var dateStr = tx.Timestamp.ToString("yyyy-MM-dd");
-
-                    // Изменение "общего" ряда (как раньше)
-                    var deltaAll = tx.Type switch
+                if (transactions.Any()) {
+                    foreach (var tx in transactions)
                     {
-                        TransactionType.Deposit => tx.Amount,
-                        TransactionType.ShareMarketSell => tx.Amount,
-                        TransactionType.RentIncome => tx.Amount,
-                        TransactionType.Investment => -tx.Amount,
-                        TransactionType.Withdrawal => -tx.Amount,
-                        TransactionType.Buyback => -tx.Amount,
-                        TransactionType.ShareMarketBuy => -tx.Amount,
-                        _ => 0m
-                    };
-                    runningTotalAll += deltaAll;
+                        var dateStr = tx.Timestamp.ToString("yyyy-MM-dd");
 
-                    // Изменение equity (без аренды)
-                    var deltaEquity = tx.Type switch
-                    {
-                        TransactionType.Deposit => tx.Amount,
-                        TransactionType.ShareMarketSell => tx.Amount,
-                        TransactionType.Investment => -tx.Amount,
-                        TransactionType.Withdrawal => -tx.Amount,
-                        TransactionType.Buyback => -tx.Amount,
-                        TransactionType.ShareMarketBuy => -tx.Amount,
-                        // RentIncome игнорируем
-                        _ => 0m
-                    };
-                    runningEquity += deltaEquity;
+                        // Изменение "общего" ряда (как раньше)
+                        var deltaAll = tx.Type switch
+                        {
+                            TransactionType.Deposit => tx.Amount,
+                            TransactionType.ShareMarketSell => tx.Amount,
+                            TransactionType.RentIncome => tx.Amount,
+                            TransactionType.Investment => -tx.Amount,
+                            TransactionType.Withdrawal => -tx.Amount,
+                            TransactionType.Buyback => -tx.Amount,
+                            TransactionType.ShareMarketBuy => -tx.Amount,
+                            _ => 0m
+                        };
+                        runningTotalAll += deltaAll;
 
-                    // Только аренда
-                    if (tx.Type == TransactionType.RentIncome)
-                    {
-                        runningRent += tx.Amount;
-                        totalRentalIncome += tx.Amount;
+                        // Изменение equity (без аренды)
+                        var deltaEquity = tx.Type switch
+                        {
+                            TransactionType.Deposit => tx.Amount,
+                            TransactionType.ShareMarketSell => tx.Amount,
+                            TransactionType.Investment => -tx.Amount,
+                            TransactionType.Withdrawal => -tx.Amount,
+                            TransactionType.Buyback => -tx.Amount,
+                            TransactionType.ShareMarketBuy => -tx.Amount,
+                            // RentIncome игнорируем
+                            _ => 0m
+                        };
+                        runningEquity += deltaEquity;
+
+                        // Только аренда
+                        if (tx.Type == TransactionType.RentIncome)
+                        {
+                            runningRent += tx.Amount;
+                            totalRentalIncome += tx.Amount;
+                        }
+
+                        // Обновляем «последнее значение на дату»
+                        assetMap[dateStr] = Math.Round(runningTotalAll, 2);
+                        equityMap[dateStr] = Math.Round(runningEquity, 2);
+                        rentMap[dateStr] = Math.Round(runningRent, 2);
                     }
-
-                    // Обновляем «последнее значение на дату»
-                    assetMap[dateStr] = Math.Round(runningTotalAll, 2);
-                    equityMap[dateStr] = Math.Round(runningEquity, 2);
-                    rentMap[dateStr] = Math.Round(runningRent, 2);
                 }
+               
 
                 // Преобразуем карты в истории
                 var assetHistory = assetMap.Select(kv => new { date = kv.Key, total = kv.Value }).ToList();

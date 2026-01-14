@@ -94,7 +94,7 @@ export default function MainHomeScreen({ navigation }: any) {
         </View>
 
         <View style={styles.row}>
-          <Text style={styles.label}>🏠 Rental income (cum.):</Text>
+          <Text style={styles.label}>🏠 Monthly rental income :</Text>
           <Text style={styles.value}>
             {totals ? `$${totals.rentalIncome.toFixed(2)}` : '—'}
           </Text>

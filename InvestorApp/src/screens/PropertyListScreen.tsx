@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Modal,
   Alert,
+  Platform,
 } from 'react-native';
 import Swiper from 'react-native-swiper';
 import api from '../api';
@@ -18,8 +19,12 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useCallback } from 'react';
 import BlueButton from '../components/BlueButton';
 import theme from '../constants/theme';
-import { Linking } from 'react-native';
+//import { Linking } from 'react-native';
 import WebView from 'react-native-webview';
+
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+
 
 interface PropertyImage {
   id: string;
@@ -217,7 +222,11 @@ useFocusEffect(
     }
     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
   >
-    <Text style={styles.linkText}>📍 Location</Text>
+    
+    <View style={styles.linkItem}>
+    <Ionicons name="location-sharp" size={16} color={theme.colors.primary} />
+    <Text style={styles.linkText}>Location</Text>
+  </View>
   </TouchableOpacity>
 
   <Text style={styles.linkSeparator}>•</Text>
@@ -227,9 +236,13 @@ useFocusEffect(
     disabled={!item.hasPaymentPlan}
     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
   >
+   
+    <View style={styles.linkItem}>
+    <MaterialCommunityIcons name="cash-multiple" size={16} color={theme.colors.primary} />
     <Text style={[styles.linkText, !item.hasPaymentPlan && styles.linkDisabled]}>
-      📄 Payment plan
+      Payment plan
     </Text>
+  </View>
   </TouchableOpacity>
 </View>
 
@@ -396,12 +409,15 @@ linksRow: {
   marginTop: 6,
   marginBottom: 8,
 },
-
+linkItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
 linkText: {
-  color: theme.colors.primary, // или '#007bff'
-  textDecorationLine: 'underline',
+ // color: theme.colors.primary, // или '#007bff'
   fontSize: 14,
   fontWeight: '600',
+   fontFamily: Platform.select({
+    ios: 'System',
+    android: 'sans-serif-medium',
+  }),
 },
 
 linkSeparator: {
