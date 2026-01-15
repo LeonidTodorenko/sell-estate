@@ -46,10 +46,13 @@ namespace RealEstateInvestment.Models
 
         public string ClientNumber { get; set; } = null!; 
         public DateTime? TermsAcceptedAt { get; set; }
-        public string? TermsVersion { get; set; } 
-
+        public string? TermsVersion { get; set; }
+        public DateTime? KycContractSentAt { get; set; }
+        public string? KycContractVersion { get; set; }
         [RegularExpression(@"^\d{4}$", ErrorMessage = "PIN code must be exactly 4 digits")]
         public string? PinCode { get; set; }
+
+        
 
         // public ICollection<Investment> Investments { get; set; } = new List<Investment>();
     }

@@ -132,6 +132,7 @@ builder.Services.AddScoped<IMonthlyReportService, MonthlyReportService>();
 builder.Services.AddScoped<IAdminAuditReportService, AdminAuditReportService>();
 builder.Services.AddScoped<IOnboardingDocumentService, OnboardingDocumentService>();
 builder.Services.AddHostedService<MonthlyReportsHostedService>();
+builder.Services.AddScoped<IKycContractService, KycContractService>();
 
 
 var resendApiKey = builder.Configuration["Resend:ApiKey"];

@@ -7,6 +7,7 @@ import { RootStackParamList } from '../navigation/AppNavigator';
 import StyledInput from '../components/StyledInput';
 import BlueButton from '../components/BlueButton';
 import theme from '../constants/theme';
+import BlueBaseButton from '../components/BlueBaseButton';
 
 type BuyRouteProp = RouteProp<RootStackParamList, 'BuyShares'>;
 
@@ -157,7 +158,7 @@ const BuySharesScreen = () => {
         value={pinOrPassword}
         onChangeText={setPinOrPassword}
       />
-      <BlueButton title="Invest" onPress={handleBuy} />
+      <BlueBaseButton title="Invest" onPress={handleBuy} />
     </View>
   );
 };

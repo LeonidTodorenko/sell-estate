@@ -1,15 +1,17 @@
  
 import axios from 'axios';
 import { Platform } from 'react-native';
-import { saveSession, loadSession } from './services/sessionStorage';
+import { saveSession, loadSession, clearSession } from './services/sessionStorage';
 import { handleApiError } from './utils/apiError'; 
+import { resetToLogin } from './navigation/navigationRef'; 
+
 
 export  const API_BASE_URL =
   Platform.OS === 'android'
     
      ? 
-      //'http://10.0.2.2:7019/api'
-       'https://sell-estate.onrender.com/api'
+      'http://10.0.2.2:7019/api'
+      // 'https://sell-estate.onrender.com/api'
     : 'https://sell-estate.onrender.com/api';
 
 export const api = axios.create({
@@ -22,6 +24,24 @@ type ApiExtraConfig = {
   errorContext?: string;
   errorTitle?: string;
 };
+
+// логаут на 401
+let didForceLogout = false;
+async function forceLogoutAndGoToLogin() {
+    if (didForceLogout) return;
+    didForceLogout = true;
+
+    try {
+      setAccessToken(null);
+  
+      await clearSession();
+    } catch {}
+
+    resetToLogin();
+}
+export function resetForceLogoutFlag() {
+  didForceLogout = false;
+}
 
 // ======== Access token в оперативной памяти ========
 let accessTokenInMemory: string | null = null;
@@ -142,15 +162,22 @@ api.interceptors.response.use(
         return api(original);
       }
 
+      // refresh не смог (401) -> выходим на логин
+      if (!original.silentError) {
+        handleApiError(error, 'Session expired. Please login again.', { title: 'Authorization', showDetails: __DEV__ });
+      }
+      await forceLogoutAndGoToLogin();
+
        // если refresh не смог — можно показать единое сообщение (и дальше reject)
       // но только если не silent
-      setAccessToken(null); 
-      if (!original.silentError) {
-        handleApiError(error, original.errorContext ?? 'Session expired. Please login again.', {
-          title: original.errorTitle ?? 'Authorization',
-          showDetails: __DEV__,
-        });
-      }
+      // todo убрать наверное это тк редирект выше
+      // setAccessToken(null); 
+      // if (!original.silentError) {
+      //   handleApiError(error, original.errorContext ?? 'Session expired. Please login again.', {
+      //     title: original.errorTitle ?? 'Authorization',
+      //     showDetails: __DEV__,
+      //   });
+      // }
 
       return Promise.reject(error);
     }

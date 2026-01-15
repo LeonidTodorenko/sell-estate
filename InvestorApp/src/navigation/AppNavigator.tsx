@@ -61,6 +61,7 @@ import AdminFinanceFlowsScreen from '../screens/AdminFinanceFlowsScreen';
 import AdminFinanceMonthScreen from '../screens/AdminFinanceMonthScreen';
 
 import HeaderMenu from '../components/HeaderMenu';
+import { navigationRef } from './navigationRef';
 
 //import SplashScreen from '../screens/SplashScreen'; 
  //import { AuthContext } from '../contexts/AuthContext';
@@ -141,7 +142,7 @@ const HIDE_BAR_ROUTES = new Set<string>([
 
 export default function AppNavigator() {
 
-  const navRef = React.useRef<any>(null);
+ // const navRef = React.useRef<any>(null);
   const [routeName, setRouteName] = React.useState<string | undefined>(undefined);
 
   const showBottomBar = routeName && !HIDE_BAR_ROUTES.has(routeName);
@@ -168,9 +169,9 @@ export default function AppNavigator() {
   return (
         <SafeAreaProvider>
       <NavigationContainer
-        ref={navRef}
-        onReady={() => setRouteName(navRef.current?.getCurrentRoute()?.name)}
-        onStateChange={() => setRouteName(navRef.current?.getCurrentRoute()?.name)}
+        ref={navigationRef}
+        onReady={() => setRouteName(navigationRef.getCurrentRoute()?.name)}
+        onStateChange={() => setRouteName(navigationRef.getCurrentRoute()?.name)}
       >
         <Stack.Navigator initialRouteName="Gate" screenOptions={screenOptions}>
         <Stack.Screen name="Gate" component={GateScreen} options={{ headerShown: false }} />
@@ -218,7 +219,7 @@ export default function AppNavigator() {
         <Stack.Screen name="PaymentPlan" component={PaymentPlanScreen} options={{ title: 'Payment Plan' }} />
         <Stack.Screen name="Inbox" component={InboxScreen} options={{ title: 'Inbox' }} />
         <Stack.Screen name="AdminMessages" component={AdminMessagesScreen} options={{ title: 'Admin Messages' }} />
-        <Stack.Screen name="ShareMarketplaces" component={ShareMarketplaceScreen} options={{ title: 'Share Market places' }} />
+        <Stack.Screen name="ShareMarketplaces" component={ShareMarketplaceScreen} options={{ title: 'Share Market' }} />
         <Stack.Screen name="InvestmentApplications" component={InvestmentApplicationScreen} options={{ title: 'Investment Applications' }} />
         <Stack.Screen name="SellMyShares" component={SellMyShareScreen} options={{ title: 'Sell My Shares' }} />
         <Stack.Screen name="AdminSystemSettings" component={AdminSystemSettingsScreen} options={{ title: 'Admin System Settings' }} />
@@ -282,7 +283,7 @@ export default function AppNavigator() {
     //     <Stack.Screen name="PaymentPlan" component={PaymentPlanScreen} options={{ title: 'Payment Plan' }} />
     //     <Stack.Screen name="Inbox" component={InboxScreen} options={{ title: 'Inbox' }} />
     //     <Stack.Screen name="AdminMessages" component={AdminMessagesScreen} options={{ title: 'Admin Messages' }} />
-    //     <Stack.Screen name="ShareMarketplaces" component={ShareMarketplaceScreen} options={{ title: 'Share Market places' }} />
+    //     <Stack.Screen name="ShareMarketplaces" component={ShareMarketplaceScreen} options={{ title: 'Share Market' }} />
     //     <Stack.Screen name="InvestmentApplications" component={InvestmentApplicationScreen} options={{ title: 'Investment Applications' }} />
     //     <Stack.Screen name="SellMyShares" component={SellMyShareScreen} options={{ title: 'Sell My Shares' }} />
     //     <Stack.Screen name="AdminSystemSettings" component={AdminSystemSettingsScreen} options={{ title: 'Admin System Settings' }} />

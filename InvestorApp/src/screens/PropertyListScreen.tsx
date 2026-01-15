@@ -229,7 +229,7 @@ useFocusEffect(
   </View>
   </TouchableOpacity>
 
-  <Text style={styles.linkSeparator}>•</Text>
+  {/* <Text style={styles.linkSeparator}>•</Text> */}
 
   <TouchableOpacity
     onPress={() => navigation.navigate('PaymentPlan', { propertyId: item.id, readonly: true })}
@@ -404,12 +404,18 @@ const styles = StyleSheet.create({
 linksRow: {
   flexDirection: 'row',
   alignItems: 'center',
-  justifyContent: 'center',
-  gap: 12, // если RN старый — замени на marginRight у элементов
+  justifyContent: 'space-between',
+   width: '100%', 
+  //gap: 12, 
   marginTop: 6,
   marginBottom: 8,
+  paddingHorizontal: 32,
 },
-linkItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+linkItem: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 6,   
+},
 linkText: {
  // color: theme.colors.primary, // или '#007bff'
   fontSize: 14,
@@ -418,6 +424,7 @@ linkText: {
     ios: 'System',
     android: 'sans-serif-medium',
   }),
+  
 },
 
 linkSeparator: {

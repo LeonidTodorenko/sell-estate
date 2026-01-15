@@ -3,6 +3,7 @@ using RealEstateInvestment.Data;
 using RealEstateInvestment.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
+using RealEstateInvestment.Services;
 
 namespace RealEstateInvestment.Controllers
 {
@@ -12,7 +13,12 @@ namespace RealEstateInvestment.Controllers
     public class KycController : ControllerBase
     {
         private readonly AppDbContext _context;
-        public KycController(AppDbContext context) => _context = context;
+        private readonly IKycContractService _contractService;
+        public KycController(AppDbContext context, IKycContractService contractService)
+        {
+            _context = context;
+            _contractService = contractService;
+        }
 
         [HttpPost("upload")]
         public async Task<IActionResult> Upload([FromBody] KycDocument doc)
@@ -59,6 +65,7 @@ namespace RealEstateInvestment.Controllers
                 Details = "KycDocument Approved id: " + id.ToString()
             });
             await _context.SaveChangesAsync();
+            await _contractService.GenerateAndSendContractAsync(doc.UserId);
             return Ok(new { message = "Approved" });
         }
 

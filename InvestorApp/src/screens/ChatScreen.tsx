@@ -186,7 +186,7 @@ const ChatScreen = () => {
       />
 
       {/* Панель ввода снизу */}
-       <View style={[styles.composer, { paddingBottom: bottomOffset }]}>
+       <View style={[styles.composer, {marginBottom: 70  }]}>   
         <TextInput
           style={[styles.input, { maxHeight: 110 }]}
           value={input}

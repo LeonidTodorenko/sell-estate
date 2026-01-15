@@ -12,8 +12,9 @@ import { getFcmToken } from '../firebase';
 import BlueBaseButton from '../components/BlueBaseButton';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { saveSession } from '../services/sessionStorage';
-import { API_BASE_URL, setAccessToken, writeLegacyUser } from '../api';
+import { API_BASE_URL, setAccessToken, writeLegacyUser,resetForceLogoutFlag } from '../api';
 import { getRoleFromUserAndToken } from '../services/auth';
+
 //import { AuthContext } from '../contexts/AuthContext';
 
 //import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -117,7 +118,7 @@ const LoginScreen = ({ navigation }: Props) => {
         saveSession({ accessToken, refreshToken, user }),
         writeLegacyUser(data), // чтобы старые места, читающие AsyncStorage('user'), были счастливы
       ]);
-
+resetForceLogoutFlag(); 
         const fcmToken = await getFcmToken();
       if (fcmToken) {
         try {
@@ -182,6 +183,7 @@ const LoginScreen = ({ navigation }: Props) => {
 
       Alert.alert('Login failed', 'Error: ' + message);
       setLoading(false);
+      
     } finally {
       setLoading(false);
       setBusy(false);

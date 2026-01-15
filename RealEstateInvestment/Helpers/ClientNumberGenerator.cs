@@ -17,4 +17,10 @@
         }
     }
 
+    //private static string GenerateClientNumber()
+    //{
+    //    var rnd = Random.Shared.Next(100000, 999999);
+    //    return $"CL-{DateTime.UtcNow:yyyy}-{rnd}";
+    //}
+
 }
