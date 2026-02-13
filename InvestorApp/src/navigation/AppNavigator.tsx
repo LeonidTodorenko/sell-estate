@@ -245,6 +245,9 @@ export default function AppNavigator() {
         {showBottomBar && <BottomBar />}
       </NavigationContainer>
     </SafeAreaProvider>
+    
+ 
+  
 
 
     // <NavigationContainer>
@@ -332,3 +335,8 @@ export default function AppNavigator() {
           </>
         )}
       </Stack.Navigator> */}
+
+
+     
+
+      

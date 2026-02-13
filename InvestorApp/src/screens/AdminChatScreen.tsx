@@ -7,7 +7,7 @@ import theme from '../constants/theme';
 
 interface User {
   id: string;
-  name: string;
+  fullName?: string;
   email: string;
 }
 
@@ -31,7 +31,8 @@ const AdminChatScreen = () => {
       const stored = await AsyncStorage.getItem('user');
       if (!stored) return;
       const admin = JSON.parse(stored);
-      setAdminId(admin.userId);
+     const uid = admin.userId ?? admin.id ?? admin?.user?.id;
+     setAdminId(uid);
 
       const usersRes = await api.get('/chat/conversations');
       setUsers(usersRes.data);
@@ -50,7 +51,7 @@ const AdminChatScreen = () => {
     if (!input || !selectedUser) return;
 
     await api.post('/chat/send', {
-      senderId: adminId,
+      //senderId: adminId,
       recipientId: selectedUser.id,
       content: input,
     });
@@ -70,14 +71,14 @@ const AdminChatScreen = () => {
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => (
               <TouchableOpacity onPress={() => selectUser(item)} style={styles.userItem}>
-                <Text>{item.name || item.email}</Text>
+              <Text>{item.fullName || item.email}</Text>
               </TouchableOpacity>
             )}
           />
         </>
       ) : (
         <>
-          <Text style={styles.title}>Chat with {selectedUser.name || selectedUser.email}</Text>
+          <Text style={styles.title}>Chat with {selectedUser.fullName || selectedUser.email}</Text>
           <FlatList
             data={messages}
             keyExtractor={(item) => item.id}

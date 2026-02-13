@@ -45,6 +45,10 @@ const LoginScreen = ({ navigation }: Props) => {
     return () => { showSub.remove(); hideSub.remove(); };
   }, []);
 
+    useEffect(() => {
+    resetForceLogoutFlag();
+  }, []);
+
   const currentHero = kbShown ? 200 : HERO_HEIGHT; // <— СПЕЙСЕР МЕНЬШЕ при открытой клаве
 
  
@@ -118,7 +122,7 @@ const LoginScreen = ({ navigation }: Props) => {
         saveSession({ accessToken, refreshToken, user }),
         writeLegacyUser(data), // чтобы старые места, читающие AsyncStorage('user'), были счастливы
       ]);
-resetForceLogoutFlag(); 
+      resetForceLogoutFlag(); 
         const fcmToken = await getFcmToken();
       if (fcmToken) {
         try {

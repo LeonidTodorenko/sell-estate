@@ -5,9 +5,8 @@ import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import api from '../api';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import StyledInput from '../components/StyledInput';
-import BlueButton from '../components/BlueButton';
 import theme from '../constants/theme';
-import BlueBaseButton from '../components/BlueBaseButton';
+import InvestButton from '../components/InvestButton';
 
 type BuyRouteProp = RouteProp<RootStackParamList, 'BuyShares'>;
 
@@ -158,7 +157,7 @@ const BuySharesScreen = () => {
         value={pinOrPassword}
         onChangeText={setPinOrPassword}
       />
-      <BlueBaseButton title="Invest" onPress={handleBuy} />
+      <InvestButton title="Invest" onPress={handleBuy} />
     </View>
   );
 };

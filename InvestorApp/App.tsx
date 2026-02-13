@@ -7,6 +7,20 @@ import { requestUserPermission, getFcmToken } from './src/firebase';
 import messaging from '@react-native-firebase/messaging';
 import notifee, { AndroidImportance } from '@notifee/react-native';
 import { AuthProvider } from './src/contexts/AuthContext';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60_000,      // 1 мин считаем “свежим”
+      gcTime: 10 * 60_000,    // 10 мин держим в памяти
+      retry: 1,
+      refetchOnReconnect: true,
+      refetchOnWindowFocus: true,
+    },
+  },
+});
+
 
 export default function App() {
   useEffect(() => {
@@ -42,6 +56,7 @@ export default function App() {
   }, []);
 
   return (
+   <QueryClientProvider client={queryClient}> 
     <LoadingProvider>
          <AuthProvider>
       <SafeAreaView style={styles.container}>
@@ -55,6 +70,7 @@ export default function App() {
       </SafeAreaView>
       </AuthProvider>
     </LoadingProvider>
+   </QueryClientProvider>
   );
 }
 

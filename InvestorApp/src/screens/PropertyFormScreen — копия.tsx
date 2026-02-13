@@ -11,7 +11,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { TouchableOpacity } from 'react-native';
 import BlueButton from '../components/BlueButton';
 import theme from '../constants/theme';
-import * as DocumentPicker from '@react-native-documents/picker';
+import DocumentPicker from 'react-native-document-picker';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PropertyForm'>;
 
@@ -20,7 +20,7 @@ type MediaType = 'image' | 'video';
 type PropertyMedia = {
   id: string;
   type: MediaType;
-  url?: string | null;     
+  url: string;      
   createdAt?: string;
 };
 
@@ -111,55 +111,59 @@ const [uploading, setUploading] = useState(false);
 
   
 
- const pickAndUploadMedia = async () => {
+  const pickAndUploadMedia = async () => {
   if (!existing?.id) {
     Alert.alert('Info', 'Save property first, then upload media.');
     return;
   }
 
   try {
-    console.log('DocumentPicker', DocumentPicker);
-    Alert.alert(DocumentPicker + "1") ;
-    const results = await DocumentPicker.pick({
-      type: ['image/*', 'video/*'],
-      allowMultiSelection: false,
+    const res = await DocumentPicker.pickSingle({
+      type: [DocumentPicker.types.images, DocumentPicker.types.video],
+      // optional: copyTo для андроида иногда спасает
+      // copyTo: 'cachesDirectory',
     });
 
-    const res = results[0];
-    if (!res) return;
+    if (!res.uri) return;
 
     setUploading(true);
 
     const form = new FormData();
     form.append('file', {
       uri: res.uri,
-      name: res.name ?? `upload-${Date.now()}`,
-      type: res.type ?? 'application/octet-stream',
+      name: res.name || `upload-${Date.now()}`,
+      type: res.type || 'application/octet-stream',
     } as any);
- 
-    await api.post(`/properties/${existing.id}/media/upload`, form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
 
+    const uploadRes = await api.post(
+      `/properties/${existing.id}/media/upload`,
+      form,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+
+    // после аплоада — обновляем список
     const listRes = await api.get(`/properties/${existing.id}/media`);
     const normalized: PropertyMedia[] = (listRes.data ?? []).map((m: any) => ({
       id: m.id,
-      type: m.type === 2 ? 'video' : 'image',
-      url: m.url ?? null,
+        type: m.type === 2 ? 'video' : 'image',
+      url: m.url,
       createdAt: m.createdAt,
     }));
     setMedia(normalized);
 
     Alert.alert('Success', 'Uploaded!');
   } catch (err: any) {
-    if (err?.code === 'DOCUMENT_PICKER_CANCELED') return;
+    if (DocumentPicker.isCancel(err)) return;
     console.error(err);
     Alert.alert('Error', err?.message ?? 'Upload failed');
   } finally {
     setUploading(false);
   }
 };
-
 
 const deleteMedia = async (mediaId: string) => {
   try {
@@ -403,7 +407,7 @@ const deleteMedia = async (mediaId: string) => {
         {media.map((m) => (
           <View key={m.id} style={styles.mediaRow}>
             <Text style={styles.mediaRowText}>
-              {m.type === 'video' ? '🎬 Video' : '🖼️ Image'} — {m.url ?? ''}
+              {m.type === 'video' ? '🎬 Video' : '🖼️ Image'} — {m.url}
             </Text>
 
             <TouchableOpacity

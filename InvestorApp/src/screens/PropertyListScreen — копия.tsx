@@ -19,6 +19,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useCallback } from 'react';
 
 import theme from '../constants/theme';
+//import { Linking } from 'react-native';
 import WebView from 'react-native-webview';
 
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -26,30 +27,28 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 
 import InvestButton from '../components/InvestButton';
 
-import { fetchPropertiesWithExtras, Property } from '../services/properties';
 
+interface PropertyImage {
+  id: string;
+  base64Data: string;
+}
 
-// interface PropertyImage {
-//   id: string;
-//   base64Data: string;
-// }
-
-// interface Property {
-//   id: string;
-//   price: number;
-//   location: string;
-//   availableShares: number;
-//   listingType: string;
-//   latitude: number;
-//   longitude: number;
-//   title: string;
-//   images?: PropertyImage[];
-//    media?: PropertyMedia[];
-//   priorityInvestorId?: string;
-//   hasPaymentPlan?: boolean;
-//   expectedCompletionDate?: string | null;
-//     videoUrl?: string | null;
-// }
+interface Property {
+  id: string;
+  price: number;
+  location: string;
+  availableShares: number;
+  listingType: string;
+  latitude: number;
+  longitude: number;
+  title: string;
+  images?: PropertyImage[];
+   media?: PropertyMedia[];
+  priorityInvestorId?: string;
+  hasPaymentPlan?: boolean;
+  expectedCompletionDate?: string | null;
+    videoUrl?: string | null;
+}
 
 interface UserMap {
   [key: string]: string;
@@ -61,15 +60,15 @@ type Slide =
 
  
 
-// type MediaType = 'image' | 'video';
+type MediaType = 'image' | 'video';
 
 
-// interface PropertyMedia {
-//   id: string;
-//   type: MediaType;    
-//   url?: string | null;   
-//   base64Data?: string | null;  
-// }
+interface PropertyMedia {
+  id: string;
+  type: MediaType;    
+  url?: string | null;   
+  base64Data?: string | null;  
+}
 
  
 type PropertyCardProps = {
@@ -80,12 +79,12 @@ type PropertyCardProps = {
   openVideo: (url: string) => void;
 };
 
-// type ApiMedia = {
-//   id: string;
-//   type: number;               
-//   url?: string | null;
-//   base64Data?: string | null;
-// };
+type ApiMedia = {
+  id: string;
+  type: number;               
+  url?: string | null;
+  base64Data?: string | null;
+};
 
 const PropertyCard: React.FC<PropertyCardProps> = ({ item, navigation, userMap, openImage, openVideo }) => {
   const swiperRef = useRef<Swiper>(null);
@@ -287,81 +286,45 @@ const openVideo = (url: string) => {
 
 useFocusEffect(
   useCallback(() => {
-    // const loadProperties = async () => {
-    //   try {
-    //     const res = await api.get('/properties');
-        
-    //     const propertiesWithExtras = await Promise.all(
-    //       res.data.map(async (p: Property) => {
-            
-    //         const [imgRes, mediaRes, paymentPlanRes] = await Promise.all([
-    //           api.get(`/properties/${p.id}/images`),      
-    //           api.get(`/properties/${p.id}/media`),        
-    //           api.get(`/properties/${p.id}/payment-plans`),
-    //         ]);
-    //         const normalizedMedia: PropertyMedia[] = (mediaRes.data ?? []).map((m: ApiMedia) => ({
-    //           id: m.id,
-    //           type: m.type === 2 ? 'video' : 'image',
-    //           url: m.url ?? null,
-    //           base64Data: m.base64Data ?? null,
-    //          }));
-        
-    //         return {
-    //           ...p,
-    //           images: imgRes.data,
-    //           media: normalizedMedia,
-    //           hasPaymentPlan: paymentPlanRes.data && paymentPlanRes.data.length > 0,
-    //         };
-    //       })
-    //     );
-
-    //       const sortedProperties = propertiesWithExtras.sort((a, b) =>
-    //           a.title.localeCompare(b.title)
-    //         );
-
-    //     setProperties(sortedProperties);
-
-    //     const userResponses = await api.get('/properties/with-stats');
-    //     const userIds = userResponses.data.filter((p: Property) => p.priorityInvestorId).map((p: Property) => p.priorityInvestorId);
-    //     const uniqueIds = [...new Set(userIds)];
-    //     const map: UserMap = {};
-
-    //     if (uniqueIds.length > 0) {
-    //       const usersRes = await Promise.all(uniqueIds.map((id) => api.get(`/users/${id}`)));
-    //       usersRes.forEach((res) => {
-    //         const user = res.data;
-    //         map[user.id] = user.fullName;
-    //       });
-    //     }
-
-    //     setUserMap(map);
-    //   }
-    //    catch (error: any) {
-    //                let message = 'Failed to load properties ';
-    //                     console.error(error);
-    //                     if (error.response && error.response.data) {
-    //                       message = JSON.stringify(error.response.data);
-    //                     } else if (error.message) {
-    //                       message = error.message;
-    //                     }
-    //                     Alert.alert('Error', 'Failed to load properties ' + message);
-    //                   console.error(message);
-    //             }
-     
-    // };
-
-    // loadProperties();
-
-     const loadProperties = async () => {
+    const loadProperties = async () => {
       try {
-        const data = await fetchPropertiesWithExtras(8); // кеш для первых 8
-        setProperties(data);
+        const res = await api.get('/properties');
+        
+        const propertiesWithExtras = await Promise.all(
+          res.data.map(async (p: Property) => {
+            // const [imgRes, paymentPlanRes] = await Promise.all([
+            //   api.get(`/properties/${p.id}/images`),
+            //   api.get(`/properties/${p.id}/payment-plans`),
+            // ]);
+            const [imgRes, mediaRes, paymentPlanRes] = await Promise.all([
+              api.get(`/properties/${p.id}/images`),      
+              api.get(`/properties/${p.id}/media`),        
+              api.get(`/properties/${p.id}/payment-plans`),
+            ]);
+            const normalizedMedia: PropertyMedia[] = (mediaRes.data ?? []).map((m: ApiMedia) => ({
+              id: m.id,
+              type: m.type === 2 ? 'video' : 'image',
+              url: m.url ?? null,
+              base64Data: m.base64Data ?? null,
+             }));
+        
+            return {
+              ...p,
+              images: imgRes.data,
+              media: normalizedMedia,
+              hasPaymentPlan: paymentPlanRes.data && paymentPlanRes.data.length > 0,
+            };
+          })
+        );
+
+          const sortedProperties = propertiesWithExtras.sort((a, b) =>
+              a.title.localeCompare(b.title)
+            );
+
+        setProperties(sortedProperties);
 
         const userResponses = await api.get('/properties/with-stats');
-        const userIds = userResponses.data
-          .filter((p: Property) => p.priorityInvestorId)
-          .map((p: Property) => p.priorityInvestorId);
-
+        const userIds = userResponses.data.filter((p: Property) => p.priorityInvestorId).map((p: Property) => p.priorityInvestorId);
         const uniqueIds = [...new Set(userIds)];
         const map: UserMap = {};
 
@@ -374,16 +337,19 @@ useFocusEffect(
         }
 
         setUserMap(map);
-      } catch (error: any) {
-        let message = 'Failed to load properties ';
-        console.error(error);
-        if (error.response && error.response.data) {
-          message = JSON.stringify(error.response.data);
-        } else if (error.message) {
-          message = error.message;
-        }
-        Alert.alert('Error', 'Failed to load properties ' + message);
       }
+       catch (error: any) {
+                   let message = 'Failed to load properties ';
+                        console.error(error);
+                        if (error.response && error.response.data) {
+                          message = JSON.stringify(error.response.data);
+                        } else if (error.message) {
+                          message = error.message;
+                        }
+                        Alert.alert('Error', 'Failed to load properties ' + message);
+                      console.error(message);
+                }
+     
     };
 
     loadProperties();

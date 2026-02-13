@@ -3,6 +3,9 @@ import { View, Text, StyleSheet, ScrollView, RefreshControl } from 'react-native
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
 import BlueButton from '../components/BlueButton';
+import { useQueryClient } from '@tanstack/react-query';
+import { fetchPropertiesWithExtras } from '../services/properties';
+import { useFocusEffect } from '@react-navigation/native';
 
 
 type Totals = {
@@ -13,6 +16,8 @@ type Totals = {
   rentalIncome: number;
   totalAssets: number;
 };
+
+
 
 export default function MainHomeScreen({ navigation }: any) {
   const [userFullName, setUserFullName] = useState<string>('');
@@ -51,6 +56,17 @@ export default function MainHomeScreen({ navigation }: any) {
     setRefreshing(true);
     try { await load(); } finally { setRefreshing(false); }
   };
+
+  const qc = useQueryClient();
+  
+  useFocusEffect(
+  useCallback(() => {
+      qc.prefetchQuery({
+        queryKey: ['properties', 'withExtras'],
+        queryFn: () => fetchPropertiesWithExtras(8),
+      });
+    }, [qc])
+  );
 
   return (
     <ScrollView

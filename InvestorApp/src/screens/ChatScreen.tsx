@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, {   useRef, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -16,7 +16,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
 import theme from '../constants/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs'; 
+//import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
+import { useFocusEffect } from '@react-navigation/native';
+import { BOTTOM_BAR_HEIGHT } from '../components/BottomBar';
 
 interface ChatMessage {
   id: string;
@@ -35,10 +37,13 @@ const ChatScreen = () => {
   const [sending, setSending] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  const tabBarHeight = React.useContext(BottomTabBarHeightContext) ?? 0;
-  const insets = useSafeAreaInsets();
 
-  const bottomOffset = tabBarHeight + insets.bottom;
+
+  //const tabBarHeight = React.useContext(BottomTabBarHeightContext) ?? 0;
+  const insets = useSafeAreaInsets();
+  const bottomOffset = BOTTOM_BAR_HEIGHT + Math.max(insets.bottom, 8);
+
+  //const bottomOffset = tabBarHeight + insets.bottom;
 
   const listRef = useRef<FlatList<ChatMessage>>(null);
 
@@ -57,7 +62,8 @@ const ChatScreen = () => {
       }
 
       const user = JSON.parse(stored);
-      const uid = user.userId;
+    const uid = user.userId ?? user.id ?? user?.user?.id;
+      if (!uid) { setLoading(false); return; }
       setUserId(uid);
 
       const adminRes = await api.get('/users/admin-id');
@@ -81,9 +87,20 @@ const ChatScreen = () => {
     }
   }, []);
 
-  useEffect(() => {
+  // useEffect(() => {
+  //   loadChat();
+  // }, [loadChat]);
+
+ useFocusEffect(
+  useCallback(() => {
+    if (messages.length === 0) {setLoading(true);}
     loadChat();
-  }, [loadChat]);
+
+    const id = setInterval(loadChat, 5000);
+    return () => clearInterval(id);
+  }, [loadChat, messages.length])
+);
+
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -116,7 +133,7 @@ const ChatScreen = () => {
       setTimeout(scrollToBottom, 50);
 
       await api.post('/chat/send', {
-        senderId: userId,
+        //senderId: userId,
         recipientId: adminId,
         content: text,
       });
@@ -154,6 +171,24 @@ const ChatScreen = () => {
     );
   };
 
+//     useFocusEffect(
+//   useCallback(() => {
+//     // при входе на экран
+//     loadChat();
+
+//     const id = setInterval(() => {
+//       loadChat();
+//     }, 5000);
+
+//     // при уходе с экрана
+//     return () => clearInterval(id);
+//   }, [loadChat])
+// );
+
+
+
+  
+
   if (loading) {
     return (
       <View style={[styles.container, styles.center]}>
@@ -163,11 +198,26 @@ const ChatScreen = () => {
     );
   }
 
+
+//   useEffect(() => {
+//   loadChat();
+
+//   const interval = setInterval(() => {
+//     loadChat();
+//   }, 5000); // каждые 5 сек
+
+//   return () => clearInterval(interval);
+// }, [loadChat]);
+
+  const COMPOSER_HEIGHT = 64;
+  const bottomPad = Math.max(insets.bottom, 8);
+const barHeight = BOTTOM_BAR_HEIGHT + bottomPad;
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={tabBarHeight}
+      keyboardVerticalOffset={bottomOffset}
     >
       {/* Список сообщений */}
       <FlatList
@@ -176,7 +226,12 @@ const ChatScreen = () => {
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         inverted
-        contentContainerStyle={{ paddingVertical: 10 , paddingBottom: bottomOffset + 70}}
+      contentContainerStyle={{
+  paddingVertical: 10,
+  paddingTop: COMPOSER_HEIGHT + barHeight + 8,  
+  paddingBottom: 10,
+}}
+
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListEmptyComponent={
           <View style={{ padding: 16, alignItems: 'center' }}>
@@ -186,7 +241,10 @@ const ChatScreen = () => {
       />
 
       {/* Панель ввода снизу */}
-       <View style={[styles.composer, {marginBottom: 70  }]}>   
+       <View style={[styles.composer,   {
+          paddingBottom: 0,
+          bottom: barHeight,
+        },]}>
         <TextInput
           style={[styles.input, { maxHeight: 110 }]}
           value={input}
@@ -256,15 +314,21 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
   },
 
-  composer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderTopWidth: 1,
-    borderColor: '#e5e5e5',
-    backgroundColor: '#fff',
-  },
+composer: {
+  position: 'absolute',
+  left: 0,
+  right: 0,
+  // bottom задаём инлайн через tabBarHeight
+  flexDirection: 'row',
+  alignItems: 'flex-end',
+  paddingHorizontal: 10,
+  paddingVertical: 8,
+  borderTopWidth: 1,
+  borderColor: '#e5e5e5',
+  backgroundColor: '#fff',
+ 
+},
+
   input: {
     flex: 1,
     borderWidth: 1,

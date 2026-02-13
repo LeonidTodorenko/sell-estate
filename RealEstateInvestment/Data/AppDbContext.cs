@@ -33,6 +33,7 @@ namespace RealEstateInvestment.Data
         public DbSet<ReferralInvite> ReferralInvites { get; set; }
         public DbSet<Referral> Referrals { get; set; }
         public DbSet<ModerationRequest> ModerationRequests { get; set; }
+        public DbSet<PropertyMedia> PropertyMedias { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

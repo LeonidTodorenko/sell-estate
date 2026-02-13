@@ -49,6 +49,13 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("conversation/{userId1}/{userId2}")]
         public async Task<IActionResult> GetConversation(Guid userId1, Guid userId2)
         {
+            var me = User.GetUserId();
+            if (me == Guid.Empty) return Unauthorized();
+
+            var isAdmin = User.IsInRole("admin");// todo check 
+            if (!isAdmin && me != userId1 && me != userId2)
+                return Forbid();
+
             var messages = await _context.ChatMessages
                 .Where(m => (m.SenderId == userId1 && m.RecipientId == userId2) ||
                             (m.SenderId == userId2 && m.RecipientId == userId1))
@@ -57,6 +64,7 @@ namespace RealEstateInvestment.Controllers
 
             return Ok(messages);
         }
+
 
         [HttpGet("dialog/{userId}")]
         public async Task<IActionResult> GetChatWithUser(Guid userId)

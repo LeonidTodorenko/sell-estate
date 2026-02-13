@@ -20,17 +20,20 @@ namespace RealEstateInvestment.Controllers
     {
         private readonly AppDbContext _context;
         private readonly IFirebaseNotificationService _firebaseNotificationService;
+        private readonly IConfiguration _config;
+        private readonly ILogger<PropertyController> _logger;
 
         public class UploadImageRequest
         {
             public string Base64Image { get; set; }
         }
 
-        public PropertyController(AppDbContext context, IFirebaseNotificationService firebaseNotificationService)
+        public PropertyController(AppDbContext context, IFirebaseNotificationService firebaseNotificationService, IConfiguration config, ILogger<PropertyController> logger)
         {
             _context = context;
             _firebaseNotificationService = firebaseNotificationService;
-
+            _config = config;
+            _logger = logger;
         }
 
         // Get a list of real estate properties
@@ -671,6 +674,151 @@ namespace RealEstateInvestment.Controllers
 
             return Ok(new { message = "Video URL updated" });
         }
+
+
+        [HttpGet("{propertyId}/media")]
+        public async Task<IActionResult> GetMedia(Guid propertyId)
+        {
+            var media = await _context.PropertyMedias
+                .Where(m => m.PropertyId == propertyId)
+                .OrderByDescending(m => m.CreatedAt)
+                .ToListAsync();
+
+            return Ok(media);
+        }
+
+        [HttpPost("{propertyId}/media/upload")]
+        [Authorize(Roles = "admin")]
+        [RequestSizeLimit(200_000_000)] // 200MB
+        public async Task<IActionResult> UploadMedia(Guid propertyId, [FromForm] IFormFile file)
+        {
+            try
+            {
+                if (file == null || file.Length == 0)
+                return BadRequest(new { message = "No file uploaded" });
+
+            var property = await _context.Properties.FindAsync(propertyId);
+            if (property == null)
+                return NotFound(new { message = "Property not found" });
+
+            var contentType = file.ContentType?.ToLower() ?? "";
+            var isVideo = contentType.StartsWith("video/");
+            var isImage = contentType.StartsWith("image/");
+
+            //var allowedVideo = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".mp4", ".mov", ".webm", };
+            //var allowedImage = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".webp" };
+
+            var ext = Path.GetExtension(file.FileName);
+            //if (isVideo && !allowedVideo.Contains(ext))
+            //    return BadRequest(new { message = $"Video extension not allowed: {ext}. Allowed: {string.Join(", ", allowedVideo)}" });
+
+            //if (isImage && !allowedImage.Contains(ext))
+            //    return BadRequest(new { message = $"Image extension not allowed: {ext}. Allowed: {string.Join(", ", allowedImage)}" });
+              
+            //if (!isVideo && !isImage)
+            //    return BadRequest(new { message = "Only image/* or video/* allowed" });
+
+            // ✅ путь из конфига
+            var uploadsRoot = _config["UploadsRoot"]?.Trim();
+            if (string.IsNullOrWhiteSpace(uploadsRoot))
+                uploadsRoot = Path.Combine(AppContext.BaseDirectory, "uploads"); // fallback
+
+            var dir = Path.Combine(uploadsRoot, propertyId.ToString());
+            Directory.CreateDirectory(dir);
+
+            var fileName = $"{Guid.NewGuid()}{ext}";
+            var fullPath = Path.Combine(dir, fileName);
+
+            // 🔎 логируем
+            _logger.LogInformation("UploadMedia: propertyId={PropertyId}, originalName={OriginalName}, ct={ContentType}, len={Len}, fullPath={FullPath}",                propertyId, file.FileName, file.ContentType, file.Length, fullPath);
+
+            await using (var stream = System.IO.File.Create(fullPath))
+                await file.CopyToAsync(stream);
+
+                // ✅ baseUrl из конфига (важно для эмулятора)
+                var baseUrl = _config["PublicBaseUrlHdd"]?.TrimEnd('/');
+                if (string.IsNullOrWhiteSpace(baseUrl))
+                    baseUrl = $"{Request.Scheme}://{Request.Host}";
+
+                var url = $"{baseUrl}/uploads/{propertyId}/{fileName}";
+
+                var entity = new PropertyMedia
+                {
+                    PropertyId = propertyId,
+                    Type = isVideo ? MediaType.Video : MediaType.Image,
+                    Url = url,
+                    FileName = file.FileName,
+                    ContentType = file.ContentType,
+                    Size = file.Length
+                };
+
+                _context.PropertyMedias.Add(entity);
+                await _context.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    message = "Uploaded",
+                    id = entity.Id,
+                    url,
+                    storedAs = new { fullPath, uploadsRoot, fileName },
+                    meta = new { file.FileName, file.ContentType, file.Length }
+                });
+            }
+            catch (Exception ex)
+            {
+               _logger.LogError(ex, "UploadMedia failed for propertyId={PropertyId}", propertyId);
+                return StatusCode(500, new
+                {
+                    message = "Upload failed",
+                    error = ex.Message,
+                    type = ex.GetType().FullName
+                });
+            }
+        }
+
+        [HttpDelete("media/{mediaId}")]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> DeleteMedia(Guid mediaId)
+        {
+            var media = await _context.PropertyMedias.FindAsync(mediaId);
+            if (media == null) return NotFound();
+
+            // 1) вычисляем path (/uploads/...)
+            string? path = null;
+
+            if (!string.IsNullOrWhiteSpace(media.Url))
+            {
+                if (Uri.TryCreate(media.Url, UriKind.Absolute, out var abs))
+                    path = abs.AbsolutePath; // "/uploads/<propertyId>/<file>"
+                else
+                    path = media.Url;        // может быть "/uploads/..."
+            }
+
+            // 2) удаляем файл если это наш /uploads
+            if (!string.IsNullOrEmpty(path) && path.StartsWith("/uploads/"))
+            {
+                var relative = path.Replace("/uploads/", "").TrimStart('/');
+                var filePath = Path.Combine("/var/data/uploads",
+                    relative.Replace("/", Path.DirectorySeparatorChar.ToString()));
+
+                try
+                {
+                    if (System.IO.File.Exists(filePath))
+                        System.IO.File.Delete(filePath);
+                }
+                catch (Exception ex)
+                {
+                    return BadRequest(new { message = "Failed to delete file", details = ex.Message });
+                }
+            }
+
+            // 3) удаляем запись
+            _context.PropertyMedias.Remove(media);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Deleted" });
+        }
+
 
 
 

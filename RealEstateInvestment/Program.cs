@@ -10,6 +10,7 @@ using Resend;
 using System.Reflection;
 using System.Text;
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.FileProviders;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -170,7 +171,22 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.UseStaticFiles();
+
+//var uploadsPath = "/var/data/uploads";
+
+
+var uploadsRoot = builder.Configuration["UploadsRoot"] ?? Path.Combine(AppContext.BaseDirectory, "uploads");
+Directory.CreateDirectory(uploadsRoot);
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(uploadsRoot),
+    RequestPath = "/uploads"
+});
+
 app.MapControllers();
+ 
 
 // ===== DEBUG: найти дубликаты маршрутов =====
 //var ds = app.Services.GetRequiredService<EndpointDataSource>();
