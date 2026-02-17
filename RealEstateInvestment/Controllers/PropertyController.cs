@@ -731,7 +731,7 @@ namespace RealEstateInvestment.Controllers
             //    return BadRequest(new { message = "Only image/* or video/* allowed" });
 
             // ✅ путь из конфига
-            var uploadsRoot = _config["UploadsRoot"]?.Trim();
+            var uploadsRoot = _config["App:UploadsRoot"]?.Trim();
             if (string.IsNullOrWhiteSpace(uploadsRoot))
                 uploadsRoot = Path.Combine(AppContext.BaseDirectory, "uploads"); // fallback
 
@@ -833,6 +833,16 @@ namespace RealEstateInvestment.Controllers
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Deleted" });
+        }
+
+        // todo test
+        [HttpGet("debug-files")]
+        [AllowAnonymous]
+        public IActionResult DebugFiles()
+        {
+            var uploadsRoot = _config["App:UploadsRoot"];
+            var files = Directory.GetFiles(uploadsRoot ?? "");
+            return Ok(new { uploadsRoot, files });
         }
 
         // todo fix

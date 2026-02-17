@@ -33,6 +33,7 @@ export default function BottomBar() {
             height: barHeight,
             zIndex: 100,      // гарантируем поверх всего
             elevation: 12,    // тень на Android (оставляем)
+          
           },
         ]}
         pointerEvents="box-none"
@@ -41,7 +42,7 @@ export default function BottomBar() {
         <BTN label="Property" emoji="🔍" onPress={() => nav.navigate('Properties')} />
         <BTN label="Market"   emoji="🛒" onPress={() => nav.navigate('ShareMarketplaces')} />
         <BTN label="Chat"     emoji="🎧" onPress={() => nav.navigate('Chat')} />
-        <BTN label="More"     emoji="⋯"  onPress={() => setOpen(true)} />
+        <BTN  label="More"     emoji="⋯"  onPress={() => setOpen(true)} />
       </View>
 
       <Modal transparent visible={open} animationType="fade" onRequestClose={() => setOpen(false)}>
@@ -89,6 +90,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderTopWidth: StyleSheet.hairlineWidth,
     borderColor: '#ddd',
+   
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
@@ -101,8 +103,8 @@ const styles = StyleSheet.create({
     zIndex: 100,
   },
   btn: { alignItems: 'center', justifyContent: 'center', gap: 2, minWidth: 56, marginTop: 15 },
-  emoji: { fontSize: 20 },
-  label: { fontSize: 11 },
+  emoji: { fontSize: 20,color: '#000' },
+  label: { fontSize: 11 ,color: '#000' },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-end' },
   sheet: { width: '100%' },
   sheetBody: {
@@ -112,5 +114,5 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 14,
   },
   sheetItem: { paddingVertical: 10 },
-  sheetText: { fontSize: 16 },
+  sheetText: { fontSize: 16 , color:'#000'},
 });

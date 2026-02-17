@@ -103,6 +103,7 @@ const PropertyCard: React.FC<PropertyCardProps> = ({ item, navigation, userMap, 
   .map(m => {
     const uriRaw = (m.base64Data ?? m.url ?? '')?.trim();
     const uri = uriRaw.startsWith('http') ? normalizeUrl(uriRaw) : uriRaw;
+     // Alert.alert('URI', uri);
     if (!uri) return null;
 
   const typeString = String(m.type).toLowerCase();
@@ -322,10 +323,12 @@ const openImage = (uri: string) => {
  
 
 const openVideo = (url: string) => {
-  setVideoError(null);
-  setBuffering(true);
-  setVideoUrl(url);
-  setVideoModalVisible(true);
+    //Alert.alert('URI', url);
+    //console.log(url);
+   setVideoError(null);
+   setBuffering(true);
+   setVideoUrl(url);
+   setVideoModalVisible(true);
 };
 
  

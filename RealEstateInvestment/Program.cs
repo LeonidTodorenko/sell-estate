@@ -183,7 +183,7 @@ app.UseStaticFiles();
 //var uploadsPath = "/var/data/uploads";
 
 
-var uploadsRoot = builder.Configuration["UploadsRoot"] ?? Path.Combine(AppContext.BaseDirectory, "uploads");
+var uploadsRoot = builder.Configuration["App:UploadsRoot"] ?? Path.Combine(AppContext.BaseDirectory, "uploads");
 Directory.CreateDirectory(uploadsRoot);
 
 app.UseStaticFiles(new StaticFileOptions
