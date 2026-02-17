@@ -19,12 +19,12 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useCallback } from 'react';
 
 import theme from '../constants/theme';
-import WebView from 'react-native-webview';
-
+ 
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import InvestButton from '../components/InvestButton';
+import Video from 'react-native-video';
 
 import { fetchPropertiesWithExtras, Property } from '../services/properties';
 
@@ -87,7 +87,7 @@ type PropertyCardProps = {
 //   base64Data?: string | null;
 // };
 
-const PropertyCard: React.FC<PropertyCardProps> = ({ item, navigation, userMap, openImage, openVideo }) => {
+const PropertyCard: React.FC<PropertyCardProps> = ({ item, navigation, userMap, openImage,openVideo }) => {
   const swiperRef = useRef<Swiper>(null);
   const [index, setIndex] = useState(0);
 
@@ -96,33 +96,52 @@ const PropertyCard: React.FC<PropertyCardProps> = ({ item, navigation, userMap, 
       .filter(img => !!img.base64Data)
       .map(img => ({ kind: 'image' as const, id: img.id, uri: img.base64Data }));
 
-    const fromMedia: Slide[] = (item.media ?? [])
-      .map(m => {
-        const uri = (m.base64Data ?? m.url ?? '')?.trim();
-        if (!uri) return null;
+ const fromMedia: Slide[] = (item.media ?? [])
+  .map(m => {
+    const uri = (m.base64Data ?? m.url ?? '')?.trim();
+    if (!uri) return null;
 
-        const isVideo = m.type === 'video';
-        return {
-          kind: (isVideo ? 'video' : 'image') ,
-          id: m.id,
-          uri,
-        };
-      })
-          .filter((x): x is Slide => x !== null);
+  const typeString = String(m.type).toLowerCase();
+
+    const isVideo =
+      typeString === 'video' ||
+      typeString === '2' ||
+      /\.(mp4|mov|webm)(\?.*)?$/i.test(uri);
+
+
+    return {
+       kind: (isVideo ? 'video' : 'image') as 'video' | 'image',
+      id: m.id,
+      uri,
+    };
+  })
+  .filter((x): x is Slide => x !== null);
+
 
     // Легаси: если в item.videoUrl лежит ютуб — добавим как отдельный видео-слайд
-    const legacyVideo: Slide[] = item.videoUrl
-      ? [{ kind: 'video' as const, id: `legacy-video-${item.id}`, uri: item.videoUrl }]
-      : [];
+    // todo потом верну может
+    // const legacyVideo: Slide[] = item.videoUrl
+    //   ? [{ kind: 'video' as const, id: `legacy-video-${item.id}`, uri: item.videoUrl }]
+    //   : [];
 
-    return [...fromImages, ...fromMedia, ...legacyVideo].filter(s => !!s.uri);
-  }, [item.images, item.media, item.videoUrl, item.id]);
+    return [...fromImages, ...fromMedia].filter(s => !!s.uri);
+  }, [item.images, item.media]);
 
   const total = slides.length;
+
+  // function openVideo(uri: string) {
+  //   throw new Error('Function not implemented.');
+  // }
 
   return (
     <View style={styles.card}>
       <Text style={styles.name}>{item.title}</Text>
+
+{/* // todo убрать */}
+      <Text style={{ fontSize: 10, color: '#555' }}>
+  {JSON.stringify(item.media, null, 2)}
+</Text>
+      
 
       {total > 0 && (
         <View style={styles.carouselContainer}>
@@ -141,25 +160,33 @@ const PropertyCard: React.FC<PropertyCardProps> = ({ item, navigation, userMap, 
                 onPress={() => {
                   if (s.kind === 'image') {
                     openImage(s.uri);
-                  } else {
-                    let url = s.uri;
+                 } else {
+        openVideo(s.uri);
+      }
+                  // else {
+                  //   let url = s.uri;
 
-                    // shorts -> watch?v= (твоя текущая логика)
-                    if (url.includes('youtube.com/shorts')) {
-                      const id = url.split('/shorts/')[1]?.split('?')[0];
-                      if (id) url = `https://www.youtube.com/watch?v=${id}`;
-                    }
+                  //   // shorts -> watch?v= (твоя текущая логика)
+                  //   if (url.includes('youtube.com/shorts')) {
+                  //     const id = url.split('/shorts/')[1]?.split('?')[0];
+                  //     if (id) url = `https://www.youtube.com/watch?v=${id}`;
+                  //   }
 
-                    openVideo(url);
-                  }
+                  //   openVideo(url);
+                  // }
                 }}
               >
                 {s.kind === 'image' ? (
                   <Image source={{ uri: s.uri }} style={styles.carouselContainerImage} />
                 ) : (
                   <View style={[styles.carouselContainerImage, styles.videoSlide]}>
-                    <Text style={styles.videoSlideText}>▶ Play video</Text>
+                    {/* <Text style={styles.videoSlideText}>▶</Text> */}
+                    <Text style={{color:'#fff', marginTop: 6}}>▶ Play video</Text>
                   </View>
+
+                  // <View style={[styles.carouselContainerImage, styles.videoSlide]}>
+                  //   <Text style={styles.videoSlideText}>▶ Play video</Text>
+                  // </View>
                 )}
               </TouchableOpacity>
             ))}
@@ -265,6 +292,8 @@ const PropertyCard: React.FC<PropertyCardProps> = ({ item, navigation, userMap, 
 
 
 const PropertyListScreen = () => {
+  const [videoError, setVideoError] = useState<any>(null);
+const [buffering, setBuffering] = useState(false);
   const [properties, setProperties] = useState<Property[]>([]);
   const [userMap, setUserMap] = useState<UserMap>({});
   const [modalVisible, setModalVisible] = useState(false);
@@ -274,15 +303,27 @@ const PropertyListScreen = () => {
   const [videoModalVisible, setVideoModalVisible] = useState(false);
 const [videoUrl, setVideoUrl] = useState<string | null>(null);
 
+  const closeVideo = useCallback(() => {
+    setVideoModalVisible(false);
+    setVideoUrl(null);
+    setVideoError(null);
+setBuffering(false);
+  }, []);
+ 
 const openImage = (uri: string) => {
   setModalImage(uri);
   setModalVisible(true);
 };
 
+ 
+
 const openVideo = (url: string) => {
+  setVideoError(null);
+  setBuffering(true);
   setVideoUrl(url);
   setVideoModalVisible(true);
 };
+
  
 
 useFocusEffect(
@@ -414,29 +455,80 @@ useFocusEffect(
           )}
         </View>
       </Modal>
-      <Modal
+     <Modal
         visible={videoModalVisible}
         transparent={false}
         animationType="slide"
-        onRequestClose={() => setVideoModalVisible(false)}
+        onRequestClose={closeVideo}
       >
+        
         <View style={{ flex: 1, backgroundColor: '#000' }}>
-          <TouchableOpacity
-            onPress={() => setVideoModalVisible(false)}
-            style={{ padding: 12, backgroundColor: '#222' }}
+         <TouchableOpacity
+            onPress={closeVideo}
+             style={{
+        position: 'absolute',
+        top: 40,
+        right: 16,
+        zIndex: 9999,
+        paddingVertical: 10,
+        paddingHorizontal: 14,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        borderRadius: 10,
+      }}
           >
+
+
             <Text style={{ color: '#fff', fontSize: 16 }}>✖ Close</Text>
           </TouchableOpacity>
 
-          {videoUrl && (
-            <WebView
-              source={{ uri: videoUrl }}
-              style={{ flex: 1 }}
-              allowsFullscreenVideo
-              javaScriptEnabled
-              domStorageEnabled
-            />
-          )}
+    {videoUrl && (
+  <View style={{ flex: 1, backgroundColor: '#000' }} renderToHardwareTextureAndroid>
+    <Video
+      key={videoUrl} // важно: пересоздаёт плеер при смене ссылки
+      useTextureView={true}
+      source={{ uri: videoUrl }}
+      style={{ flex: 1, backgroundColor: '#000' }}
+      controls
+      resizeMode="contain"
+      paused={false}
+      
+      playInBackground={false}
+      playWhenInactive={false}
+      onLoadStart={() => {
+        console.log('VIDEO loadStart', videoUrl);
+        setVideoError(null);
+        setBuffering(true);
+      }}
+      onLoad={(e) => {
+        console.log('VIDEO loaded', e);
+        setBuffering(false);
+      }}
+      onBuffer={(e) => {
+        console.log('VIDEO buffer', e);
+        setBuffering(!!e?.isBuffering);
+      }}
+      onError={(e) => {
+        console.log('VIDEO ERROR', e);
+        setVideoError(e);
+        setBuffering(false);
+      }}
+    />
+
+    {buffering && (
+      <Text style={{ position: 'absolute', top: 60, left: 12, color: '#fff' }}>
+        Loading video...
+      </Text>
+    )}
+
+    {videoError && (
+      <Text style={{ position: 'absolute', top: 80, left: 12, right: 12, color: '#ff8080' }}>
+        {JSON.stringify(videoError)}
+      </Text>
+    )}
+  </View>
+)}
+
+
         </View>
       </Modal>
 
@@ -446,16 +538,18 @@ useFocusEffect(
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 ,backgroundColor: theme.colors.background},
-  title: { fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 20, display: 'none'  },
+  container: { flex: 1, padding: 16 ,backgroundColor: theme.colors.background,color: theme.colors.text },
+  title: { fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 20, display: 'none' ,color: theme.colors.text  },
+  text: { color: theme.colors.text },
   card: {
     borderWidth: 1,
     borderColor: '#ccc',
     padding: 12,
     borderRadius: 6,
     marginBottom: 10,
+    color: theme.colors.text 
   },
-  name: { fontWeight: 'bold', fontSize: 16 },
+name: { fontWeight: 'bold', fontSize: 16, color: theme.colors.text },
   carouselContainer: {
     alignItems: 'center',
     marginVertical: 1,
@@ -487,11 +581,13 @@ const styles = StyleSheet.create({
     //justifyContent: 'space-between',
     alignItems: 'center',
     gap: 8,                // RN 0.71+, иначе можно убрать
+    color: theme.colors.text 
   //  marginTop: 4,
   },
   rightNote: {
     textAlign: 'left',
     maxWidth: '70%',
+    color: theme.colors.text 
   },
     
   videoBadge: {
@@ -502,11 +598,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 16,
+    color: theme.colors.text 
   },
   videoBadgeText: {
     color: '#fff',
     fontSize: 12,
     fontWeight: '600',
+    
   },
 linksRow: {
   flexDirection: 'row',
@@ -517,11 +615,13 @@ linksRow: {
   marginTop: 6,
   marginBottom: 8,
   paddingHorizontal: 32,
+  color: theme.colors.text 
 },
 linkItem: {
   flexDirection: 'row',
   alignItems: 'center',
   gap: 6,   
+  color: theme.colors.text 
 },
 linkText: {
  // color: theme.colors.primary, // или '#007bff'
@@ -531,7 +631,7 @@ linkText: {
     ios: 'System',
     android: 'sans-serif-medium',
   }),
-  
+  color: theme.colors.text 
 },
 
 linkSeparator: {
