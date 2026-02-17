@@ -688,7 +688,7 @@ namespace RealEstateInvestment.Controllers
                      m.PropertyId,
                      m.Type,
                      m.Base64Data,
-                     Url = NormalizeMediaUrl(m.Url),
+                     Url = m.Url, // NormalizeMediaUrl(m.Url),
                      m.CreatedAt,
                      m.FileName,
                      m.ContentType,
@@ -835,19 +835,19 @@ namespace RealEstateInvestment.Controllers
             return Ok(new { message = "Deleted" });
         }
 
+        // todo fix
+        //private string NormalizeMediaUrl(string? url)
+        //{
+        //    if (string.IsNullOrWhiteSpace(url)) return url ?? "";
 
-        private string NormalizeMediaUrl(string? url)
-        {
-            if (string.IsNullOrWhiteSpace(url)) return url ?? "";
+        //    url = url.Trim();
 
-            url = url.Trim();
+        //    // если вдруг в БД попал http — форсим https
+        //    if (url.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
+        //        url = "https://" + url.Substring("http://".Length);
 
-            // если вдруг в БД попал http — форсим https
-            if (url.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
-                url = "https://" + url.Substring("http://".Length);
-
-            return url;
-        }
+        //    return url;
+        //}
 
 
 
