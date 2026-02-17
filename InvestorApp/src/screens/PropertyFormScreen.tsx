@@ -118,8 +118,8 @@ const [uploading, setUploading] = useState(false);
   }
 
   try {
-    console.log('DocumentPicker', DocumentPicker);
-    Alert.alert(DocumentPicker + "1") ;
+   // console.log('DocumentPicker', DocumentPicker);
+   // Alert.alert(DocumentPicker + "1") ;
     const results = await DocumentPicker.pick({
       type: ['image/*', 'video/*'],
       allowMultiSelection: false,

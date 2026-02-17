@@ -91,6 +91,9 @@ const PropertyCard: React.FC<PropertyCardProps> = ({ item, navigation, userMap, 
   const swiperRef = useRef<Swiper>(null);
   const [index, setIndex] = useState(0);
 
+  const normalizeUrl = (u: string) =>
+  u?.trim().replace(/^http:\/\//i, 'https://');
+  
   const slides: Slide[] = useMemo(() => {
     const fromImages: Slide[] = (item.images ?? [])
       .filter(img => !!img.base64Data)
@@ -98,7 +101,8 @@ const PropertyCard: React.FC<PropertyCardProps> = ({ item, navigation, userMap, 
 
  const fromMedia: Slide[] = (item.media ?? [])
   .map(m => {
-    const uri = (m.base64Data ?? m.url ?? '')?.trim();
+    const uriRaw = (m.base64Data ?? m.url ?? '')?.trim();
+    const uri = uriRaw.startsWith('http') ? normalizeUrl(uriRaw) : uriRaw;
     if (!uri) return null;
 
   const typeString = String(m.type).toLowerCase();
@@ -138,10 +142,10 @@ const PropertyCard: React.FC<PropertyCardProps> = ({ item, navigation, userMap, 
       <Text style={styles.name}>{item.title}</Text>
 
 {/* // todo убрать */}
-      <Text style={{ fontSize: 10, color: '#555' }}>
+      {/* <Text style={{ fontSize: 10, color: '#555' }}>
   {JSON.stringify(item.media, null, 2)}
 </Text>
-      
+       */}
 
       {total > 0 && (
         <View style={styles.carouselContainer}>
@@ -161,7 +165,7 @@ const PropertyCard: React.FC<PropertyCardProps> = ({ item, navigation, userMap, 
                   if (s.kind === 'image') {
                     openImage(s.uri);
                  } else {
-        openVideo(s.uri);
+        openVideo(normalizeUrl(s.uri));
       }
                   // else {
                   //   let url = s.uri;

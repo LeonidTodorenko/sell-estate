@@ -682,6 +682,18 @@ namespace RealEstateInvestment.Controllers
             var media = await _context.PropertyMedias
                 .Where(m => m.PropertyId == propertyId)
                 .OrderByDescending(m => m.CreatedAt)
+                 .Select(m => new
+                 {
+                     m.Id,
+                     m.PropertyId,
+                     m.Type,
+                     m.Base64Data,
+                     Url = NormalizeMediaUrl(m.Url),
+                     m.CreatedAt,
+                     m.FileName,
+                     m.ContentType,
+                     m.Size
+                 })
                 .ToListAsync();
 
             return Ok(media);
@@ -741,6 +753,10 @@ namespace RealEstateInvestment.Controllers
                     baseUrl = $"{Request.Scheme}://{Request.Host}";
 
                 var url = $"{baseUrl}/uploads/{propertyId}/{fileName}";
+
+                // форсим https
+                if (url.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
+                    url = "https://" + url.Substring("http://".Length);
 
                 var entity = new PropertyMedia
                 {
@@ -820,6 +836,18 @@ namespace RealEstateInvestment.Controllers
         }
 
 
+        private string NormalizeMediaUrl(string? url)
+        {
+            if (string.IsNullOrWhiteSpace(url)) return url ?? "";
+
+            url = url.Trim();
+
+            // если вдруг в БД попал http — форсим https
+            if (url.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
+                url = "https://" + url.Substring("http://".Length);
+
+            return url;
+        }
 
 
 

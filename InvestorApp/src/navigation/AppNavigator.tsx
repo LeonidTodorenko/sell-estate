@@ -1,6 +1,6 @@
 // src/navigation/AppNavigator.tsx
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator, NativeStackNavigationOptions } from '@react-navigation/native-stack';
 
 import LoginScreen from '../screens/LoginScreen';
@@ -62,6 +62,8 @@ import AdminFinanceMonthScreen from '../screens/AdminFinanceMonthScreen';
 
 import HeaderMenu from '../components/HeaderMenu';
 import { navigationRef } from './navigationRef';
+
+import theme from '../constants/theme';
 
 //import SplashScreen from '../screens/SplashScreen'; 
  //import { AuthContext } from '../contexts/AuthContext';
@@ -131,6 +133,15 @@ export type RootStackParamList = {
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+
+const MyTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: theme.colors.background,
+  },
+};
+
 // Роуты, где нижний бар ДОЛЖЕН БЫТЬ скрыт
 const HIDE_BAR_ROUTES = new Set<string>([
   'Gate', 'Login', 'Register', 'ForgotPassword', 'ResetPassword',
@@ -168,7 +179,7 @@ export default function AppNavigator() {
 
   return (
         <SafeAreaProvider>
-      <NavigationContainer
+      <NavigationContainer theme={MyTheme}
         ref={navigationRef}
         onReady={() => setRouteName(navigationRef.getCurrentRoute()?.name)}
         onStateChange={() => setRouteName(navigationRef.getCurrentRoute()?.name)}

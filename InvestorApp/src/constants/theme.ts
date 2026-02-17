@@ -1,6 +1,6 @@
 const theme  = {
   colors:{
-  background: '#f5f5dc',
+  background: '#808000',
   primary: '#0080ff',
   secondary: '#808000',
   text: '#2a1602',
@@ -17,5 +17,6 @@ fontSize: {
   title: 24,
 },
 };
+ 
 
 export default theme;

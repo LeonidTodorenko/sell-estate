@@ -11,6 +11,7 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.AspNetCore.HttpOverrides;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -157,11 +158,17 @@ var app = builder.Build();
 //app.UseCors("Mobile");
 
 app.UseDeveloperExceptionPage(); //todo remove after debug
-//if (app.Environment.IsDevelopment())
-//{
-//    app.UseDeveloperExceptionPage();
- 
+                                 //if (app.Environment.IsDevelopment())
+                                 //{
+                                 //    app.UseDeveloperExceptionPage();
+
 //}
+
+// из за того что https становится http
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
 
 app.UseSwagger();
 app.UseSwaggerUI();
