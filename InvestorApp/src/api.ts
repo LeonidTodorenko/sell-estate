@@ -10,14 +10,15 @@ export  const API_BASE_URL =
   Platform.OS === 'android'
     
      ? 
-     // 'http://10.0.2.2:7019/api'
-        'https://sell-estate.onrender.com/api'
+      'http://10.0.2.2:7019/api'
+      //  'https://sell-estate.onrender.com/api'
     : 'https://sell-estate.onrender.com/api';
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 15000,
-  headers: { 'Content-Type': 'application/json' },
+  headers: { Accept: 'application/json' },
+  //headers: { 'Content-Type': 'application/json' },
 });
 type ApiExtraConfig = {
   silentError?: boolean;
@@ -66,6 +67,27 @@ api.interceptors.request.use(async (config) => {
   const url = (config.url || '').toLowerCase();
   if (url.includes('/auth/login') || url.includes('/auth/refresh') || url.includes('/auth/logout')) {
     return config;
+  }
+  const data: any = config.data;
+   // ✅ если отправляем FormData — НЕ трогаем Content-Type (axios сам выставит boundary)
+ const isFormData =
+    data &&
+    typeof data === 'object' &&
+    typeof data.append === 'function' &&
+    Array.isArray(data._parts); // RN FormData
+
+  config.headers = (config.headers ?? {}) as any;
+
+      if (isFormData) {
+     
+    // важно удалить оба варианта ключа
+    delete (config.headers as any)?.['Content-Type'];
+    delete (config.headers as any)?.['content-type'];
+     (config.headers as any)['Content-Type'] = 'multipart/form-data';
+  } else {
+    // для обычных запросов можно оставить json (не обязательно, но ок)
+    (config.headers as any) = (config.headers as any) ?? {};
+    (config.headers as any)['Content-Type'] ??= 'application/json';
   }
 
   await ensureTokenLoaded();

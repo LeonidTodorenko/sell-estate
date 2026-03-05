@@ -744,8 +744,11 @@ namespace RealEstateInvestment.Controllers
             // 🔎 логируем
             _logger.LogInformation("UploadMedia: propertyId={PropertyId}, originalName={OriginalName}, ct={ContentType}, len={Len}, fullPath={FullPath}",                propertyId, file.FileName, file.ContentType, file.Length, fullPath);
 
-            await using (var stream = System.IO.File.Create(fullPath))
-                await file.CopyToAsync(stream);
+                await using (var stream = System.IO.File.Create(fullPath))
+                {
+                    await file.CopyToAsync(stream, HttpContext.RequestAborted);
+                }
+                _logger.LogInformation("UploadMedia DONE. Aborted={Aborted}", HttpContext.RequestAborted.IsCancellationRequested);
 
                 // ✅ baseUrl из конфига (важно для эмулятора)
                 var baseUrl = _config["PublicBaseUrlHdd"]?.TrimEnd('/');
@@ -841,6 +844,15 @@ namespace RealEstateInvestment.Controllers
         public IActionResult DebugFiles()
         {
             var uploadsRoot = _config["App:UploadsRoot"];
+            var files = Directory.GetFiles(uploadsRoot ?? "");
+            return Ok(new { uploadsRoot, files });
+        }
+        // todo test
+        [HttpGet("debug-files2")]
+        [AllowAnonymous]
+        public IActionResult DebugFiles2()
+        {
+            var uploadsRoot = _config["/uploads"];
             var files = Directory.GetFiles(uploadsRoot ?? "");
             return Ok(new { uploadsRoot, files });
         }

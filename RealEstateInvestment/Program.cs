@@ -12,6 +12,7 @@ using System.Text;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Http.Features;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -146,7 +147,11 @@ builder.Services.AddSingleton<IResend>(_ =>
 {
     return ResendClient.Create(resendApiKey);
 });
- 
+
+builder.Services.Configure<FormOptions>(o =>
+{
+    o.MultipartBodyLengthLimit = 200_000_000; // 200MB
+});
 
 
 var app = builder.Build();

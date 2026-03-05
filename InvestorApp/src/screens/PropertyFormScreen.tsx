@@ -123,23 +123,33 @@ const [uploading, setUploading] = useState(false);
     const results = await DocumentPicker.pick({
       type: ['image/*', 'video/*'],
       allowMultiSelection: false,
+   copyTo: 'cachesDirectory',
     });
 
     const res = results[0];
     if (!res) return;
+ 
+   const uri = (res as any).fileCopyUri ?? res.uri;
+   if (!uri) throw new Error('No file URI');
+
+
 
     setUploading(true);
 
     const form = new FormData();
     form.append('file', {
-      uri: res.uri,
+      uri:  uri,
       name: res.name ?? `upload-${Date.now()}`,
       type: res.type ?? 'application/octet-stream',
     } as any);
+
+//        console.log('upload uri', uri);
+// console.log('isFormData', form instanceof FormData);
  
-    await api.post(`/properties/${existing.id}/media/upload`, form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    await api.post(`/properties/${existing.id}/media/upload`, form
+      , {  timeout: 5 * 60 * 1000, transformRequest: (d) => d } // 5 минут
+      //, {      headers: { 'Content-Type': 'multipart/form-data' },    }
+    );
 
     const listRes = await api.get(`/properties/${existing.id}/media`);
     const normalized: PropertyMedia[] = (listRes.data ?? []).map((m: any) => ({
@@ -155,10 +165,37 @@ const [uploading, setUploading] = useState(false);
     if (err?.code === 'DOCUMENT_PICKER_CANCELED') return;
     console.error(err);
     Alert.alert('Error', err?.message ?? 'Upload failed');
+
+
+    
+
   } finally {
     setUploading(false);
   }
 };
+
+// function toErrorMessage(err: any): string {
+//   // axios
+//   const status = err?.response?.status;
+//   const data = err?.response?.data;
+
+//   if (status) {
+//     return `HTTP ${status}: ${typeof data === 'string' ? data : JSON.stringify(data)}`;
+//   }
+
+//   if (err instanceof Error) {
+//     return err.message;
+//   }
+
+//   if (typeof err === 'string') return err;
+
+//   try {
+//     return JSON.stringify(err);
+//   } catch {
+//     return String(err);
+//   }
+// }
+
 
 
 const deleteMedia = async (mediaId: string) => {
