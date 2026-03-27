@@ -1,4 +1,4 @@
-import React, {   useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,14 +11,15 @@ import {
   Platform,
   ActivityIndicator,
   RefreshControl,
+  Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
 import theme from '../constants/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-//import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import { useFocusEffect } from '@react-navigation/native';
 import { BOTTOM_BAR_HEIGHT } from '../components/BottomBar';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 interface ChatMessage {
   id: string;
@@ -26,6 +27,7 @@ interface ChatMessage {
   recipientId: string;
   content: string;
   sentAt: string;
+  isRead?: boolean;
 }
 
 const ChatScreen = () => {
@@ -37,13 +39,8 @@ const ChatScreen = () => {
   const [sending, setSending] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-
-
-  //const tabBarHeight = React.useContext(BottomTabBarHeightContext) ?? 0;
   const insets = useSafeAreaInsets();
   const bottomOffset = BOTTOM_BAR_HEIGHT + Math.max(insets.bottom, 8);
-
-  //const bottomOffset = tabBarHeight + insets.bottom;
 
   const listRef = useRef<FlatList<ChatMessage>>(null);
 
@@ -62,20 +59,29 @@ const ChatScreen = () => {
       }
 
       const user = JSON.parse(stored);
-    const uid = user.userId ?? user.id ?? user?.user?.id;
-      if (!uid) { setLoading(false); return; }
+      const uid = user.userId ?? user.id ?? user?.user?.id;
+      if (!uid) {
+        setLoading(false);
+        return;
+      }
+
       setUserId(uid);
 
       const adminRes = await api.get('/users/admin-id');
       const aid = adminRes.data?.adminId;
+      if (!aid) {
+        setLoading(false);
+        return;
+      }
+
       setAdminId(aid);
 
       const chatRes = await api.get(`/chat/conversation/${uid}/${aid}`);
-
-      // Важно: чтобы inversion работал как чат — нам нужны сообщения от новых к старым.
-      // Если API уже отдаёт по времени — ок. Если старые->новые, разворачиваем:
       const data: ChatMessage[] = Array.isArray(chatRes.data) ? chatRes.data : [];
-      const sorted = [...data].sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime());
+
+      const sorted = [...data].sort(
+        (a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime(),
+      );
 
       setMessages(sorted);
       setTimeout(scrollToBottom, 50);
@@ -87,20 +93,18 @@ const ChatScreen = () => {
     }
   }, []);
 
-  // useEffect(() => {
-  //   loadChat();
-  // }, [loadChat]);
+  useFocusEffect(
+    useCallback(() => {
+      if (messages.length === 0) {
+        setLoading(true);
+      }
 
- useFocusEffect(
-  useCallback(() => {
-    if (messages.length === 0) {setLoading(true);}
-    loadChat();
+      loadChat();
 
-    const id = setInterval(loadChat, 5000);
-    return () => clearInterval(id);
-  }, [loadChat, messages.length])
-);
-
+      const id = setInterval(loadChat, 5000);
+      return () => clearInterval(id);
+    }, [loadChat, messages.length]),
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -119,7 +123,6 @@ const ChatScreen = () => {
     try {
       setSending(true);
 
-      // оптимистично добавим в UI, чтобы было “как мессенджер”
       const optimistic: ChatMessage = {
         id: `tmp-${Date.now()}`,
         senderId: userId,
@@ -128,27 +131,26 @@ const ChatScreen = () => {
         sentAt: new Date().toISOString(),
       };
 
-      setMessages(prev => [optimistic, ...prev]);
+      setMessages((prev) => [optimistic, ...prev]);
       setInput('');
       setTimeout(scrollToBottom, 50);
 
       await api.post('/chat/send', {
-        //senderId: userId,
         recipientId: adminId,
         content: text,
       });
 
-      // после реальной отправки — перезагрузим (чтобы получить настоящий id/время)
       const res = await api.get(`/chat/conversation/${userId}/${adminId}`);
       const data: ChatMessage[] = Array.isArray(res.data) ? res.data : [];
-      const sorted = [...data].sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime());
-      setMessages(sorted);
+      const sorted = [...data].sort(
+        (a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime(),
+      );
 
+      setMessages(sorted);
       setTimeout(scrollToBottom, 50);
     } catch (error) {
       console.error('Failed to send message', error);
       Alert.alert('Error', 'Failed to send message');
-      // можно откатить optimistic, но пока оставим (или скажи — сделаю)
     } finally {
       setSending(false);
     }
@@ -156,62 +158,37 @@ const ChatScreen = () => {
 
   const renderItem = ({ item }: { item: ChatMessage }) => {
     const isMine = item.senderId === userId;
-
-    const label = isMine ? 'user:' : 'admin:';
-    const time = item.sentAt ? new Date(item.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+    const time = item.sentAt
+      ? new Date(item.sentAt).toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+      : '';
 
     return (
       <View style={[styles.messageRow, isMine ? styles.rowRight : styles.rowLeft]}>
         <View style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleOther]}>
-          <Text style={styles.subLabel}>{label}</Text>
-          <Text style={styles.messageText}>{item.content}</Text>
-          <Text style={styles.timeText}>{time}</Text>
+          <Text style={[styles.messageText, isMine && styles.messageTextMine]}>
+            {item.content}
+          </Text>
+          <Text style={[styles.timeText, isMine && styles.timeTextMine]}>{time}</Text>
         </View>
       </View>
     );
   };
 
-//     useFocusEffect(
-//   useCallback(() => {
-//     // при входе на экран
-//     loadChat();
-
-//     const id = setInterval(() => {
-//       loadChat();
-//     }, 5000);
-
-//     // при уходе с экрана
-//     return () => clearInterval(id);
-//   }, [loadChat])
-// );
-
-
-
-  
-
   if (loading) {
     return (
       <View style={[styles.container, styles.center]}>
-        <ActivityIndicator />
-        <Text style={{ marginTop: 8 }}>Loading chat…</Text>
+        <ActivityIndicator color={theme.colors.primary} />
+        <Text style={styles.loadingText}>Loading chat…</Text>
       </View>
     );
   }
 
-
-//   useEffect(() => {
-//   loadChat();
-
-//   const interval = setInterval(() => {
-//     loadChat();
-//   }, 5000); // каждые 5 сек
-
-//   return () => clearInterval(interval);
-// }, [loadChat]);
-
-  const COMPOSER_HEIGHT = 64;
+  const COMPOSER_HEIGHT = 68;
   const bottomPad = Math.max(insets.bottom, 8);
-const barHeight = BOTTOM_BAR_HEIGHT + bottomPad;
+  const barHeight = BOTTOM_BAR_HEIGHT + bottomPad;
 
   return (
     <KeyboardAvoidingView
@@ -219,40 +196,57 @@ const barHeight = BOTTOM_BAR_HEIGHT + bottomPad;
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={bottomOffset}
     >
-      {/* Список сообщений */}
       <FlatList
         ref={listRef}
         data={messages}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         inverted
-      contentContainerStyle={{
-  paddingVertical: 10,
-  paddingTop: COMPOSER_HEIGHT + barHeight + 8,  
-  paddingBottom: 10,
-}}
-
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          paddingTop: COMPOSER_HEIGHT + barHeight + 8,
+          paddingBottom: 14,
+          paddingHorizontal: 8,
+          flexGrow: messages.length === 0 ? 1 : undefined,
+        }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListEmptyComponent={
-          <View style={{ padding: 16, alignItems: 'center' }}>
-            <Text style={{ color: '#666' }}>No messages yet. Say hi 👋</Text>
+          <View style={styles.emptyWrap}>
+            <Text style={styles.emptyTitle}>No messages here yet</Text>
+            <Text style={styles.emptySubtitle}>
+              Write something to start the conversation
+            </Text>
           </View>
         }
       />
 
-      {/* Панель ввода снизу */}
-       <View style={[styles.composer,   {
-          paddingBottom: 0,
-          bottom: barHeight,
-        },]}>
+      <View
+        style={[
+          styles.composer,
+          {
+            bottom: barHeight,
+            paddingBottom: 0,
+          },
+        ]}
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          style={styles.attachButton}
+          onPress={() => Alert.alert('Info', 'File attachments are not available yet')}
+        >
+          <Ionicons name="attach-outline" size={18} color="#6B7280" />
+        </TouchableOpacity>
+
         <TextInput
-          style={[styles.input, { maxHeight: 110 }]}
+          style={styles.input}
           value={input}
           onChangeText={setInput}
-          placeholder="Type a message…"
-          multiline 
+          placeholder="Enter your question"
+          placeholderTextColor="#A1A1AA"
+          multiline
+          maxLength={2000}
         />
-  
+
         <TouchableOpacity
           onPress={sendMessage}
           disabled={sending || input.trim().length === 0}
@@ -260,9 +254,13 @@ const barHeight = BOTTOM_BAR_HEIGHT + bottomPad;
             styles.sendBtn,
             (sending || input.trim().length === 0) && styles.sendBtnDisabled,
           ]}
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          activeOpacity={1}
         >
-          <Text style={styles.sendBtnText}>{sending ? '…' : '➤'}</Text>
+          {sending ? (
+            <Text style={styles.sendBtnText}>…</Text>
+          ) : (
+            <Ionicons name="send" size={16} color="#FFFFFF" />
+          )}
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -272,94 +270,155 @@ const barHeight = BOTTOM_BAR_HEIGHT + bottomPad;
 export default ChatScreen;
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: theme.colors.background },
-  center: { justifyContent: 'center', alignItems: 'center' },
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    
+  },
+
+  center: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  loadingText: {
+    marginTop: 8,
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+  },
+
+  emptyWrap: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.colors.text,
+    marginBottom: 6,
+  },
+
+  emptySubtitle: {
+    fontSize: 12,
+    color: '#A1A1AA',
+    textAlign: 'center',
+  },
 
   messageRow: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     marginVertical: 4,
   },
-  rowLeft: { alignItems: 'flex-start' },
-  rowRight: { alignItems: 'flex-end' },
+
+  rowLeft: {
+    alignItems: 'flex-start',
+  },
+
+  rowRight: {
+    alignItems: 'flex-end',
+  },
 
   bubble: {
-    maxWidth: '80%',
-    borderRadius: 14,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderWidth: 1,
-  },
-  bubbleMine: {
-    backgroundColor: '#E9D5FF', // light purple
-    borderColor: '#C084FC',
-  },
-  bubbleOther: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#DDD',
+    maxWidth: '82%',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
 
-  subLabel: {
-    fontSize: 11,
-    color: '#555',
-    marginBottom: 2,
+  bubbleMine: {
+    backgroundColor: '#11A36A',
+    borderBottomRightRadius: 6,
   },
+
+  bubbleOther: {
+    backgroundColor: '#F3F4F6',
+    borderBottomLeftRadius: 6,
+  },
+
   messageText: {
-    fontSize: 15,
-    color: '#111',
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#111827',
   },
+
+  messageTextMine: {
+    color: '#FFFFFF',
+  },
+
   timeText: {
-    marginTop: 4,
+    marginTop: 6,
     fontSize: 10,
-    color: '#777',
+    color: '#9CA3AF',
     alignSelf: 'flex-end',
   },
 
-composer: {
-  position: 'absolute',
-  left: 0,
-  right: 0,
-  // bottom задаём инлайн через tabBarHeight
-  flexDirection: 'row',
-  alignItems: 'flex-end',
-  paddingHorizontal: 10,
-  paddingVertical: 8,
-  borderTopWidth: 1,
-  borderColor: '#e5e5e5',
-  backgroundColor: '#fff',
+  timeTextMine: {
+    color: 'rgba(255,255,255,0.82)',
+  },
+
+  composer: {
+    position: 'absolute',
+    left: 12,
+    right: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    paddingLeft: 8,
+    paddingRight: 8,
+    paddingVertical: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 9,
+  },
+
+  attachButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 6,
+  },
+
+input: {
+  flex: 1,
+  minHeight: 44,
+  maxHeight: 110,
+  fontSize: 14,
+  color: theme.colors.text,
+  paddingTop: 10,
+  paddingBottom: 10,
+  paddingHorizontal: 6,
  
+  borderRadius: 20,
+  backgroundColor: 'transparent',
 },
 
-  input: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 18,
-    paddingHorizontal: 12,
-    paddingTop: 10,
-    paddingBottom: 10,
-    fontSize: 15,
-    backgroundColor: '#fff',
-  },
   sendBtn: {
-    marginLeft: 8,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 34,
+    height: 34,
+   
+  borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#7C3AED', // purple
-    shadowColor: '#000',
-    shadowOpacity: 0.18,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 4,
+   backgroundColor: '#11A36A',
+    marginLeft: 8,
   },
+
   sendBtnDisabled: {
     opacity: 0.5,
   },
+
   sendBtnText: {
-    color: '#fff',
-    fontSize: 18,
+    color: '#FFFFFF',
+    fontSize: 16,
     fontWeight: '700',
   },
 });

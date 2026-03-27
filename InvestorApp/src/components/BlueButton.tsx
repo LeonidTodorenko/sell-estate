@@ -1,106 +1,149 @@
 import React from 'react';
-import { TouchableOpacity, Text, View   } from 'react-native';
-
-const ICON_SIZE = 18;
-const ICON_LEFT_PADDING = 16;
-const RESERVED_LEFT = ICON_LEFT_PADDING + ICON_SIZE + 8;
+import { TouchableOpacity, Text, View, StyleSheet, Image, ImageSourcePropType } from 'react-native';
+import theme from '../constants/theme';
 
 type BlueButtonProps = {
   title: string;
   onPress: () => void;
   icon?: string;
-  variant?: 'primary'|'red'|'green'|'gray'|'orange';
+  iconSource?: ImageSourcePropType;
+  variant?: 'primary' | 'red' | 'green' | 'gray' | 'orange';
   style?: any;
-   disabled?: boolean;
-     width?: number | string | 'full';
-     additionalPadding?: number; 
-       showArrow?: boolean;
+  disabled?: boolean;
+  width?: number | string | 'full';
+  additionalPadding?: number;
+  showArrow?: boolean;
+
+  bgColor?: string;
+  textColor?: string;
+  borderColor?: string;
+  paddingVertical?: number;
+  paddingHorizontal?: number;
+  iconSize?: number;
 };
 
-const BlueButton: React.FC<BlueButtonProps> = ({ title, onPress, icon, variant='primary', style,disabled = false,width,additionalPadding,showArrow = true }) => {
-  const bgColors = {
-    primary: 'white',
-    red: '#d9534f',
-    green: '#28a745',
-    gray: '#6c757d',
-    orange: 'orange',
+const BlueButton: React.FC<BlueButtonProps> = ({
+  title,
+  onPress,
+  iconSource,
+  variant = 'primary',
+  style,
+  disabled = false,
+  width,
+  showArrow = false,
+  bgColor,
+  textColor,
+  borderColor,
+  paddingVertical = 10,
+  paddingHorizontal = 24,
+  iconSize = 18,
+}) => {
+  let resolvedWidth: number | string | undefined;
+  if (width === 'full') resolvedWidth = '100%';
+  else if (typeof width === 'number' || typeof width === 'string') resolvedWidth = width;
+
+  const variantBgMap: Record<NonNullable<BlueButtonProps['variant']>, string> = {
+    primary: theme.colors.primary,
+    green: theme.colors.success,
+    red: theme.colors.danger,
+    orange: theme.colors.warning,
+    gray: theme.colors.surface,
   };
 
-    const bg = disabled ? '#cccccc' : bgColors[variant];
-  //const textColor = disabled ? 'black' : 'black';
+  const resolvedBackgroundColor =
+    bgColor ?? (disabled ? theme.colors.disabledBg : variantBgMap[variant]);
 
-    let resolvedWidth: number | string | undefined;
-  if (width === 'full') {
-    resolvedWidth = '100%';
-  } else if (typeof width === 'number' || typeof width === 'string') {
-    resolvedWidth = width;
-  }
+  const isLight =
+    resolvedBackgroundColor === theme.colors.surface ||
+    resolvedBackgroundColor === '#FFFFFF' ||
+    variant === 'gray';
 
-    const resolvedReservedLeft = additionalPadding ?? RESERVED_LEFT;
+  const resolvedTextColor =
+    textColor ??
+    (disabled
+      ? theme.colors.disabledText
+      : isLight
+        ? theme.colors.text
+        : theme.colors.white);
+
+  const resolvedBorderColor =
+    borderColor ?? (isLight ? theme.colors.border : 'transparent');
 
   return (
-     <TouchableOpacity
-      activeOpacity={0.85} //  activeOpacity={disabled ? 1 : 0.85}
+    <TouchableOpacity
+      activeOpacity={disabled ? 1 : 0.85}
       disabled={disabled}
       onPress={disabled ? undefined : onPress}
       style={[
+        styles.btn,
         {
-          backgroundColor: bg,
-          paddingVertical: 14,
-          paddingHorizontal: 16,
-          marginBottom: 10,
-          borderRadius: 10,
-          paddingLeft: resolvedReservedLeft,
-          paddingRight: resolvedReservedLeft,
-          // 3D эффект
-          shadowColor: '#000',
-          shadowOpacity: 0.15,
-          shadowRadius: 4,
-          shadowOffset: { width: 0, height: 3 },
-          elevation: 4,
-
+          backgroundColor: resolvedBackgroundColor,
+          borderColor: resolvedBorderColor,
           width: resolvedWidth,
-          opacity: disabled ? 0.6 : 1,
+          opacity: disabled ? 0.75 : 1,
+          paddingVertical,
+          paddingHorizontal,
         },
         style,
       ]}
     >
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}
-      >
-        {/* Текст слева */}
-        <Text
-          style={{
-            fontSize: 15,
-            fontWeight: '600',
-            color: '#2a1602',
-          }}
-        >
-          {title}
-             {/* {icon} todo убрали иконку пока */}
-        </Text>
+      <View style={styles.row}>
+        <View style={styles.content}>
+          {!!iconSource && (
+            <Image
+              source={iconSource}
+              style={{ width: iconSize, height: iconSize, marginRight: 8 }}
+              resizeMode="contain"
+            />
+          )}
 
-        {/* Стрелка справа */}
-        {showArrow && (
-          <Text
-            style={{
-              fontSize: 18,
-              fontWeight: '700',
-              color: '#2a1602',
-              marginLeft: 8,
-            }}
-          >
-            ›
+          <Text style={[styles.title, { color: resolvedTextColor }]}>
+            {title}
           </Text>
+        </View>
+
+        {showArrow && (
+          <Text style={[styles.arrow, { color: resolvedTextColor }]}>›</Text>
         )}
       </View>
     </TouchableOpacity>
   );
 };
 
-export default BlueButton;
+const styles = StyleSheet.create({
+  btn: {
+    marginBottom: 10,
+    borderRadius: theme.radii.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
+  },
 
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  content: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  title: {
+    fontSize: theme.typography.sizes.md,
+    fontWeight: '500',
+  },
+
+  arrow: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginLeft: 8,
+  },
+});
+
+export default BlueButton;

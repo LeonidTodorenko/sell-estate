@@ -1,37 +1,64 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, Alert, Platform } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  StyleSheet,
+  ActivityIndicator,
+  Alert,
+  Image,
+  Pressable,
+} from 'react-native';
 import api from '../api';
-import { Picker } from '@react-native-picker/picker';
-import { LineChart } from 'react-native-chart-kit';
-import { Dimensions } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import theme from '../constants/theme';
 
 interface Trade {
   timestamp: string;
   shares: number;
   pricePerShare: number;
+  propertyId: string;
   propertyTitle: string;
+  buyerId: string;
+  sellerId: string;
 }
+
+type HistoryTab = 'buy' | 'sell';
+
+const HistoryTabButton = ({
+  label,
+  active,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) => (
+  <Pressable onPress={onPress} style={styles.historyTabBtn}>
+    <Text style={[styles.historyTabText, active && styles.historyTabTextActive]}>{label}</Text>
+    <View style={[styles.historyTabUnderline, active && styles.historyTabUnderlineActive]} />
+  </Pressable>
+);
 
 const TradeHistoryScreen = () => {
   const [trades, setTrades] = useState<Trade[]>([]);
-  const [filteredTrades, setFilteredTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedProperty, setSelectedProperty] = useState<string | null>(null);
-  const [startDate, setStartDate] = useState<Date | null>(null);
-  const [endDate, setEndDate] = useState<Date | null>(null);
-  const [showStartPicker, setShowStartPicker] = useState(false);
-  const [showEndPicker, setShowEndPicker] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<HistoryTab>('buy');
 
-  const screenWidth = Dimensions.get('window').width - 32;
+  const loadUserId = useCallback(async () => {
+    const stored = await AsyncStorage.getItem('user');
+    const user = stored ? JSON.parse(stored) : null;
+    if (user) setUserId(user.userId);
+  }, []);
 
   const loadTrades = useCallback(async () => {
     try {
       setLoading(true);
       const res = await api.get('/share-offers/transactions');
-      setTrades(res.data);
-    } catch {
+      setTrades(res.data ?? []);
+    } catch (error: any) {
+      console.error(error);
       Alert.alert('Error', 'Failed to load transactions');
     } finally {
       setLoading(false);
@@ -39,119 +66,78 @@ const TradeHistoryScreen = () => {
   }, []);
 
   useEffect(() => {
+    loadUserId();
     loadTrades();
-  }, [loadTrades]);
+  }, [loadUserId, loadTrades]);
 
-  useEffect(() => {
-    let filtered = trades;
-    if (selectedProperty) {
-      filtered = filtered.filter(t => t.propertyTitle === selectedProperty);
-    }
-    if (startDate) {
-      filtered = filtered.filter(t => new Date(t.timestamp) >= startDate);
-    }
-    if (endDate) {
-      filtered = filtered.filter(t => new Date(t.timestamp) <= endDate);
-    }
-    setFilteredTrades(filtered);
-  }, [trades, selectedProperty, startDate, endDate]);
+  const filteredTrades = useMemo(() => {
+    if (!userId) return [];
+    const base =
+      activeTab === 'buy'
+        ? trades.filter((t) => t.buyerId === userId)
+        : trades.filter((t) => t.sellerId === userId);
 
-  const uniqueProperties = [...new Set(trades.map(t => t.propertyTitle))];
-
-  const sortedTrades = [...filteredTrades].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-
-  const chartData = {
-    labels: sortedTrades.map(t => new Date(t.timestamp).toLocaleDateString()),
-    datasets: [{
-      data: sortedTrades.map(t => t.pricePerShare),
-      color: () => '#0080FF',
-      strokeWidth: 2,
-    }]
-  };
+    return [...base].sort(
+      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+    );
+  }, [trades, userId, activeTab]);
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Trade History</Text>
+      <Text style={styles.headerTitle}>History orders</Text>
 
-      {/* Property selector */}
-      <Picker
-        selectedValue={selectedProperty}
-        onValueChange={value => setSelectedProperty(value)}
-        style={styles.picker}
-      >
-        <Picker.Item label="All Properties" value={null} />
-        {uniqueProperties.map(prop => (
-          <Picker.Item key={prop} label={prop} value={prop} />
-        ))}
-      </Picker>
-
-      {/* Date pickers */}
-      <View style={styles.dateRow}>
-        <Text style={styles.dateText} onPress={() => setShowStartPicker(true)}>
-          From: {startDate ? startDate.toLocaleDateString() : 'Select'}
-        </Text>
-        <Text style={styles.dateText} onPress={() => setShowEndPicker(true)}>
-          To: {endDate ? endDate.toLocaleDateString() : 'Select'}
-        </Text>
+      <View style={styles.tabsRow}>
+        <HistoryTabButton
+          label="Buy"
+          active={activeTab === 'buy'}
+          onPress={() => setActiveTab('buy')}
+        />
+        <HistoryTabButton
+          label="Sell"
+          active={activeTab === 'sell'}
+          onPress={() => setActiveTab('sell')}
+        />
       </View>
 
-      {showStartPicker && (
-        <DateTimePicker
-          value={startDate || new Date()}
-          mode="date"
-          display={Platform.OS === 'ios' ? 'inline' : 'default'}
-          onChange={(event, date) => {
-            setShowStartPicker(false);
-            if (date) setStartDate(date);
-          }}
-        />
-      )}
-      {showEndPicker && (
-        <DateTimePicker
-          value={endDate || new Date()}
-          mode="date"
-          display={Platform.OS === 'ios' ? 'inline' : 'default'}
-          onChange={(event, date) => {
-            setShowEndPicker(false);
-            if (date) setEndDate(date);
-          }}
-        />
-      )}
-
-      {/* Chart */}
-      {selectedProperty && filteredTrades.length > 0 && (
-        <View style={{ marginVertical: 20 }}>
-          <Text style={styles.chartTitle}>📈 Price Chart for {selectedProperty}</Text>
-          <LineChart
-            data={chartData}
-            width={screenWidth}
-            height={220}
-            yAxisSuffix="$"
-            chartConfig={{
-              backgroundColor: '#f5f5dc',
-              backgroundGradientFrom: '#f5f5dc',
-              backgroundGradientTo: '#f5f5dc',
-              decimalPlaces: 2,
-              color: () => '#2a1602',
-              labelColor: () => '#2a1602',
-              propsForDots: { r: '4', strokeWidth: '2' }
-            }}
-            bezier
-          />
+      {loading ? (
+        <View style={styles.loaderWrap}>
+          <ActivityIndicator color={theme.colors.primary} />
         </View>
-      )}
-
-      {/* List */}
-      {loading ? <ActivityIndicator /> : (
+      ) : (
         <FlatList
           data={filteredTrades}
-          keyExtractor={(item, index) => index.toString()}
+          keyExtractor={(item, index) => `${item.propertyId}-${item.timestamp}-${index}`}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyText}>
+                {activeTab === 'buy' ? 'No buy history yet' : 'No sell history yet'}
+              </Text>
+            </View>
+          }
           renderItem={({ item }) => (
             <View style={styles.card}>
-              <Text style={styles.text}>🏠 {item.propertyTitle}</Text>
-              <Text style={styles.text}>📈 Shares: {item.shares}</Text>
-              <Text style={styles.text}>💵 Price/Share: ${item.pricePerShare.toFixed(2)}</Text>
-              <Text style={styles.text}>📅 Time: {new Date(item.timestamp).toLocaleString()}</Text>
+              <View style={styles.cardTopRow}>
+                <View style={styles.cardTextWrap}>
+                  <Text style={styles.propertyTitle} numberOfLines={1}>
+                    {item.propertyTitle}
+                  </Text>
+                  <Text style={styles.cardSubText}>
+                    {new Date(item.timestamp).toLocaleDateString()}
+                  </Text>
+                </View>
+
+                <View style={styles.rightWrap}>
+                  <Text style={styles.priceText}>{theme.colors.text && `$${item.pricePerShare.toFixed(2)}`}</Text>
+                  <Text style={styles.priceCaption}>per share</Text>
+                </View>
+              </View>
+
+              <View style={styles.cardBottomRow}>
+                <Text style={styles.metaText}>{item.shares} shares</Text>
+                <Text style={styles.totalText}>Total {`$${(item.shares * item.pricePerShare).toFixed(2)}`}</Text>
+              </View>
             </View>
           )}
         />
@@ -163,25 +149,140 @@ const TradeHistoryScreen = () => {
 export default TradeHistoryScreen;
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16,backgroundColor: theme.colors.background },
-  title: { fontSize: 22, fontWeight: 'bold', marginBottom: 12, textAlign: 'center', display: 'none'  },
-  picker: { backgroundColor: '#eee', marginVertical: 10 },
+  container: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+  },
+
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: theme.colors.text,
+    textAlign: 'center',
+    marginBottom: 14,
+  },
+
+  tabsRow: {
+    flexDirection: 'row',
+    marginBottom: 14,
+  },
+
+  historyTabBtn: {
+    flex: 1,
+    alignItems: 'center',
+  },
+
+  historyTabText: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    fontWeight: '500',
+  },
+
+  historyTabTextActive: {
+    color: theme.colors.text,
+  },
+
+  historyTabUnderline: {
+    marginTop: 8,
+    width: '100%',
+    height: 2,
+    backgroundColor: 'transparent',
+    borderRadius: 999,
+  },
+
+  historyTabUnderlineActive: {
+    backgroundColor: theme.colors.text,
+  },
+
+  loaderWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  listContent: {
+    paddingBottom: 120,
+  },
+
   card: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.colors.border,
     padding: 12,
-    borderColor: '#ccc',
-    borderWidth: 1,
-    borderRadius: 8,
     marginBottom: 10,
   },
-  text: { fontSize: 16 },
-  chartTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: 8 },
-  dateRow: {
+
+  cardTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginVertical: 10
+    alignItems: 'flex-start',
   },
-  dateText: {
-    fontSize: 16,
-    color: 'blue'
-  }
+
+  cardTextWrap: {
+    flex: 1,
+    paddingRight: 12,
+  },
+
+  propertyTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: theme.colors.text,
+  },
+
+  cardSubText: {
+    marginTop: 3,
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+  },
+
+  rightWrap: {
+    alignItems: 'flex-end',
+  },
+
+  priceText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: theme.colors.text,
+  },
+
+  priceCaption: {
+    marginTop: 2,
+    fontSize: 11,
+    color: theme.colors.textSecondary,
+  },
+
+  cardBottomRow: {
+    marginTop: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+
+  metaText: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+  },
+
+  totalText: {
+    fontSize: 12,
+    color: theme.colors.success,
+    fontWeight: '700',
+  },
+
+  emptyCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.colors.border,
+    padding: 20,
+    alignItems: 'center',
+  },
+
+  emptyText: {
+    color: theme.colors.textSecondary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
 });

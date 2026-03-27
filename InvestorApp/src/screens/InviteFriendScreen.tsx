@@ -1,11 +1,20 @@
 // screens/InviteFriendScreen.tsx
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Alert, FlatList } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Alert,
+  FlatList,
+  Image,
+  ScrollView,
+} from 'react-native';
 import StyledInput from '../components/StyledInput';
 import BlueButton from '../components/BlueButton';
 import api from '../api';
 import theme from '../constants/theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 type InviteRow = {
   id: string;
@@ -26,33 +35,145 @@ type ClubInfo = {
   referrerRewardYears: number;
 };
 
+type InviteVisualStatus = {
+  kind: 'success' | 'pending' | 'failed';
+  text: string;
+  color: string;
+  icon: string;
+};
+
+function formatShortDate(date: string) {
+  return new Date(date).toLocaleDateString('en-US');
+}
+
+function getInviteStatusMeta(item: InviteRow): InviteVisualStatus {
+  const s = String(item.status || '').toLowerCase();
+
+  if (
+    s.includes('accepted') ||
+    s.includes('completed') ||
+    s.includes('rewarded') ||
+    s.includes('success')
+  ) {
+    return {
+      kind: 'success',
+      text: item.acceptedAt
+        ? `Invested: $1,000 · ${formatShortDate(item.acceptedAt)}`
+        : `Accepted · ${formatShortDate(item.createdAt)}`,
+      color: '#11A36A',
+      icon: 'checkmark',
+    };
+  }
+
+  if (
+    s.includes('expired') ||
+    s.includes('rejected') ||
+    s.includes('failed') ||
+    s.includes('cancel')
+  ) {
+    return {
+      kind: 'failed',
+      text: 'Expired · Conditions not met',
+      color: '#E11D48',
+      icon: 'close',
+    };
+  }
+
+  return {
+    kind: 'pending',
+    text: `Registered: ${formatShortDate(item.createdAt)}`,
+    color: '#A1A1AA',
+    icon: 'time',
+  };
+}
+
+function getInitials(email: string) {
+  const local = (email || '').split('@')[0] || 'U';
+  const parts = local.split(/[.\-_]/).filter(Boolean);
+  if (parts.length >= 2) {
+    return `${parts[0][0] || ''}${parts[1][0] || ''}`.toUpperCase();
+  }
+  return local.slice(0, 2).toUpperCase();
+}
+
+const HowItWorksItem = ({
+  title,
+  isLast = false,
+  done = false,
+}: {
+  title: string;
+  isLast?: boolean;
+  done?: boolean;
+}) => {
+  return (
+    <View style={styles.howRow}>
+      <View style={styles.howLeft}>
+        <View
+          style={[
+            styles.howDot,
+            done && styles.howDotDone,
+          ]}
+        >
+          <View style={styles.howDotInner} />
+        </View>
+        {!isLast && <View style={styles.howLine} />}
+      </View>
+
+      <Text style={styles.howText}>{title}</Text>
+    </View>
+  );
+};
 
 export default function InviteFriendScreen() {
   const [email, setEmail] = useState('');
   const [sending, setSending] = useState(false);
   const [list, setList] = useState<InviteRow[]>([]);
+  const [clubInfo, setClubInfo] = useState<ClubInfo | null>(null);
 
-    const [clubInfo, setClubInfo] = useState<ClubInfo | null>(null);
-
-  const load = async () => {
+  const loadInvites = async () => {
     try {
       const { data } = await api.get('/referrals/my-invites');
-      setList(data);
+      setList(Array.isArray(data) ? data : []);
     } catch (e: any) {
       console.error(e);
       Alert.alert('Error', 'Failed to load invites');
     }
   };
 
+  const loadClubInfo = async () => {
+    try {
+      const stored = await AsyncStorage.getItem('user');
+      if (!stored) return;
+
+      const parsed = JSON.parse(stored);
+      const userId = parsed.userId as string;
+      if (!userId) return;
+
+      const { data } = await api.get(`/share-offers/${userId}/club-info`);
+      setClubInfo(data);
+    } catch (e: any) {
+      console.error(e);
+    }
+  };
+
+  const loadAll = async () => {
+    await Promise.all([loadInvites(), loadClubInfo()]);
+  };
+
+  useEffect(() => {
+    loadAll();
+  }, []);
+
   const sendInvite = async () => {
     if (!email.trim()) {
       Alert.alert('Validation', 'Enter email');
       return;
     }
-        if (clubInfo && !clubInfo.canInvite) {
+
+    if (clubInfo && !clubInfo.canInvite) {
       Alert.alert(
         'Invitation not available',
-        'Referral invites are available starting from total assets of 10 000 USD.'
+        'Referral invites are available starting from total assets of 10 000 USD.',
       );
       return;
     }
@@ -60,13 +181,14 @@ export default function InviteFriendScreen() {
     setSending(true);
     try {
       const { data } = await api.post('/referrals/invite', { email: email.trim() });
-      // покажем код/ссылку сразу (их нет в списке по безопасности)
+
       Alert.alert(
         'Invite sent',
-        `Code: ${data.code}\nLink:\n${data.link}\n\n`
+        `Code: ${data.code}\nLink:\n${data.link}`,
       );
+
       setEmail('');
-      load();
+      await loadInvites();
     } catch (e: any) {
       console.error(e);
       let msg = 'Failed to send invite';
@@ -77,113 +199,355 @@ export default function InviteFriendScreen() {
     }
   };
 
-    useEffect(() => {
-    const loadAll = async () => {
-      try {
-        await load(); // загрузка списка инвайтов
+  const rewardText = useMemo(() => {
+    if (!clubInfo) {
+      return 'Referral bonus size and duration depend on your status.';
+    }
 
-        const stored = await AsyncStorage.getItem('user');
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          const userId = parsed.userId as string;
+    return `You get: Referral bonus size and duration depend on your status: from ${(clubInfo.referrerRewardPercent * 100).toFixed(0)}% for ${clubInfo.referrerRewardYears} year${clubInfo.referrerRewardYears > 1 ? 's' : ''}.`;
+  }, [clubInfo]);
 
-          const { data } = await api.get(`/share-offers/${userId}/club-info`);
-          setClubInfo(data);
-        }
-      } catch (e: any) {
-        console.error(e);
-      }
-    };
+  const friendBenefitText = useMemo(() => {
+    if (!clubInfo) {
+      return 'Your friend gets a reduced marketplace fee.';
+    }
 
-    loadAll();
-  }, []);
+    return `Your friend gets: reduced fee ${(clubInfo.withReferralFee * 100).toFixed(0)}% (instead of ${(clubInfo.baseFee * 100).toFixed(0)}%)`;
+  }, [clubInfo]);
 
+  const renderHistoryItem = ({ item }: { item: InviteRow }) => {
+    const meta = getInviteStatusMeta(item);
 
-  useEffect(() => { load(); }, []);
+    return (
+      <View style={styles.historyRow}>
+        <View style={styles.historyAvatar}>
+          <Text style={styles.historyAvatarText}>{getInitials(item.inviteeEmail)}</Text>
+        </View>
 
+        <View style={styles.historyContent}>
+          <Text style={styles.historyEmail} numberOfLines={1}>
+            {item.inviteeEmail}
+          </Text>
+          <Text
+            style={[
+              styles.historyMeta,
+              meta.kind === 'failed' && styles.historyMetaFailed,
+            ]}
+          >
+            {meta.text}
+          </Text>
+        </View>
 
-
-  const renderItem = ({ item }: { item: InviteRow }) => (
-    <View style={styles.card}>
-      <Text style={styles.rowEmail}>{item.inviteeEmail}</Text>
-      <Text>Status: {item.status}</Text>
-      <Text>Created: {new Date(item.createdAt).toLocaleString()}</Text>
-      <Text>Expires: {new Date(item.expiresAt).toLocaleString()}</Text>
-      {item.acceptedAt && <Text>Accepted: {new Date(item.acceptedAt).toLocaleString()}</Text>}
-    </View>
-  );
+        <View
+          style={[
+            styles.historyStatusCircle,
+            { backgroundColor: meta.color },
+          ]}
+        >
+          <Ionicons name={meta.icon as any} size={14} color="#FFFFFF" />
+        </View>
+      </View>
+    );
+  };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Invite a friend</Text>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+    >
+      <View style={styles.heroCard}>
+        <Image
+          source={require('../assets/images/freepik__3d1.png')}
+          style={styles.heroImage}
+          resizeMode="contain"
+        />
 
-            {clubInfo && (
-        <View style={{ marginBottom: 12 }}>
-          <Text style={{ fontWeight: '600' }}>
-            Your club status: {clubInfo.status}
+        <Text style={styles.heroTitle}>
+          Invite friends{'\n'}and earn bonuses
+        </Text>
+
+        <Text style={styles.heroText}>{rewardText}</Text>
+        <Text style={styles.heroTextSecondary}>{friendBenefitText}</Text>
+
+        {!clubInfo?.canInvite && (
+          <Text style={styles.blockedText}>
+            Referral invites become available from total assets of $10,000.
           </Text>
-          <Text>
-            Total assets (for club level): {clubInfo.totalAssets.toFixed(2)} USD
-          </Text>
+        )}
 
-          <Text>
-            Platform profit fee: {(clubInfo.baseFee * 100).toFixed(1)}% standard,{' '}
-            {(clubInfo.withReferralFee * 100).toFixed(1)}% for referred users.
-          </Text>
+        <StyledInput
+          style={styles.input}
+          placeholder="Friend’s Email"
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
+        />
 
-          {clubInfo.referrerRewardPercent > 0 && clubInfo.canInvite && (
-            <Text style={{ marginTop: 4 }}>
-              If your friend uses your invite, you will receive{' '}
-              {(clubInfo.referrerRewardPercent * 100).toFixed(1)}% of their profit fee
-              for {clubInfo.referrerRewardYears} year(s).
-            </Text>
-          )}
+        <BlueButton
+          title={sending ? 'Sending...' : 'Send Invite'}
+          onPress={sendInvite}
+          disabled={sending || (clubInfo !== null && !clubInfo.canInvite)}
+          width="full"
+          showArrow={false}
+          bgColor="#11A36A"
+          textColor="#FFFFFF"
+          borderColor="#11A36A"
+          paddingVertical={13}
+          style={styles.sendButton}
+        />
+      </View>
 
-          {!clubInfo.canInvite && (
-            <Text style={{ marginTop: 4, color: '#b00020' }}>
-              Referral invites become available from 10 000 USD total assets.
-            </Text>
-          )}
-        </View>
-      )}
+      <View style={styles.infoCard}>
+        <Text style={styles.sectionTitle}>How it works</Text>
 
+        <HowItWorksItem title="Send your referral link to a friend" />
+        <HowItWorksItem title="Friend registers" />
+        <HowItWorksItem title="Friend invests from $1,000" />
+        <HowItWorksItem
+          title="You earn a commission on their net profit – percentage and duration depend on your status"
+          isLast
+          done
+        />
+      </View>
 
-      <StyledInput
-        style={styles.input}
-        placeholder="Friend's email"
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
-      />
-      <BlueButton title={sending ? 'Sending...' : 'Send invite'} onPress={sendInvite} disabled={sending || (clubInfo !== null && !clubInfo.canInvite)}      />
-      
+      <View style={styles.historyCard}>
+        <Text style={styles.sectionTitle}>Invitation history</Text>
 
-      <Text style={styles.subTitle}>Sent invites</Text>
-      <FlatList
-        data={list}
-        keyExtractor={(x) => x.id}
-        renderItem={renderItem}
-        ListEmptyComponent={<Text style={styles.empty}>No invites yet.</Text>}
-        contentContainerStyle={{ paddingBottom: 24 }}
-      />
-    </View>
+        {list.length === 0 ? (
+          <Text style={styles.emptyText}>You haven't invited anyone yet.</Text>
+        ) : (
+          <FlatList
+            data={list}
+            keyExtractor={(x) => x.id}
+            renderItem={renderHistoryItem}
+            scrollEnabled={false}
+            ItemSeparatorComponent={() => <View style={styles.historyDivider} />}
+            contentContainerStyle={{ paddingTop: 8 }}
+          />
+        )}
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: theme.colors.background },
-  title: { fontSize: 22, fontWeight: '700', marginBottom: 12, textAlign: 'center', display: 'none'  },
-  subTitle: { fontSize: 18, fontWeight: '600', marginTop: 16, marginBottom: 8 },
-  input: { marginBottom: 10,  borderRadius: 8, borderWidth: StyleSheet.hairlineWidth,  borderColor: '#777' },
-  empty: { textAlign: 'center', color: '#777', marginTop: 16 },
-  card: {
-    padding: 12,
-    borderRadius: 8,
-    backgroundColor: '#fff',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#ddd',
+  container: {
+    flex: 1,
+    backgroundColor: '#ECECEC',
+  },
+
+  content: {
+    padding: 16,
+    paddingBottom: 120,
+  },
+
+  heroCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 28,
+    paddingHorizontal: 16,
+    paddingTop: 18,
+    paddingBottom: 18,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+
+  heroImage: {
+    width: '100%',
+    height: 215,
     marginBottom: 10,
   },
-  rowEmail: { fontWeight: '700', marginBottom: 4 },
+
+  heroTitle: {
+    fontSize: 23,
+    lineHeight: 30,
+    fontWeight: '700',
+    color: '#11A36A',
+    textAlign: 'center',
+    marginBottom: 14,
+  },
+
+  heroText: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: '#222222',
+    textAlign: 'center',
+    marginBottom: 10,
+    paddingHorizontal: 8,
+  },
+
+  heroTextSecondary: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: '#222222',
+    textAlign: 'center',
+    marginBottom: 14,
+    paddingHorizontal: 8,
+  },
+
+  blockedText: {
+    color: '#E11D48',
+    fontSize: 13,
+    lineHeight: 18,
+    textAlign: 'center',
+    marginBottom: 12,
+    paddingHorizontal: 8,
+  },
+
+  input: {
+    width: '100%',
+    marginBottom: 10,
+    borderRadius: 14,
+    borderWidth: 0,
+    backgroundColor: '#F5F5F5',
+  },
+
+  sendButton: {
+    width: '100%',
+    marginBottom: 0,
+    borderRadius: 14,
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+
+  infoCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 28,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+    marginBottom: 16,
+  },
+
+  historyCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 28,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 16,
+  },
+
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#222222',
+    marginBottom: 14,
+  },
+
+  howRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    minHeight: 58,
+  },
+
+  howLeft: {
+    width: 24,
+    alignItems: 'center',
+    marginRight: 10,
+  },
+
+  howDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 1.5,
+    borderColor: '#11A36A',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+
+  howDotDone: {
+    backgroundColor: '#11A36A',
+    borderColor: '#11A36A',
+  },
+
+  howDotInner: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#FFFFFF',
+  },
+
+  howLine: {
+    width: 1.5,
+    flex: 1,
+    backgroundColor: '#A7E3C8',
+    marginTop: 4,
+    marginBottom: -4,
+  },
+
+  howText: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 22,
+    color: '#222222',
+    paddingBottom: 12,
+  },
+
+  emptyText: {
+    fontSize: 14,
+    color: '#9A9A9A',
+    marginTop: 8,
+  },
+
+  historyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+
+  historyAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#7BCDB0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+
+  historyAvatarText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '500',
+  },
+
+  historyContent: {
+    flex: 1,
+    paddingRight: 10,
+  },
+
+  historyEmail: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#222222',
+    marginBottom: 3,
+  },
+
+  historyMeta: {
+    fontSize: 12,
+    color: '#9A9A9A',
+    lineHeight: 18,
+  },
+
+  historyMetaFailed: {
+    color: '#E11D48',
+  },
+
+  historyStatusCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  historyDivider: {
+    height: 1,
+    backgroundColor: '#ECEEF2',
+    marginLeft: 56,
+  },
 });

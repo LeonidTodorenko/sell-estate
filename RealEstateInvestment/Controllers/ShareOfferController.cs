@@ -566,7 +566,9 @@ namespace RealEstateInvestment.Controllers
                     t.Shares,
                     t.PricePerShare,
                     PropertyId = t.PropertyId,
-                    PropertyTitle = t.Property.Title
+                    PropertyTitle = t.Property.Title,
+                    t.BuyerId,
+                    t.SellerId
                 })
                 .ToListAsync();
 
@@ -844,6 +846,8 @@ namespace RealEstateInvestment.Controllers
                 .Select(b => new
                 {
                     b.Id,
+                    b.OfferId,
+                    b.BidderId,
                     b.BidPricePerShare,
                     b.CreatedAt,
                     b.Shares

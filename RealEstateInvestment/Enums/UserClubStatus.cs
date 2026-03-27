@@ -2,9 +2,9 @@
 {
     public enum UserClubStatus
     {
-        Blue,
-        Silver,
-        Gold,
-        Diamond
+        Explorer,
+        Expert,
+        Visionary,
+        VIP
     }
 }

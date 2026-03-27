@@ -8,15 +8,15 @@ namespace RealEstateInvestment.Helpers
         public static UserClubStatus GetStatus(decimal totalAssets)
         {
             if (totalAssets >= 1_000_000m)
-                return UserClubStatus.Diamond; // можно сделать отдельный Black, если захотите
+                return UserClubStatus.VIP; // можно сделать отдельный Black, если захотите
             if (totalAssets >= 100_000m)
-                return UserClubStatus.Diamond;
+                return UserClubStatus.VIP;
             if (totalAssets >= 50_000m)
-                return UserClubStatus.Gold;
+                return UserClubStatus.Visionary;
             if (totalAssets >= 10_000m)
-                return UserClubStatus.Silver;
+                return UserClubStatus.Expert;
 
-            return UserClubStatus.Blue;
+            return UserClubStatus.Explorer;
         }
 
         // 2) Проценты комиссии (без кода / с кодом) по статусу
@@ -24,10 +24,10 @@ namespace RealEstateInvestment.Helpers
         {
             return status switch
             {
-                UserClubStatus.Blue => (0.10m, 0.07m),
-                UserClubStatus.Silver => (0.09m, 0.06m),
-                UserClubStatus.Gold => (0.085m, 0.055m),
-                UserClubStatus.Diamond => (0.08m, 0.05m),
+                UserClubStatus.Explorer => (0.10m, 0.07m),
+                UserClubStatus.Expert => (0.09m, 0.06m),
+                UserClubStatus.Visionary => (0.085m, 0.055m),
+                UserClubStatus.VIP => (0.08m, 0.05m),
                 _ => (0.10m, 0.07m)
             };
         }
