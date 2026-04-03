@@ -9,11 +9,14 @@ import notifee, { AndroidImportance } from '@notifee/react-native';
 import { AuthProvider } from './src/contexts/AuthContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
+import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
+import { navigationRef } from './src/navigation/navigationRef';
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 60_000,      // 1 мин считаем “свежим”
-      gcTime: 10 * 60_000,    // 10 мин держим в памяти
+      staleTime: 60_000,
+      gcTime: 10 * 60_000,
       retry: 1,
       refetchOnReconnect: true,
       refetchOnWindowFocus: true,
@@ -21,6 +24,27 @@ const queryClient = new QueryClient({
   },
 });
 
+const MyTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: theme.colors.background,
+  },
+};
+
+const linking = {
+  prefixes: ['sellestate://'],
+  config: {
+    screens: {
+      ResetNotLoggedPassword: {
+        path: 'reset-password',
+        parse: {
+          token: (token: string) => token,
+        },
+      },
+    },
+  },
+};
 
 export default function App() {
   useEffect(() => {
@@ -28,7 +52,6 @@ export default function App() {
       await requestUserPermission();
       await getFcmToken();
 
-      // Create a channel for Android
       await notifee.createChannel({
         id: 'default',
         name: 'Default Channel',
@@ -38,7 +61,6 @@ export default function App() {
 
     setup();
 
-    // Handling push notifications when the app is active
     const unsubscribe = messaging().onMessage(async remoteMessage => {
       console.log('Push received in foreground:', remoteMessage);
 
@@ -56,21 +78,28 @@ export default function App() {
   }, []);
 
   return (
-   <QueryClientProvider client={queryClient}> 
-    <LoadingProvider>
-         <AuthProvider>
-      <SafeAreaView style={styles.container}>
-        <StatusBar backgroundColor={theme.colors.background} barStyle="dark-content" />
-        {/* <StatusBar
-          translucent
-          backgroundColor="transparent"
-          barStyle="light-content"
-        /> */}
-        <AppNavigator />
-      </SafeAreaView>
-      </AuthProvider>
-    </LoadingProvider>
-   </QueryClientProvider>
+    <QueryClientProvider client={queryClient}>
+      <LoadingProvider>
+        <AuthProvider>
+
+          {/* 👇 ВАЖНО: NavigationContainer ЗДЕСЬ */}
+          <NavigationContainer
+            ref={navigationRef}
+            linking={linking}
+            theme={MyTheme}
+          >
+            <SafeAreaView style={styles.container}>
+              <StatusBar
+                backgroundColor={theme.colors.background}
+                barStyle="dark-content"
+              />
+              <AppNavigator />
+            </SafeAreaView>
+          </NavigationContainer>
+
+        </AuthProvider>
+      </LoadingProvider>
+    </QueryClientProvider>
   );
 }
 

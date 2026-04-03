@@ -101,6 +101,16 @@ const EditProfileScreen = () => {
 
   return (
     <ScrollView style={styles.container}>
+
+        <Text style={{ marginTop: 10, fontWeight: 'bold' }}>Avatar:</Text>
+       {avatarBase64 ? (
+        <Image source={{ uri: avatarBase64 }} style={styles.avatar} />
+      ) :  (
+        <Text>No avatar</Text>
+      )}
+      <BlueButton title="📷 Upload Avatar" onPress={handlePickAvatar} />
+
+
       <Text style={styles.title}>Edit Profile</Text>
       <Text>Joined: {user && new Date(user.createdAt).toLocaleDateString()}</Text>
       <View style={{ height: 20 }} />
@@ -111,14 +121,7 @@ const EditProfileScreen = () => {
       <StyledInput style={styles.input} placeholder="Phone Number" value={phoneNumber} onChangeText={setPhoneNumber} />
       <StyledInput style={styles.input} placeholder="Address" value={address} onChangeText={setAddress} />
 
-      <Text style={{ marginTop: 10, fontWeight: 'bold' }}>Avatar:</Text>
-       {avatarBase64 ? (
-        <Image source={{ uri: avatarBase64 }} style={styles.avatar} />
-      ) :  (
-        <Text>No avatar</Text>
-      )}
-      <BlueButton title="📷 Upload  Avatar" onPress={handlePickAvatar} />
-
+    
       <View style={{ height: 20 }} />
       <BlueButton title="Update" onPress={handleUpdate} />
       <View style={{ height: 20 }} />

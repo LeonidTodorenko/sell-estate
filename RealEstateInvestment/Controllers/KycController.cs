@@ -23,13 +23,21 @@ namespace RealEstateInvestment.Controllers
         [HttpPost("upload")]
         public async Task<IActionResult> Upload([FromBody] KycDocument doc)
         {
+            if (doc == null || doc.UserId == Guid.Empty || string.IsNullOrWhiteSpace(doc.Base64File))
+                return BadRequest(new { message = "Invalid data" });
+
+            if (string.IsNullOrWhiteSpace(doc.Status))
+                doc.Status = "pending";
+
             _context.KycDocuments.Add(doc);
+
             _context.ActionLogs.Add(new ActionLog
             {
                 UserId = doc.UserId,
                 Action = "Upload KycDocument",
-                Details = "KycDocument uploaded userid: " + doc.UserId.ToString()
+                Details = $"KycDocument uploaded. UserId: {doc.UserId}, Type: {doc.Type}"
             });
+
             await _context.SaveChangesAsync();
             return Ok(new { message = "Document uploaded" });
         }

@@ -60,6 +60,12 @@ import UserEditScreen from '../screens/UserEditScreen';
 import AdminFinanceFlowsScreen from '../screens/AdminFinanceFlowsScreen';
 import AdminFinanceMonthScreen from '../screens/AdminFinanceMonthScreen';
 import StatusScreen from '../screens/StatusScreen';
+import AddCardScreen from '../screens/AddCardScreen';
+
+import AboutScreen from '../screens/AboutScreen';
+import TermsScreen from '../screens/TermsScreen';
+import SettingsScreen from '../screens/SettingsScreen';
+import ResetNotLoggedPasswordScreen from '../screens/ResetNotLoggedPasswordScreen';
 
 import HeaderMenu from '../components/HeaderMenu';
 import { navigationRef } from './navigationRef';
@@ -117,13 +123,18 @@ export type RootStackParamList = {
   MyFinance: undefined;
   MyRentIncome: undefined;
   Status: undefined;
-  RentHistory: { propertyId: string };
+  RentsHitory: { propertyId: string };
   Home: undefined;
   Gate: undefined;
+  Terms: undefined;
+  About: undefined;
+  ResetNotLoggedPassword: { token: string };
+Settings: undefined;
    AdminFinanceFlows: undefined;
   AdminFinanceMonth: { ym: string };
   InviteFriend: undefined;
     UsersLists: undefined;
+    AddCard: undefined;
   UserEdit: {
     id: string;
     fullName: string;
@@ -181,11 +192,11 @@ export default function AppNavigator() {
 
   return (
         <SafeAreaProvider>
-      <NavigationContainer theme={MyTheme}
+      {/* <NavigationContainer theme={MyTheme}
         ref={navigationRef}
         onReady={() => setRouteName(navigationRef.getCurrentRoute()?.name)}
         onStateChange={() => setRouteName(navigationRef.getCurrentRoute()?.name)}
-      >
+      > */}
         <Stack.Navigator initialRouteName="Gate" screenOptions={screenOptions}>
         <Stack.Screen name="Gate" component={GateScreen} options={{ headerShown: false }} />
         {/* <Stack.Screen name="Login" component={LoginScreen} options={{ title: '' }} /> */}
@@ -201,7 +212,7 @@ export default function AppNavigator() {
              // headerRight: () => <HeaderMenu /> // // убрали меню вверху логина
             }}
           />
-        <Stack.Screen name="Register" component={RegisterScreen} options={{ title: 'Register' }} />
+        <Stack.Screen name="Register" component={RegisterScreen} options={{ title: 'Create Account' }} />
         <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profile' }} />
         <Stack.Screen name="Investments" component={InvestmentsScreen} options={{ title: 'Investment' }} />
         <Stack.Screen name="Properties" component={PropertyListScreen} options={{ title: 'Properties' }} />
@@ -238,7 +249,7 @@ export default function AppNavigator() {
         <Stack.Screen name="AdminSystemSettings" component={AdminSystemSettingsScreen} options={{ title: 'Admin System Settings' }} />
         <Stack.Screen name="TradeHistory" component={TradeHistoryScreen} options={{ title: 'Trade History' }} />
         <Stack.Screen name="SuperUser" component={SuperUserScreen} options={{ title: 'Super User' }} />
-        <Stack.Screen name="UserTransactions" component={UserTransactionsScreen} options={{ title: 'Transactions' }} />
+        <Stack.Screen name="UserTransactions" component={UserTransactionsScreen} options={{ title: 'Transactions History' }} />
         <Stack.Screen name="Personal" component={PersonalScreen} options={{ title: 'Personal' }} />
         <Stack.Screen name="Chat" component={ChatScreen} options={{ title: 'Support' }} />
         <Stack.Screen name="AdminChat" component={AdminChatScreen} options={{ title: 'Chat' }} />
@@ -253,11 +264,16 @@ export default function AppNavigator() {
          <Stack.Screen name="AdminFinanceFlows" component={AdminFinanceFlowsScreen} options={{ title: 'Finance Flows' }} />
           <Stack.Screen name="AdminFinanceMonth" component={AdminFinanceMonthScreen} options={{ title: 'Finance Month' }} />
           <Stack.Screen name="Status" component={StatusScreen} options={{ title: 'Status' }} />
+          <Stack.Screen name="AddCard" component={AddCardScreen} options={{ title: 'Add Card ' }} />
+           <Stack.Screen name="About" component={AboutScreen} options={{ title: 'About App ' }} />
+            <Stack.Screen name="Terms" component={TermsScreen} options={{ title: 'Terms of Service' }} />
+            <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings ' }} />
+              <Stack.Screen name="ResetNotLoggedPassword" component={ResetNotLoggedPasswordScreen} options={{ title: 'Reset Password ' }} />
         </Stack.Navigator>
 
         {/* НИЖНИЙ БАР только для «пользовательских» экранов */}
         {showBottomBar && <BottomBar />}
-      </NavigationContainer>
+      {/* </NavigationContainer> */}
     </SafeAreaProvider>
     
  

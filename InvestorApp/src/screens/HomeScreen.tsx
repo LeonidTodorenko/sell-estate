@@ -729,91 +729,92 @@ setMarketListings(preparedMarketListings);
         onSeeAll={() => navigation.navigate('MyFinance')}
       />
 
-      {combinedChart ? (
-        <View style={styles.chartCard}>
-          <View style={styles.chartTopRow}>
-            <View>
-              <Text style={styles.chartCardTitle}>Overall Growth</Text>
-              <Text style={styles.chartCardAmount}>
-                {stats ? money(stats.totalAssets ?? 0) : '—'}
-              </Text>
-            </View>
+      <View style={styles.chartCard}>
+  <View style={styles.chartTopRow}>
+    <View>
+      <Text style={styles.chartCardTitle}>Overall Growth</Text>
+      <Text style={styles.chartCardAmount}>
+        {stats ? money(stats.totalAssets ?? 0) : '—'}
+      </Text>
+    </View>
 
-            {!!totals?.rentalIncome && totals.rentalIncome > 0 && (
-              <Text style={styles.chartIncomeHint}>
-                + {money(totals.rentalIncome)} / month
-              </Text>
-            )}
-          </View>
+    {!!totals?.rentalIncome && totals.rentalIncome > 0 && (
+      <Text style={styles.chartIncomeHint}>
+        + {money(totals.rentalIncome)} / month
+      </Text>
+    )}
+  </View>
 
-          <LineChart
-            data={combinedChart}
-            width={chartWidth}
-            height={220}
-            yAxisSuffix=" $"
-            withInnerLines={false}
-            withOuterLines={false}
-            withVerticalLines={false}
-            fromZero={false}
-            chartConfig={{
-              backgroundColor: theme.colors.surface,
-              backgroundGradientFrom: theme.colors.surface,
-              backgroundGradientTo: theme.colors.surface,
-              decimalPlaces: 0,
-              color: (opacity = 1) => `rgba(17, 163, 106, ${opacity})`,
-              labelColor: () => theme.colors.textSecondary,
-              propsForDots: {
-                r: '3',
-                strokeWidth: '1',
-                stroke: theme.colors.primary,
-              },
-            }}
-            bezier
-            style={styles.chart}
-          />
-          <View style={styles.chartTabsRow}>
-  <Pressable
-    onPress={() => setChartRange('3m')}
-    style={[styles.chartTab, chartRange === '3m' && styles.chartTabActive]}
-  >
-    <Text style={[styles.chartTabText, chartRange === '3m' && styles.chartTabTextActive]}>
-      3 month
-    </Text>
-  </Pressable>
+  {combinedChart ? (
+    <LineChart
+      data={combinedChart}
+      width={chartWidth}
+      height={220}
+      yAxisSuffix=" $"
+      withInnerLines={false}
+      withOuterLines={false}
+      withVerticalLines={false}
+      fromZero={false}
+      chartConfig={{
+        backgroundColor: theme.colors.surface,
+        backgroundGradientFrom: theme.colors.surface,
+        backgroundGradientTo: theme.colors.surface,
+        decimalPlaces: 0,
+        color: (opacity = 1) => `rgba(17, 163, 106, ${opacity})`,
+        labelColor: () => theme.colors.textSecondary,
+        propsForDots: {
+          r: '3',
+          strokeWidth: '1',
+          stroke: theme.colors.primary,
+        },
+      }}
+      bezier
+      style={styles.chart}
+    />
+  ) : (
+    <View style={styles.chartEmptyWrap}>
+      <Text style={styles.emptyText}>No chart data for selected period</Text>
+    </View>
+  )}
 
-  <Pressable
-    onPress={() => setChartRange('6m')}
-    style={[styles.chartTab, chartRange === '6m' && styles.chartTabActive]}
-  >
-    <Text style={[styles.chartTabText, chartRange === '6m' && styles.chartTabTextActive]}>
-      6 month
-    </Text>
-  </Pressable>
+  <View style={styles.chartTabsRow}>
+    <Pressable
+      onPress={() => setChartRange('3m')}
+      style={[styles.chartTab, chartRange === '3m' && styles.chartTabActive]}
+    >
+      <Text style={[styles.chartTabText, chartRange === '3m' && styles.chartTabTextActive]}>
+        3 month
+      </Text>
+    </Pressable>
 
-  <Pressable
-    onPress={() => setChartRange('1y')}
-    style={[styles.chartTab, chartRange === '1y' && styles.chartTabActive]}
-  >
-    <Text style={[styles.chartTabText, chartRange === '1y' && styles.chartTabTextActive]}>
-      1 year
-    </Text>
-  </Pressable>
+    <Pressable
+      onPress={() => setChartRange('6m')}
+      style={[styles.chartTab, chartRange === '6m' && styles.chartTabActive]}
+    >
+      <Text style={[styles.chartTabText, chartRange === '6m' && styles.chartTabTextActive]}>
+        6 month
+      </Text>
+    </Pressable>
 
-  <Pressable
-    onPress={() => setChartRange('all')}
-    style={[styles.chartTab, chartRange === 'all' && styles.chartTabActive]}
-  >
-    <Text style={[styles.chartTabText, chartRange === 'all' && styles.chartTabTextActive]}>
-      All
-    </Text>
-  </Pressable>
+    <Pressable
+      onPress={() => setChartRange('1y')}
+      style={[styles.chartTab, chartRange === '1y' && styles.chartTabActive]}
+    >
+      <Text style={[styles.chartTabText, chartRange === '1y' && styles.chartTabTextActive]}>
+        1 year
+      </Text>
+    </Pressable>
+
+    <Pressable
+      onPress={() => setChartRange('all')}
+      style={[styles.chartTab, chartRange === 'all' && styles.chartTabActive]}
+    >
+      <Text style={[styles.chartTabText, chartRange === 'all' && styles.chartTabTextActive]}>
+        All
+      </Text>
+    </Pressable>
+  </View>
 </View>
-        </View>
-      ) : (
-        <View style={styles.emptyCard}>
-          <Text style={styles.emptyText}>No chart data yet</Text>
-        </View>
-      )}
 
       <View style={{ height: theme.spacing.md }} />
 
@@ -1471,5 +1472,10 @@ investmentProfitIcon: {
   width: 14,
   height: 14,
   marginRight: 5,
+},
+chartEmptyWrap: {
+  height: 220,
+  alignItems: 'center',
+  justifyContent: 'center',
 },
 });

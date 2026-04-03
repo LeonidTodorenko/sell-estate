@@ -925,13 +925,18 @@ namespace RealEstateInvestment.Controllers
             {
                 UserId = user.Id
             };
+
             _context.PasswordResetTokens.Add(token);
+            await _context.SaveChangesAsync();  
 
-            var resetUrl = $"https://sell-estate.onrender.com/reset-password?token={token.Token}"; // todo move to config
-            await _emailService.SendEmailAsync(email, "Reset Password",
-                $"Click here to reset your password: <a href='{resetUrl}'>Reset Password</a>");
+            var resetUrl = $"sellestate://reset-password?token={token.Token}"; // todo move to config
 
-            await _context.SaveChangesAsync();
+            await _emailService.SendEmailAsync(
+                email,
+                "Reset Password",
+                $"Click here to reset your password:<br/><a href='{resetUrl}'>Reset Password</a>"
+            );
+
             return Ok(new { message = "Password reset link sent to email" });
         }
 

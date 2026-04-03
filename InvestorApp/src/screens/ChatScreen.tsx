@@ -237,15 +237,17 @@ const ChatScreen = () => {
           <Ionicons name="attach-outline" size={18} color="#6B7280" />
         </TouchableOpacity>
 
-        <TextInput
-          style={styles.input}
-          value={input}
-          onChangeText={setInput}
-          placeholder="Enter your question"
-          placeholderTextColor="#A1A1AA"
-          multiline
-          maxLength={2000}
-        />
+       <TextInput
+  style={styles.input}
+  value={input}
+  onChangeText={setInput}
+  placeholder="Enter your question"
+  placeholderTextColor="#A1A1AA"
+  multiline
+  scrollEnabled
+  textAlignVertical="center"
+  maxLength={2000}
+/>
 
         <TouchableOpacity
           onPress={sendMessage}
@@ -389,16 +391,14 @@ const styles = StyleSheet.create({
 
 input: {
   flex: 1,
-  minHeight: 44,
-  maxHeight: 110,
+  height: 52,
   fontSize: 14,
   color: theme.colors.text,
-  paddingTop: 10,
-  paddingBottom: 10,
   paddingHorizontal: 6,
- 
+  paddingVertical: 6,
   borderRadius: 20,
   backgroundColor: 'transparent',
+  textAlignVertical: 'center',
 },
 
   sendBtn: {

@@ -281,13 +281,13 @@ const ProfileScreen = ({ navigation }: Props) => {
         <MenuItem
           iconSource={settingIcon}
           title="Settings"
-          onPress={() => navigation.navigate('EditProfile')}
+          onPress={() => navigation.navigate('Settings')}
         />
 
         <MenuItem
           iconSource={infoIcon}
           title="About App"
-          onPress={() => navigation.navigate('Personal')}
+          onPress={() => navigation.navigate('About')}
         />
 
         <MenuItem

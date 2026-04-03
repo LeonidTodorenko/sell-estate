@@ -728,7 +728,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    top: '18%',
+    top: '7%',
     bottom: '40%',
     zIndex: 3,
     alignItems: 'center',
@@ -757,7 +757,7 @@ const styles = StyleSheet.create({
 
   heroTitle: {
     color: '#FFFFFF',
-    fontSize: 34,
+    fontSize: 28,
     fontWeight: '700',
     lineHeight: 40,
     textAlign: 'left',
