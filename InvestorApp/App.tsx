@@ -9,8 +9,8 @@ import notifee, { AndroidImportance } from '@notifee/react-native';
 import { AuthProvider } from './src/contexts/AuthContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
-import { navigationRef } from './src/navigation/navigationRef';
+import {  DefaultTheme } from '@react-navigation/native';
+ 
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -23,29 +23,7 @@ const queryClient = new QueryClient({
     },
   },
 });
-
-const MyTheme = {
-  ...DefaultTheme,
-  colors: {
-    ...DefaultTheme.colors,
-    background: theme.colors.background,
-  },
-};
-
-const linking = {
-  prefixes: ['sellestate://'],
-  config: {
-    screens: {
-      ResetNotLoggedPassword: {
-        path: 'reset-password',
-        parse: {
-          token: (token: string) => token,
-        },
-      },
-    },
-  },
-};
-
+ 
 export default function App() {
   useEffect(() => {
     const setup = async () => {
@@ -81,13 +59,7 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <LoadingProvider>
         <AuthProvider>
-
-          {/* 👇 ВАЖНО: NavigationContainer ЗДЕСЬ */}
-          <NavigationContainer
-            ref={navigationRef}
-            linking={linking}
-            theme={MyTheme}
-          >
+ 
             <SafeAreaView style={styles.container}>
               <StatusBar
                 backgroundColor={theme.colors.background}
@@ -95,8 +67,7 @@ export default function App() {
               />
               <AppNavigator />
             </SafeAreaView>
-          </NavigationContainer>
-
+           
         </AuthProvider>
       </LoadingProvider>
     </QueryClientProvider>

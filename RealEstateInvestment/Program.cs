@@ -71,6 +71,21 @@ builder.Services.AddAuthentication(options =>
 //              .AllowAnyMethod());
 //});
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("Frontend", policy =>
+        policy.WithOrigins(
+                "https://todtech.ru",
+                "https://www.todtech.ru",
+                "https://sell-estate.onrender.com"
+            )
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+    );
+});
+
+
+
 
 builder.Services.AddAuthorization();
 
@@ -196,9 +211,10 @@ app.UseStaticFiles(new StaticFileOptions
     FileProvider = new PhysicalFileProvider(uploadsRoot),
     RequestPath = "/uploads"
 });
-
+app.UseCors("Frontend");
 app.MapControllers();
  
+
 
 // ===== DEBUG: найти дубликаты маршрутов =====
 //var ds = app.Services.GetRequiredService<EndpointDataSource>();

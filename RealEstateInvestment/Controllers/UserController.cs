@@ -927,10 +927,11 @@ namespace RealEstateInvestment.Controllers
             };
 
             _context.PasswordResetTokens.Add(token);
-            await _context.SaveChangesAsync();  
+            await _context.SaveChangesAsync();
 
-            var resetUrl = $"sellestate://reset-password?token={token.Token}"; // todo move to config
-
+            var resetUrl = $"https://todtech.ru/newpassword.html?token={token.Token}"; // todo 
+            //var resetUrl = $"sellestate://reset-password?token={token.Token}"; 
+             
             await _emailService.SendEmailAsync(
                 email,
                 "Reset Password",
@@ -946,6 +947,7 @@ namespace RealEstateInvestment.Controllers
             public string NewPassword { get; set; }
         }
 
+        [AllowAnonymous]
         [HttpPost("reset-password")]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest req)
         {

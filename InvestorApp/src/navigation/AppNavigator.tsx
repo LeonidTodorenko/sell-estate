@@ -75,7 +75,7 @@ import theme from '../constants/theme';
 //import SplashScreen from '../screens/SplashScreen'; 
  //import { AuthContext } from '../contexts/AuthContext';
  //import { useLoading } from '../contexts/LoadingContext';
-
+ 
 export type RootStackParamList = {
   Login: undefined;
   Register: undefined;
@@ -123,7 +123,7 @@ export type RootStackParamList = {
   MyFinance: undefined;
   MyRentIncome: undefined;
   Status: undefined;
-  RentsHitory: { propertyId: string };
+  RentHistory: { propertyId: string };
   Home: undefined;
   Gate: undefined;
   Terms: undefined;
@@ -192,11 +192,11 @@ export default function AppNavigator() {
 
   return (
         <SafeAreaProvider>
-      {/* <NavigationContainer theme={MyTheme}
+      <NavigationContainer theme={MyTheme}
         ref={navigationRef}
         onReady={() => setRouteName(navigationRef.getCurrentRoute()?.name)}
         onStateChange={() => setRouteName(navigationRef.getCurrentRoute()?.name)}
-      > */}
+      >
         <Stack.Navigator initialRouteName="Gate" screenOptions={screenOptions}>
         <Stack.Screen name="Gate" component={GateScreen} options={{ headerShown: false }} />
         {/* <Stack.Screen name="Login" component={LoginScreen} options={{ title: '' }} /> */}
@@ -273,7 +273,7 @@ export default function AppNavigator() {
 
         {/* НИЖНИЙ БАР только для «пользовательских» экранов */}
         {showBottomBar && <BottomBar />}
-      {/* </NavigationContainer> */}
+      </NavigationContainer>
     </SafeAreaProvider>
     
  

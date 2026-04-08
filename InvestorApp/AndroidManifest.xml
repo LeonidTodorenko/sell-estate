@@ -33,7 +33,7 @@
              <action android:name="android.intent.action.VIEW" />
             <category android:name="android.intent.category.DEFAULT" />
             <category android:name="android.intent.category.BROWSABLE" />
-            <data                android:scheme="sellestate"        android:host="reset-password" />
+            <data                android:scheme="investorapp"        android:host="reset-password" />
 
         </intent-filter>
       </activity>
