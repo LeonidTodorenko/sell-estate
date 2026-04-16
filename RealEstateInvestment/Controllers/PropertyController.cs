@@ -588,10 +588,10 @@ namespace RealEstateInvestment.Controllers
             existing.LastPayoutDate = updated.LastPayoutDate;
             existing.ListingType = updated.ListingType;
             existing.VideoUrl = updated.VideoUrl;
-        
+
             existing.PlannedSaleDate = updated.PlannedSaleDate;
-            existing.About = string.IsNullOrWhiteSpace(existing.About) ? null : existing.About.Trim();
-            existing.ExpectedYieldText = string.IsNullOrWhiteSpace(existing.ExpectedYieldText) ? null : existing.ExpectedYieldText.Trim();
+            existing.About = string.IsNullOrWhiteSpace(updated.About) ? null : updated.About.Trim();
+            existing.ExpectedYieldText = string.IsNullOrWhiteSpace(updated.ExpectedYieldText) ? null : updated.ExpectedYieldText.Trim();
 
             await _context.SaveChangesAsync();
 

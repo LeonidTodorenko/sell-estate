@@ -118,7 +118,11 @@ setPlannedSaleDate(existing?.plannedSaleDate ? new Date(existing.plannedSaleDate
   loadMedia();
   }, [route.params]);
 
-  useFocusEffect(initializeForm);
+  useFocusEffect(
+  useCallback(() => {
+    initializeForm();
+  }, [initializeForm])
+);
 
   
 
@@ -250,9 +254,9 @@ const deleteMedia = async (mediaId: string) => {
   upfrontPayment: upfrontPayment != null ?  parseFloat(upfrontPayment) || 0  : 0,
   applicationDeadline: deadline.toISOString(),//new Date(deadline).toISOString(),
   listingType,
-  buybackPricePerShare: parseFloat(buybackPricePerShare),
-  latitude: parseFloat(latitude),
-  longitude: parseFloat(longitude),
+buybackPricePerShare: buybackPricePerShare.trim()  ? parseFloat(buybackPricePerShare)  : null,
+latitude: latitude.trim() ? parseFloat(latitude) : 0,
+longitude: longitude.trim() ? parseFloat(longitude) : 0,
   expectedCompletionDate: completionDate.toISOString(),//new Date(completionDate).toISOString(),
   monthlyRentalIncome: parseFloat(monthlyRentalIncome) || 0,
   lastPayoutDate: lastPayoutDate.toISOString(),//new Date(lastPayoutDate).toISOString(),
