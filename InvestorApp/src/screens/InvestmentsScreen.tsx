@@ -170,22 +170,36 @@ const InvestmentCard: React.FC<InvestmentCardProps> = ({
     return [...fromImages, ...fromMedia].filter((s) => !!s.uri);
   }, [property]);
 
-  const totalSlides = slides.length;
-  const location = property?.location || 'Dubai Hills Estate / Dubai, UAE';
-  const profit = investment.totalShareValue - investment.totalInvested;
-  const yieldText = '12-15% per annum (est.)';
-  const listingType = property?.listingType === 'rent' ? 'For Rent' : 'For Sale';
-  const statusDotColor = property?.listingType === 'rent' ? '#5B8DEF' : '#10B981';
+ const totalSlides = slides.length;
+const location = property?.location || 'Dubai Hills Estate / Dubai, UAE';
+const profit = investment.totalShareValue - investment.totalInvested;
+const yieldText =
+  property?.expectedYieldText?.trim() || '12-15% per annum (est.)';
+const listingType = property?.listingType === 'rent' ? 'For Rent' : 'For Sale';
+const statusDotColor = property?.listingType === 'rent' ? '#5B8DEF' : '#10B981';
 
-  const commissioningText = property?.expectedCompletionDate
-    ? new Date(property.expectedCompletionDate).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-      })
-    : 'Q2 2026';
+const commissioningText = property?.expectedCompletionDate
+  ? new Date(property.expectedCompletionDate).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+    })
+  : 'Q2 2026';
 
-  const plannedSaleText = 'Q4 2027';
-  const preview = getPropertyPreview(property);
+const plannedSaleText = property?.plannedSaleDate
+  ? new Date(property.plannedSaleDate).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+    })
+  : 'Q4 2027';
+
+const aboutText =
+  property?.about?.trim() ||
+  `Modern residential complex in the heart of Dubai Hills Estate. Golf course
+view. Amenities: pool, fitness, parks, schools, restaurants.
+To city center: 15 minutes
+To airport: 25 minutes`;
+
+const preview = getPropertyPreview(property);
 
   return (
     <View style={styles.card}>
@@ -288,7 +302,7 @@ const InvestmentCard: React.FC<InvestmentCardProps> = ({
           >
             <Image source={paymentPlanImage} style={styles.docIconImage} />
             <View style={styles.docTextWrap}>
-              <Text style={styles.docTitle}>График платежей.pdf</Text>
+              <Text style={styles.docTitle}>payment schedule.pdf</Text>
               <Text style={styles.docSubtext}>PDF · 2.4 МБ</Text>
             </View>
           </TouchableOpacity>
@@ -298,7 +312,7 @@ const InvestmentCard: React.FC<InvestmentCardProps> = ({
               <Ionicons name="document-text-outline" size={16} color="#555" />
             </View>
             <View style={styles.docTextWrap}>
-              <Text style={styles.docTitle}>Презентация объекта.pdf</Text>
+              <Text style={styles.docTitle}>real estate.pdf</Text>
               <Text style={styles.docSubtext}>PDF · 1.8 МБ</Text>
             </View>
           </TouchableOpacity>
@@ -324,17 +338,12 @@ const InvestmentCard: React.FC<InvestmentCardProps> = ({
             </View>
           </View>
 
-          <View style={styles.aboutCard}>
-            <Text style={styles.aboutTitle}>About the property</Text>
-            <Text style={styles.aboutText}>
-              Modern residential complex in the heart of Dubai Hills Estate. Golf course
-              view. Amenities: pool, fitness, parks, schools, restaurants.
-              {'\n'}
-              To city center: 15 minutes
-              {'\n'}
-              To airport: 25 minutes
-            </Text>
-          </View>
+         <View style={styles.aboutCard}>
+  <Text style={styles.aboutTitle}>About the property</Text>
+  <Text style={styles.aboutText}>
+    {aboutText}
+  </Text>
+</View>
 
           <View style={styles.infoCard}>
             <Text style={styles.sectionTitle}>Your shares</Text>

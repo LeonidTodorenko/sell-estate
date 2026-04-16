@@ -23,6 +23,12 @@ import supportGray from '../assets/images/support_gray.png';
 
 import personalGreen from '../assets/images/personal_green.png';
 import personalGray from '../assets/images/personal_gray.png';
+ 
+import profileIcon from '../assets/images/DarkGradientUse/ID.png';
+import historyIcon from '../assets/images/DarkGradientUse/History.png';
+import statsIcon from '../assets/images/DarkGradientUse/port.png';
+import withdrawIcon from '../assets/images/DarkGradientUse/dollar.png';
+import logoutIcon from '../assets/images/DarkGradientUse/Logout.png';
 
 type BtnProps = {
   label: string;
@@ -153,57 +159,43 @@ export default function BottomBar() {
         <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
           <View style={styles.sheet} pointerEvents="box-none">
             <View style={styles.sheetBody}>
-              <Pressable
-                style={styles.sheetItem}
-                onPress={() => {
-                  setOpen(false);
-                  safeNavigate('Profile');
-                }}
-              >
-                <Text style={styles.sheetText}>👤 Profile</Text>
-              </Pressable>
+              
+              
+              
+             {/* <Pressable style={styles.sheetItem} onPress={() => { setOpen(false); safeNavigate('Profile'); }}>
+  <Image source={profileIcon} style={styles.sheetIcon} />
+  <Text style={styles.sheetText}>Profile</Text>
+</Pressable> */}
 
-              <Pressable
-                style={styles.sheetItem}
-                onPress={() => {
-                  setOpen(false);
-                  safeNavigate('MyInvestments');
-                }}
-              >
-                <Text style={styles.sheetText}>📈 History</Text>
-              </Pressable>
+<Pressable style={styles.sheetItem} onPress={() => { setOpen(false); safeNavigate('MyInvestments'); }}>
+  <Image source={historyIcon} style={styles.sheetIcon} />
+  <Text style={styles.sheetText}>History</Text>
+</Pressable>
 
-              <Pressable
-                style={styles.sheetItem}
-                onPress={() => {
-                  setOpen(false);
-                  safeNavigate('MyFinance');
-                }}
-              >
-                <Text style={styles.sheetText}>💼 Statistics</Text>
-              </Pressable>
+<Pressable style={styles.sheetItem} onPress={() => { setOpen(false); safeNavigate('MyFinance'); }}>
+  <Image source={statsIcon} style={styles.sheetIcon} />
+  <Text style={styles.sheetText}>Statistics</Text>
+</Pressable>
 
-              <Pressable
-                style={styles.sheetItem}
-                onPress={() => {
-                  setOpen(false);
-                  safeNavigate('Withdraw');
-                }}
-              >
-                <Text style={styles.sheetText}>🏦 Withdraw</Text>
-              </Pressable>
+<Pressable style={styles.sheetItem} onPress={() => { setOpen(false); safeNavigate('Withdraw'); }}>
+  <Image source={withdrawIcon} style={styles.sheetIcon} />
+  <Text style={styles.sheetText}>Withdraw</Text>
+</Pressable>
 
-              <View style={styles.divider} />
+<View style={styles.divider} />
 
-              <Pressable
-                style={styles.sheetItem}
-                onPress={async () => {
-                  setOpen(false);
-                  await performLogout(() => safeResetToLogin());
-                }}
-              >
-                <Text style={[styles.sheetText, { color: theme.colors.danger }]}>🚪 Logout</Text>
-              </Pressable>
+<Pressable
+  style={styles.sheetItem}
+  onPress={async () => {
+    setOpen(false);
+    await performLogout(() => safeResetToLogin());
+  }}
+>
+  <Image source={logoutIcon} style={styles.sheetIcon} />
+  <Text style={[styles.sheetText, { color: theme.colors.danger }]}>
+    Logout
+  </Text>
+</Pressable>
             </View>
           </View>
         </Pressable>
@@ -277,11 +269,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: theme.radii.md,
     borderTopRightRadius: theme.radii.md,
   },
-
-  sheetItem: {
-    paddingVertical: 10,
-  },
-
+ 
   sheetText: {
     fontSize: theme.typography.sizes.md,
     color: theme.colors.text,
@@ -292,4 +280,15 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.border,
     marginVertical: theme.spacing.sm,
   },
+  sheetItem: {
+  flexDirection: 'row',   // 🔥 ключевое
+  alignItems: 'center',
+  paddingVertical: 12,
+},
+
+sheetIcon: {
+  width: 28,
+  height: 28,
+  marginRight: 12,
+},
 });

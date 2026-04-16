@@ -19,6 +19,9 @@ export type Property = {
   hasPaymentPlan?: boolean;
   expectedCompletionDate?: string | null;
   videoUrl?: string | null;
+  about?: string | null;
+  expectedYieldText?: string | null;
+  plannedSaleDate?: string | null;
 };
 
 type ApiMedia = { id: string; type: number; url?: string | null; base64Data?: string | null };

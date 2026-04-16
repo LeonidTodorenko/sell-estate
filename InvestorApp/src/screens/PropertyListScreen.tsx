@@ -157,14 +157,26 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
   const propertyStatusLabel = item.listingType === 'sale' ? 'For Sale' : 'For Rent';
   const statusDotColor = item.listingType === 'sale' ? '#10B981' : '#5B8DEF';
 
-  const commissioningText = item.expectedCompletionDate
-    ? new Date(item.expectedCompletionDate).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-      })
-    : 'Q2 2026';
+ const commissioningText = item.expectedCompletionDate
+  ? new Date(item.expectedCompletionDate).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+    })
+  : 'Q2 2026';
 
-  const plannedSaleText = 'Q4 2027';
+const plannedSaleText = item.plannedSaleDate
+  ? new Date(item.plannedSaleDate).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+    })
+  : 'Q4 2027';
+
+  const yieldText =
+  item.expectedYieldText?.trim() || '12-15% per annum (est.)';
+
+  const aboutText =
+  item.about?.trim() ||
+  'Modern residential complex in a premium Dubai location. Spacious layouts, convenient transport access, and strong investment potential. A more detailed property description will be added later.';
 
   return (
     <View style={styles.card}>
@@ -291,6 +303,7 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
 
       {expanded && (
         <View style={styles.expandedArea}>
+
           <View style={styles.infoCard}>
             <View style={styles.locationRow}>
               <View style={styles.locationIconCircle}>
@@ -321,7 +334,7 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
             <View style={styles.yieldRow}>
               <MaterialCommunityIcons name="finance" size={18} color="#2B2B2B" />
               <View style={{ marginLeft: 8 }}>
-                <Text style={styles.yieldTitle}>12-15% per annum (est.)</Text>
+           <Text style={styles.yieldTitle}>{yieldText}</Text>
                 <Text style={styles.yieldSubtext}>Expected Yield</Text>
               </View>
             </View>
@@ -380,14 +393,12 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
             </View>
           </View>
 
-          <View style={styles.aboutCard}>
-            <Text style={styles.aboutTitle}>About the property</Text>
-            <Text style={styles.aboutText}>
-              Modern residential complex in a premium Dubai location. Spacious layouts,
-              convenient transport access, and strong investment potential. A more detailed
-              property description will be added later.
-            </Text>
-          </View>
+       <View style={styles.aboutCard}>
+  <Text style={styles.aboutTitle}>About the property</Text>
+  <Text style={styles.aboutText}>
+    {aboutText}
+  </Text>
+</View>
         </View>
       )}
 

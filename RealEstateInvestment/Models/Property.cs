@@ -54,7 +54,13 @@ namespace RealEstateInvestment.Models
 
         public decimal? BuybackPricePerShare { get; set; }
 
-        
+        public string? About { get; set; }
+
+        public string? ExpectedYieldText { get; set; }
+         
+        public DateTime? PlannedSaleDate { get; set; }
+
+
 
     }
 }

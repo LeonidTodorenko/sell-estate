@@ -45,6 +45,12 @@ const PropertyFormScreen = ({ route, navigation }: Props) => {
   const [longitude, setLongitude] = useState(existing?.longitude?.toString() || '');
    const [videoUrl, setVideoUrl] = useState(existing?.videoUrl || '');
 
+   const [about, setAbout] = useState(existing?.about || '');
+const [expectedYieldText, setExpectedYieldText] = useState(existing?.expectedYieldText || '');
+const [plannedSaleDate, setPlannedSaleDate] = useState<Date>(
+  existing?.plannedSaleDate ? new Date(existing.plannedSaleDate) : new Date()
+);
+
   //const [deadline, setDeadline] = useState(existing?.applicationDeadline?.split('T')[0] || '');
   const [deadline, setDeadline] = useState<Date>(existing?.applicationDeadline ? new Date(existing.applicationDeadline) : new Date());
   //const [lastPayoutDate, setLastPayoutDate] = useState(existing?.lastPayoutDate?.split('T')[0] || '');
@@ -55,6 +61,8 @@ const PropertyFormScreen = ({ route, navigation }: Props) => {
   const [showDeadlinePicker, setShowDeadlinePicker] = useState(false);
   const [showCompletionDatePicker, setShowCompletionDatePicker] = useState(false);
   const [showLastPayoutDatePicker, setShowLastPayoutDatePicker] = useState(false);
+
+  const [showPlannedSaleDatePicker, setShowPlannedSaleDatePicker] = useState(false);
 
   const [media, setMedia] = useState<PropertyMedia[]>([]);
 const [uploading, setUploading] = useState(false);
@@ -83,6 +91,9 @@ const [uploading, setUploading] = useState(false);
     setLongitude(existing?.longitude?.toString() || '');
      setVideoUrl(existing?.videoUrl || '');
 
+     setAbout(existing?.about || '');
+setExpectedYieldText(existing?.expectedYieldText || '');
+setPlannedSaleDate(existing?.plannedSaleDate ? new Date(existing.plannedSaleDate) : new Date());
 
       const loadMedia = async () => {
     if (!existing?.id) {
@@ -230,24 +241,27 @@ const deleteMedia = async (mediaId: string) => {
     }
 
 
-    let  payload: any = {
-      title,
-      location,
-      price: parseFloat(price),
-      //totalShares: totalShares != null ? parseInt(totalShares, 10) : 0,
-      //availableShares: availableShares != null ? parseInt(availableShares, 10) : 0,
-      upfrontPayment: upfrontPayment != null ?  parseFloat(upfrontPayment) || 0  : 0,
-      applicationDeadline: deadline.toISOString(),//new Date(deadline).toISOString(),
-      listingType,
-      buybackPricePerShare: parseFloat(buybackPricePerShare),
-      latitude: parseFloat(latitude),
-      longitude: parseFloat(longitude),
-      expectedCompletionDate: completionDate.toISOString(),//new Date(completionDate).toISOString(),
-      monthlyRentalIncome: parseFloat(monthlyRentalIncome) || 0,
-      lastPayoutDate: lastPayoutDate.toISOString(),//new Date(lastPayoutDate).toISOString(),
-      //realPrice: parseFloat(realPrice) || parseFloat(price),
-        videoUrl: videoUrl.trim() || null,
-    };
+ let  payload: any = {
+  title,
+  location,
+  price: parseFloat(price),
+  //totalShares: totalShares != null ? parseInt(totalShares, 10) : 0,
+  //availableShares: availableShares != null ? parseInt(availableShares, 10) : 0,
+  upfrontPayment: upfrontPayment != null ?  parseFloat(upfrontPayment) || 0  : 0,
+  applicationDeadline: deadline.toISOString(),//new Date(deadline).toISOString(),
+  listingType,
+  buybackPricePerShare: parseFloat(buybackPricePerShare),
+  latitude: parseFloat(latitude),
+  longitude: parseFloat(longitude),
+  expectedCompletionDate: completionDate.toISOString(),//new Date(completionDate).toISOString(),
+  monthlyRentalIncome: parseFloat(monthlyRentalIncome) || 0,
+  lastPayoutDate: lastPayoutDate.toISOString(),//new Date(lastPayoutDate).toISOString(),
+  plannedSaleDate: plannedSaleDate.toISOString(),
+  about: about.trim() || null,
+  expectedYieldText: expectedYieldText.trim() || null,
+  //realPrice: parseFloat(realPrice) || parseFloat(price),
+  videoUrl: videoUrl.trim() || null,
+};
 
     if (existing?.id) {
       payload.totalShares = parseInt(totalShares, 10);
@@ -371,22 +385,62 @@ const deleteMedia = async (mediaId: string) => {
         />
       </TouchableOpacity>
 
-      {showCompletionDatePicker && (
-        <DateTimePicker
-          value={completionDate}
-          mode="date"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          onChange={(event, selectedDate) => {
-            setShowCompletionDatePicker(false);
-            if (selectedDate) setCompletionDate(selectedDate);
-          }}
-        />
-      )}
+     <Text>Planned Sale Date</Text>
+<TouchableOpacity onPress={() => setShowPlannedSaleDatePicker(true)}>
+  <StyledInput
+    style={styles.input}
+    value={plannedSaleDate.toDateString()}
+    editable={false}
+    pointerEvents="none"
+  />
+</TouchableOpacity>
+
+{showPlannedSaleDatePicker && (
+  <DateTimePicker
+    value={plannedSaleDate}
+    mode="date"
+    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+    onChange={(event, selectedDate) => {
+      setShowPlannedSaleDatePicker(false);
+      if (selectedDate) setPlannedSaleDate(selectedDate);
+    }}
+  />
+)}
       
       {/* <StyledInput style={styles.input} placeholder="Expected Completion Date (YYYY-MM-DD)" value={completionDate} onChangeText={setCompletionDate} /> */}
+
+      {showCompletionDatePicker && (
+  <DateTimePicker
+    value={completionDate}
+    mode="date"
+    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+    onChange={(event, selectedDate) => {
+      setShowCompletionDatePicker(false);
+      if (selectedDate) setCompletionDate(selectedDate);
+    }}
+  />
+)}
       
       <Text>Monthly Rental Income</Text>
       <StyledInput style={styles.input} placeholder="Monthly Rental Income" keyboardType="numeric" value={monthlyRentalIncome} onChangeText={setMonthlyRentalIncome} />
+
+      <Text>Expected Yield Text</Text>
+<StyledInput
+  style={styles.input}
+  placeholder="12-15% per annum (est.)"
+  value={expectedYieldText}
+  onChangeText={setExpectedYieldText}
+/>
+
+<Text>About</Text>
+<StyledInput
+  style={[styles.input, styles.textArea]}
+  placeholder="Property description"
+  value={about}
+  onChangeText={setAbout}
+  multiline
+  numberOfLines={6}
+/>
        
        <Text>Last Payout Date </Text>
        <TouchableOpacity onPress={() => setShowLastPayoutDatePicker(true)}>
@@ -516,6 +570,10 @@ mediaDeleteBtn: {
 mediaDeleteText: {
   color: '#842029',
   fontWeight: '700',
+},
+textArea: {
+  minHeight: 120,
+  textAlignVertical: 'top',
 },
 
 });

@@ -63,7 +63,9 @@ namespace RealEstateInvestment.Controllers
 
             // totalShares считается автоматически: округляется вверх
             property.TotalShares = (int)Math.Ceiling(property.Price / 1000m);
-            property.AvailableShares = property.TotalShares;
+            
+            property.About = string.IsNullOrWhiteSpace(property.About) ? null : property.About.Trim();
+            property.ExpectedYieldText = string.IsNullOrWhiteSpace(property.ExpectedYieldText) ? null : property.ExpectedYieldText.Trim();
 
             property.RealPrice = property.Price; // сохраняем оригинальную цену
             property.Price = property.TotalShares * 1000; // округляем до ближайшего 1000
@@ -74,9 +76,7 @@ namespace RealEstateInvestment.Controllers
             {
                 return BadRequest(new { message = $"Share price (${sharePrice:F2}) is too low. Must be at least $1000." });
             }
-
-
-
+             
             property.AvailableShares = property.TotalShares;
             // property.ApplicationDeadline = DateTime.SpecifyKind(property.ApplicationDeadline, DateTimeKind.Utc);
 
@@ -161,51 +161,7 @@ namespace RealEstateInvestment.Controllers
 
             return Ok(new { message = "Image stored in database" });
         }
-
-        //[HttpPut("{id}")]
-        //public async Task<IActionResult> UpdateProperty(Guid id, [FromBody] Property updated)
-        //{
-        //    var existing = await _context.Properties.FindAsync(id);
-        //    if (existing == null) return NotFound();
-
-
-        //    if (updated.TotalShares <= 0)
-        //        return BadRequest(new { message = "TotalShares must be greater than 0" });
-
-        //    if (updated.AvailableShares < 0)
-        //        return BadRequest(new { message = "AvailableShares cannot be negative" });
-
-        //    if (updated.AvailableShares > updated.TotalShares)
-        //        return BadRequest(new { message = "AvailableShares cannot exceed TotalShares" });
-
-        //    if (updated.Price <= 0)
-        //        return BadRequest(new { message = "Price must be positive" });
-
-        //    var sharePrice = updated.Price / updated.TotalShares;
-        //    if (sharePrice < 1000)
-        //        return BadRequest(new { message = $"Share price (${sharePrice:F2}) is too low. Must be at least $1000." });
-
-
-        //    existing.Title = updated.Title;
-        //    existing.Location = updated.Location;
-        //    existing.Price = updated.Price;
-        //    existing.TotalShares = updated.TotalShares;
-        //    existing.UpfrontPayment = updated.UpfrontPayment;
-        //    existing.ApplicationDeadline = updated.ApplicationDeadline;
-        //    existing.Latitude = updated.Latitude;
-        //    existing.Longitude = updated.Longitude;
-        //    existing.BuybackPricePerShare = updated.BuybackPricePerShare;
-        //    existing.RealPrice = updated.RealPrice;
-        //    _context.ActionLogs.Add(new ActionLog
-        //    {
-        //        UserId = new Guid("2273adeb-483c-4104-a3a9-585b3dad9e27"), // todo add admin guid later
-        //        Action = "UpdateProperty",
-        //        Details = "Update Property id: " + id.ToString()
-        //    });
-        //    await _context.SaveChangesAsync();
-        //    return Ok(new { message = "Property updated" });
-        //}
-
+         
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteProperty(Guid id)
@@ -399,6 +355,9 @@ namespace RealEstateInvestment.Controllers
                     p.Latitude,
                     p.Longitude,
                     p.VideoUrl,
+                    p.About,
+                    p.ExpectedYieldText,
+                    p.PlannedSaleDate,
                     CurrentStep = p.PaymentPlans
                            .Where(pp => pp.DueDate > now)
                            .OrderBy(pp => pp.DueDate)
@@ -629,6 +588,10 @@ namespace RealEstateInvestment.Controllers
             existing.LastPayoutDate = updated.LastPayoutDate;
             existing.ListingType = updated.ListingType;
             existing.VideoUrl = updated.VideoUrl;
+        
+            existing.PlannedSaleDate = updated.PlannedSaleDate;
+            existing.About = string.IsNullOrWhiteSpace(existing.About) ? null : existing.About.Trim();
+            existing.ExpectedYieldText = string.IsNullOrWhiteSpace(existing.ExpectedYieldText) ? null : existing.ExpectedYieldText.Trim();
 
             await _context.SaveChangesAsync();
 
