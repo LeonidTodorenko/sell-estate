@@ -66,6 +66,7 @@ import AboutScreen from '../screens/AboutScreen';
 import TermsScreen from '../screens/TermsScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import ResetNotLoggedPasswordScreen from '../screens/ResetNotLoggedPasswordScreen';
+import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
 
 import HeaderMenu from '../components/HeaderMenu';
 import { navigationRef } from './navigationRef';
@@ -80,6 +81,7 @@ export type RootStackParamList = {
   Login: undefined;
   Register: undefined;
   Profile: undefined;
+  PrivacyPolicy: undefined;
   Investments: undefined;
   Properties: undefined;
   BuyShares: { propertyId: string; propertyName: string };
@@ -268,6 +270,7 @@ export default function AppNavigator() {
            <Stack.Screen name="About" component={AboutScreen} options={{ title: 'About App ' }} />
             <Stack.Screen name="Terms" component={TermsScreen} options={{ title: 'Terms of Service' }} />
             <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings ' }} />
+            <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} options={{ title: 'Privacy Policy ' }} />
               <Stack.Screen name="ResetNotLoggedPassword" component={ResetNotLoggedPasswordScreen} options={{ title: 'Reset Password ' }} />
         </Stack.Navigator>
 

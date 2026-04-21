@@ -103,6 +103,8 @@ const RegisterScreen = ({ navigation }: Props) => {
           captchaAnswer: parseInt(captchaAnswer, 10),
           referralCode: referralCode?.trim() || undefined,
           phoneNumber, // если бэк пока не использует — ASP.NET обычно просто проигнорирует лишнее поле
+    //         acceptTerms, // todo добавить это на бек
+    // termsVersion: 'v1', // todo добавить это на бек
         },
         { timeout: 60000 }
       );
@@ -342,19 +344,24 @@ const RegisterScreen = ({ navigation }: Props) => {
             />
           </View>
 
-          <Pressable
-            onPress={() => setAcceptTerms((v) => !v)}
-            style={styles.termsRow}
-          >
+          <View style={styles.termsRow}>
+          <Pressable onPress={() => setAcceptTerms((v) => !v)} style={styles.checkboxPressable}>
             <View style={[styles.checkbox, acceptTerms && styles.checkboxActive]}>
               {acceptTerms ? <Text style={styles.checkboxTick}>✓</Text> : null}
             </View>
-
-            <Text style={styles.termsText}>
-              I agree to the <Text style={styles.link}>Terms of Use</Text> and{' '}
-              <Text style={styles.link}>Privacy Policy</Text>
-            </Text>
           </Pressable>
+
+          <Text style={styles.termsText}>
+            I agree to the{' '}
+            <Text style={styles.link} onPress={() => navigation.navigate('Terms')}>
+              Terms of Use
+            </Text>{' '}
+            and{' '}
+            <Text style={styles.link} onPress={() => navigation.navigate('PrivacyPolicy')}>
+              Privacy Policy
+            </Text>
+          </Text>
+        </View>
         </View>
       </ScrollView>
 
@@ -423,7 +430,10 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
   },
-
+checkboxPressable: {
+  marginRight: 10,
+  marginTop: 2,
+},
   backArrow: {
     fontSize: 28,
     lineHeight: 28,
