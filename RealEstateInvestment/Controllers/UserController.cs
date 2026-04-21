@@ -520,11 +520,11 @@ namespace RealEstateInvestment.Controllers
                     return BadRequest(new { message = "Email already in use by another user" });
                 }
 
-                user.Email = req.Email;
+                user.Email = req.Email.Trim();
             }
 
             user.FullName = req.FullName;
-            user.PhoneNumber = req.PhoneNumber;
+            user.PhoneNumber = string.IsNullOrWhiteSpace(req.PhoneNumber) ? null : req.PhoneNumber.Trim();
             user.Address = req.Address;
 
             _context.ActionLogs.Add(new ActionLog
@@ -697,8 +697,11 @@ namespace RealEstateInvestment.Controllers
             // todo fix and check !!!
             //if (!req.AcceptTerms)
             //    return BadRequest(new { message = "You must accept the Terms to register." });
-             
-            var existing = await _context.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == req.Email.ToLower());
+
+            var email = req.Email.Trim();
+
+            var existing = await _context.Users
+                .FirstOrDefaultAsync(u => u.Email.ToLower() == email.ToLower());
             if (existing != null)
                 return BadRequest(new { message = "Email already in use" });
 
@@ -721,8 +724,9 @@ namespace RealEstateInvestment.Controllers
             var user = new User
             {
                 FullName = req.FullName,
-                Email = req.Email,
+                Email = req.Email.Trim(),
                 PasswordHash = req.Password, // TODO: hash password
+                PhoneNumber = string.IsNullOrWhiteSpace(req.PhoneNumber) ? null : req.PhoneNumber.Trim(),
                 SecretWord = req.SecretWord,
                 PinCode = req.PinCode,
                 IsEmailConfirmed = false,
@@ -874,6 +878,8 @@ namespace RealEstateInvestment.Controllers
             public int CaptchaAnswer { get; set; }
 
             public string? ReferralCode { get; set; }
+
+            public string? PhoneNumber { get; set; }
 
             public bool AcceptTerms { get; set; }
             public string? TermsVersion { get; set; } // "v1"
