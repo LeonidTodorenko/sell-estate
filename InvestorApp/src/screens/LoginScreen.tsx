@@ -38,6 +38,7 @@ import { saveSession } from '../services/sessionStorage';
 import { API_BASE_URL, setAccessToken, writeLegacyUser, resetForceLogoutFlag } from '../api';
 import { getRoleFromUserAndToken } from '../services/auth';
 import BlueButton from '../components/BlueButton';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 //import { AuthContext } from '../contexts/AuthContext';
 
@@ -107,6 +108,8 @@ const LoginScreen = ({ navigation }: Props) => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [showLoginPanel, setShowLoginPanel] = useState(false);
 
+  const [showPassword, setShowPassword] = useState(false);
+
   const heroAnim = useRef(new Animated.Value(0)).current;
   const panelAnim = useRef(new Animated.Value(420)).current;
 
@@ -115,6 +118,7 @@ const LoginScreen = ({ navigation }: Props) => {
 
   const slide = slides[currentSlide];
   const isLastSlide = currentSlide === slides.length - 1;
+  
 
   useEffect(() => {
     const showSub = Keyboard.addListener(
@@ -527,13 +531,27 @@ const LoginScreen = ({ navigation }: Props) => {
                 keyboardType="email-address"
                 onChangeText={setEmail}
               />
-              <StyledInput
-                style={styles.input}
-                placeholder="Password"
-                secureTextEntry
-                value={password}
-                onChangeText={setPassword}
-              />
+          <View style={styles.passwordWrap}>
+  <StyledInput
+    style={[styles.input, styles.passwordInput]}
+    placeholder="Password"
+    secureTextEntry={!showPassword}
+    value={password}
+    onChangeText={setPassword}
+  />
+
+  <Pressable
+    onPress={() => setShowPassword((prev) => !prev)}
+    style={styles.eyeButton}
+    hitSlop={10}
+  >
+    <Ionicons
+      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+      size={22}
+      color="#6B7280"
+    />
+  </Pressable>
+</View>
 
               <Pressable onPress={() => navigation.navigate('ForgotPassword')} style={styles.forgotWrap}>
                 <Text style={styles.forgotText}>Forgot password?</Text>
@@ -931,6 +949,23 @@ const styles = StyleSheet.create({
     // marginTop: 8,
     // marginBottom: 12,
   },
+
+  passwordWrap: {
+  position: 'relative',
+  justifyContent: 'center',
+},
+
+passwordInput: {
+  paddingRight: 44,
+},
+
+eyeButton: {
+  position: 'absolute',
+  right: 14,
+  top: '50%',
+  marginTop: -11,
+  zIndex: 5,
+},
 
   progressWrap: {
     position: 'absolute',
