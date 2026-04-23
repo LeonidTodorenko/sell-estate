@@ -13,6 +13,7 @@ import BlueButton from '../components/BlueButton';
 import theme from '../constants/theme';
 import * as DocumentPicker from '@react-native-documents/picker';
 
+
 type Props = NativeStackScreenProps<RootStackParamList, 'PropertyForm'>;
 
 type MediaType = 'image' | 'video';
@@ -66,11 +67,20 @@ const [plannedSaleDate, setPlannedSaleDate] = useState<Date>(
 
   const [media, setMedia] = useState<PropertyMedia[]>([]);
 const [uploading, setUploading] = useState(false);
+
+const [presentationPdfUrl, setPresentationPdfUrl] = useState<string | null>(
+  existing?.presentationPdfUrl || null
+);
+const [presentationPdfName, setPresentationPdfName] = useState<string | null>(
+  existing?.presentationPdfName || null
+);
+const [uploadingPdf, setUploadingPdf] = useState(false);
   
 
   const initializeForm = useCallback(() => {
     const existing = route.params?.property;
 
+   
     setTitle(existing?.title || '');
     setLocation(existing?.location || '');
     setPrice(existing?.price?.toString() || '');
@@ -90,7 +100,8 @@ const [uploading, setUploading] = useState(false);
     setLatitude(existing?.latitude?.toString() || '');
     setLongitude(existing?.longitude?.toString() || '');
      setVideoUrl(existing?.videoUrl || '');
-
+ setPresentationPdfUrl(existing?.presentationPdfUrl || null);
+    setPresentationPdfName(existing?.presentationPdfName || null);
      setAbout(existing?.about || '');
 setExpectedYieldText(existing?.expectedYieldText || '');
 setPlannedSaleDate(existing?.plannedSaleDate ? new Date(existing.plannedSaleDate) : new Date());
@@ -186,6 +197,70 @@ setPlannedSaleDate(existing?.plannedSaleDate ? new Date(existing.plannedSaleDate
 
   } finally {
     setUploading(false);
+  }
+};
+
+const pickAndUploadPresentationPdf = async () => {
+  if (!existing?.id) {
+    Alert.alert('Info', 'Save property first, then upload PDF.');
+    return;
+  }
+
+  try {
+    const results = await DocumentPicker.pick({
+      type: ['application/pdf'],
+      allowMultiSelection: false,
+      copyTo: 'cachesDirectory',
+    });
+
+    const res = results[0];
+    if (!res) return;
+
+    const uri = (res as any).fileCopyUri ?? res.uri;
+    if (!uri) throw new Error('No file URI');
+
+    setUploadingPdf(true);
+
+    const form = new FormData();
+    form.append('file', {
+      uri,
+      name: res.name ?? `presentation-${Date.now()}.pdf`,
+      type: res.type ?? 'application/pdf',
+    } as any);
+
+    const uploadRes = await api.post(
+      `/properties/${existing.id}/presentation/upload`,
+      form,
+      {
+        timeout: 5 * 60 * 1000,
+        transformRequest: (d) => d,
+      }
+    );
+
+    setPresentationPdfUrl(uploadRes.data?.url ?? null);
+    setPresentationPdfName(uploadRes.data?.fileName ?? res.name ?? 'presentation.pdf');
+
+    Alert.alert('Success', 'PDF uploaded!');
+  } catch (err: any) {
+    if (err?.code === 'DOCUMENT_PICKER_CANCELED') return;
+    console.error(err);
+    Alert.alert('Error', err?.message ?? 'PDF upload failed');
+  } finally {
+    setUploadingPdf(false);
+  }
+};
+
+const deletePresentationPdf = async () => {
+  if (!existing?.id) return;
+
+  try {
+    await api.delete(`/properties/${existing.id}/presentation`);
+    setPresentationPdfUrl(null);
+    setPresentationPdfName(null);
+    Alert.alert('Success', 'PDF deleted');
+  } catch (e: any) {
+    console.error(e);
+    Alert.alert('Error', e?.message ?? 'Failed to delete PDF');
   }
 };
 
@@ -514,6 +589,46 @@ longitude: longitude.trim() ? parseFloat(longitude) : 0,
             </TouchableOpacity>
           </View>
         ))}
+      </View>
+    )}
+  </View>
+)}
+
+
+
+
+
+{existing?.id && (
+  <View style={styles.mediaBlock}>
+    <Text style={styles.mediaTitle}>Presentation PDF</Text>
+
+    <BlueButton
+      title={uploadingPdf ? 'Uploading PDF...' : 'Upload PDF'}
+      onPress={pickAndUploadPresentationPdf}
+      disabled={uploadingPdf}
+    />
+
+    {!presentationPdfUrl ? (
+      <Text style={{ marginTop: 10, color: '#666' }}>No PDF uploaded yet.</Text>
+    ) : (
+      <View style={{ marginTop: 10 }}>
+        <View style={styles.mediaRow}>
+          <Text style={styles.mediaRowText}>
+            📄 {presentationPdfName ?? 'presentation.pdf'}
+          </Text>
+
+          <TouchableOpacity
+            onPress={() =>
+              Alert.alert('Delete', 'Remove this PDF?', [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Delete', style: 'destructive', onPress: deletePresentationPdf },
+              ])
+            }
+            style={styles.mediaDeleteBtn}
+          >
+            <Text style={styles.mediaDeleteText}>Delete</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     )}
   </View>

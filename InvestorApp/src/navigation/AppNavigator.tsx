@@ -67,6 +67,7 @@ import TermsScreen from '../screens/TermsScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import ResetNotLoggedPasswordScreen from '../screens/ResetNotLoggedPasswordScreen';
 import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
+import TermsOfUseScreen from '../screens/TermsOfUseScreen';
 
 import HeaderMenu from '../components/HeaderMenu';
 import { navigationRef } from './navigationRef';
@@ -130,6 +131,7 @@ export type RootStackParamList = {
   Gate: undefined;
   Terms: undefined;
   About: undefined;
+    TermsOfUse: undefined;
   ResetNotLoggedPassword: { token: string };
 Settings: undefined;
    AdminFinanceFlows: undefined;
@@ -160,6 +162,8 @@ const MyTheme = {
 // Роуты, где нижний бар ДОЛЖЕН БЫТЬ скрыт
 const HIDE_BAR_ROUTES = new Set<string>([
   'Gate', 'Login', 'Register', 'ForgotPassword', 'ResetPassword',
+    'Terms',
+  'PrivacyPolicy',
   // все админские:
   'AdminDashboards','AdminUsers','AdminInvestments','AdminKyc','AdminStats',
   'AdminProperties','AdminWithdrawals','AdminLogs','AdminMessages',
@@ -271,6 +275,7 @@ export default function AppNavigator() {
             <Stack.Screen name="Terms" component={TermsScreen} options={{ title: 'Terms of Service' }} />
             <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings ' }} />
             <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} options={{ title: 'Privacy Policy ' }} />
+            <Stack.Screen name="TermsOfUse" component={TermsOfUseScreen} options={{ title: 'Terms Of Use ' }} />
               <Stack.Screen name="ResetNotLoggedPassword" component={ResetNotLoggedPasswordScreen} options={{ title: 'Reset Password ' }} />
         </Stack.Navigator>
 

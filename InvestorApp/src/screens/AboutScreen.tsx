@@ -35,11 +35,11 @@ const AboutScreen = () => {
           <Text style={styles.link}>Terms of Service</Text>
         </Pressable>
 
-        <Pressable>
+        <Pressable  onPress={() => navigation.navigate('PrivacyPolicy')}>
           <Text style={styles.link}>Privacy Policy</Text>
         </Pressable>
 
-        <Pressable>
+        <Pressable onPress={() => navigation.navigate('TermsOfUse')}>
           <Text style={styles.link}>Platform Terms of Use</Text>
         </Pressable>
       </View>

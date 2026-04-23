@@ -36,6 +36,8 @@ import mapSampleImage from '../assets/images/map-sample.png';
 import buttonMapImage from '../assets/images/button-map.png';
 import paymentPlanImage from '../assets/images/paymentplan.png';
 
+import { Linking } from 'react-native';
+
 // interface PropertyImage {
 //   id: string;
 //   base64Data: string;
@@ -174,9 +176,14 @@ const plannedSaleText = item.plannedSaleDate
   const yieldText =
   item.expectedYieldText?.trim() || '12-15% per annum (est.)';
 
+
   const aboutText =
   item.about?.trim() ||
   'Modern residential complex in a premium Dubai location. Spacious layouts, convenient transport access, and strong investment potential. A more detailed property description will be added later.';
+
+  
+  const presentationPdfUrl = item.presentationPdfUrl?.trim() || null;
+const presentationPdfName = item.presentationPdfName?.trim() || 'Object Presentation';
 
   return (
     <View style={styles.card}>
@@ -360,15 +367,32 @@ const plannedSaleText = item.plannedSaleDate
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.docRow} activeOpacity={0.85} onPress={() => {}}>
-            <View style={styles.docIconCircle}>
-              <Ionicons name="document-text-outline" size={16} color="#555" />
-            </View>
-            <View style={styles.docTextWrap}>
-              <Text style={styles.docTitle}>Object Presentation</Text>
-              <Text style={styles.docSubtext}>PDF · Dummy for now</Text>
-            </View>
-          </TouchableOpacity>
+       <TouchableOpacity
+  style={[styles.docRow, !presentationPdfUrl && styles.docRowDisabled]}
+  activeOpacity={presentationPdfUrl ? 0.85 : 1}
+  disabled={!presentationPdfUrl}
+  onPress={async () => {
+    if (!presentationPdfUrl) return;
+
+    const supported = await Linking.canOpenURL(presentationPdfUrl);
+    if (!supported) {
+      Alert.alert('Error', 'Cannot open PDF');
+      return;
+    }
+
+    await Linking.openURL(presentationPdfUrl);
+  }}
+>
+  <View style={styles.docIconCircle}>
+    <Ionicons name="document-text-outline" size={16} color="#555" />
+  </View>
+  <View style={styles.docTextWrap}>
+    <Text style={styles.docTitle}>{presentationPdfName}</Text>
+    <Text style={styles.docSubtext}>
+      {presentationPdfUrl ? 'PDF · Open brochure' : 'No PDF uploaded yet'}
+    </Text>
+  </View>
+</TouchableOpacity>
 
           <View style={styles.statusCard}>
             <View style={styles.inlineStatusBadge}>

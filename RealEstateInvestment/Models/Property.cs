@@ -60,6 +60,9 @@ namespace RealEstateInvestment.Models
          
         public DateTime? PlannedSaleDate { get; set; }
 
+        public string? PresentationPdfUrl { get; set; }
+
+        public string? PresentationPdfName { get; set; }
 
 
     }

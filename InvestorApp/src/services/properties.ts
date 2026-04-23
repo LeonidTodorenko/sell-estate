@@ -22,6 +22,8 @@ export type Property = {
   about?: string | null;
   expectedYieldText?: string | null;
   plannedSaleDate?: string | null;
+  presentationPdfUrl?: string | null;
+presentationPdfName?: string | null;
 };
 
 type ApiMedia = { id: string; type: number; url?: string | null; base64Data?: string | null };

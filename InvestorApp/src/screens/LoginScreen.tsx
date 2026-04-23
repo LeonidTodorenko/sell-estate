@@ -566,9 +566,15 @@ const LoginScreen = ({ navigation }: Props) => {
                 </Pressable>
               </View>
 
-              <Text style={styles.termsText}>
-                By continuing, you agree to the <Text style={styles.termsAccent}>Terms of Use</Text>
-              </Text>
+<Text style={styles.termsText}>
+  By continuing, you agree to the{' '}
+  <Text
+    style={styles.termsAccent}
+    onPress={() => navigation.navigate('Terms')}
+  >
+    Terms of Use
+  </Text>
+</Text>
 
               <View style={styles.quickLoginWrap}>
                 <Text
@@ -583,27 +589,7 @@ const LoginScreen = ({ navigation }: Props) => {
                   ➤ Enter Admin Panel
                 </Text>
 
-                {/* <Text onPress={async () => {
-          try {
-            const response = await api.post('/auth/login', {
-              email: 'admin@example.com',
-              password: 'securepassword',
-            });
-
-             const { accessToken, refreshToken, user } = response.data;
-            await saveSession({ accessToken, refreshToken, user });
-            setAccessToken(accessToken);
-
-            // ДЛЯ ЛЕГАСИ: записать старый формат
-              await writeLegacyUser(response.data);
-
-          navigation.reset({ index: 0, routes: [{ name: 'AdminDashboards' } as any] });
-          } catch (err) {
-            Alert.alert('Error', 'Failed to log in as admin@example.com');
-          }
-        }} style={styles.adminLink}>
-          ➤ Enter Admin Panel
-        </Text> */}
+              
 
                 <Text
                   onPress={() =>
@@ -614,45 +600,7 @@ const LoginScreen = ({ navigation }: Props) => {
                   ➤ Login as Test User
                 </Text>
 
-                {/* <Text onPress={async () => {
-          try {
-
-            const response = await api.post('/auth/login', {
-              email: 'user@example.com',
-              password: 'securepassword',
-            });
-
-          //  await AsyncStorage.setItem('user', JSON.stringify(response.data));
-
-             const { accessToken, refreshToken, user } = response.data;
-              await saveSession({ accessToken, refreshToken, user });
-              setAccessToken(accessToken);
-
-                // ДЛЯ ЛЕГАСИ: записать старый формат
-              await writeLegacyUser(response.data);
-
-            const fcmToken = await getFcmToken();
-            if (fcmToken) {
-              try {
-                await api.post('/notifications/register-token', {
-                  token: fcmToken,
-                });
-                console.log('Token registered on backend');
-              } catch (err) {
-                console.warn('Failed to register FCM token', err);
-              }
-            }
-
-            navigation.navigate('Home');
-
-
-          } catch (err) {
-            Alert.alert('Error', 'Failed to log in as user@example.com');
-          }
-        }} style={styles.userLink}>
-          ➤ Login as Test User
-        </Text> */}
-
+               
                 <Text
                   onPress={() =>
                     loginCore({ email: 'user2@example.com', password: 'securepassword' }, 'Home')
@@ -675,25 +623,7 @@ const LoginScreen = ({ navigation }: Props) => {
               </View>
             </View>
 
-            {/* </ScrollView>  */}
-
-            {/* <View
-              style={[
-                styles.footerButtons,
-                { paddingBottom: Math.max(insets.bottom, kbHeight > 0 ? 8 : 16) }
-              ]}
-            >
-              <View style={styles.buttonContainer}>
-                <BlueButton title="Login" onPress={handleLogin} width="full" />
-              </View>
-              <View style={styles.spacer} />
-              <View style={styles.buttonContainer}>
-                <BlueButton title="Sign up" onPress={() => navigation.navigate('Register')} width="full" />
-              </View>
-            </View> */}
-
-            {/* </TouchableWithoutFeedback>
-    </KeyboardAvoidingView> */}
+           
 
             {/* нижний небольшой отступ, чтобы кнопки не прилипали */}
             <View style={{ height: 24 }} />

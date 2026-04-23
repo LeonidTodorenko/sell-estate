@@ -358,6 +358,8 @@ namespace RealEstateInvestment.Controllers
                     p.About,
                     p.ExpectedYieldText,
                     p.PlannedSaleDate,
+                    p.PresentationPdfUrl,
+                    p.PresentationPdfName,
                     CurrentStep = p.PaymentPlans
                            .Where(pp => pp.DueDate > now)
                            .OrderBy(pp => pp.DueDate)
@@ -400,6 +402,12 @@ namespace RealEstateInvestment.Controllers
         public class RentPayoutRequest
         {
             public decimal? CustomAmount { get; set; }
+        }
+        // todo move
+        public class PropertyPresentationResponse
+        {
+            public string? Url { get; set; }
+            public string? FileName { get; set; }
         }
 
         [HttpPost("{propertyId}/pay-rent")]
@@ -536,6 +544,182 @@ namespace RealEstateInvestment.Controllers
                 .ToList();
 
             return Ok(result);
+        }
+
+        [HttpDelete("{propertyId}/presentation")]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> DeletePresentation(Guid propertyId)
+        {
+            var property = await _context.Properties.FindAsync(propertyId);
+            if (property == null)
+                return NotFound(new { message = "Property not found" });
+
+            string? path = null;
+
+            if (!string.IsNullOrWhiteSpace(property.PresentationPdfUrl))
+            {
+                if (Uri.TryCreate(property.PresentationPdfUrl, UriKind.Absolute, out var abs))
+                    path = abs.AbsolutePath;
+                else
+                    path = property.PresentationPdfUrl;
+            }
+
+            if (!string.IsNullOrEmpty(path) && path.StartsWith("/uploads/"))
+            {
+                var relative = path.Replace("/uploads/", "").TrimStart('/');
+                var filePath = Path.Combine("/var/data/uploads",
+                    relative.Replace("/", Path.DirectorySeparatorChar.ToString()));
+
+                try
+                {
+                    if (System.IO.File.Exists(filePath))
+                        System.IO.File.Delete(filePath);
+                }
+                catch (Exception ex)
+                {
+                    return BadRequest(new { message = "Failed to delete PDF file", details = ex.Message });
+                }
+            }
+
+            property.PresentationPdfUrl = null;
+            property.PresentationPdfName = null;
+
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = User.GetUserId(),
+                Action = "DeletePropertyPresentationPdf",
+                Details = $"Deleted PDF presentation for property {property.Title} ({property.Id})"
+            });
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Presentation deleted" });
+        }
+
+        [HttpPost("{propertyId}/presentation/upload")]
+        [Authorize(Roles = "admin")]
+        [RequestSizeLimit(50_000_000)] // 50MB
+        public async Task<IActionResult> UploadPresentation(Guid propertyId, [FromForm] IFormFile file)
+        {
+            try
+            {
+                if (file == null || file.Length == 0)
+                    return BadRequest(new { message = "No file uploaded" });
+
+                var property = await _context.Properties.FindAsync(propertyId);
+                if (property == null)
+                    return NotFound(new { message = "Property not found" });
+
+                var contentType = file.ContentType?.ToLower() ?? "";
+                var ext = Path.GetExtension(file.FileName)?.ToLowerInvariant();
+
+                var isPdf =
+                    contentType == "application/pdf" ||
+                    ext == ".pdf";
+
+                if (!isPdf)
+                    return BadRequest(new { message = "Only PDF files are allowed" });
+
+                var uploadsRoot = _config["App:UploadsRoot"]?.Trim();
+                if (string.IsNullOrWhiteSpace(uploadsRoot))
+                    uploadsRoot = Path.Combine(AppContext.BaseDirectory, "uploads");
+
+                var dir = Path.Combine(uploadsRoot, propertyId.ToString(), "docs");
+                Directory.CreateDirectory(dir);
+
+                // если уже есть старый pdf — удалим
+                if (!string.IsNullOrWhiteSpace(property.PresentationPdfUrl))
+                {
+                    try
+                    {
+                        string? oldPath = null;
+
+                        if (Uri.TryCreate(property.PresentationPdfUrl, UriKind.Absolute, out var oldAbs))
+                            oldPath = oldAbs.AbsolutePath;
+                        else
+                            oldPath = property.PresentationPdfUrl;
+
+                        if (!string.IsNullOrEmpty(oldPath) && oldPath.StartsWith("/uploads/"))
+                        {
+                            var relative = oldPath.Replace("/uploads/", "").TrimStart('/');
+                            var oldFilePath = Path.Combine("/var/data/uploads",
+                                relative.Replace("/", Path.DirectorySeparatorChar.ToString()));
+
+                            if (System.IO.File.Exists(oldFilePath))
+                                System.IO.File.Delete(oldFilePath);
+                        }
+                    }
+                    catch
+                    {
+                        // старый файл не критично, если не удалился
+                    }
+                }
+
+                var fileName = $"{Guid.NewGuid()}.pdf";
+                var fullPath = Path.Combine(dir, fileName);
+
+                _logger.LogInformation(
+                    "UploadPresentation: propertyId={PropertyId}, originalName={OriginalName}, ct={ContentType}, len={Len}, fullPath={FullPath}",
+                    propertyId, file.FileName, file.ContentType, file.Length, fullPath
+                );
+
+                await using (var stream = System.IO.File.Create(fullPath))
+                {
+                    await file.CopyToAsync(stream, HttpContext.RequestAborted);
+                }
+
+                var baseUrl = _config["PublicBaseUrlHdd"]?.TrimEnd('/');
+                if (string.IsNullOrWhiteSpace(baseUrl))
+                    baseUrl = $"{Request.Scheme}://{Request.Host}";
+
+                var url = $"{baseUrl}/uploads/{propertyId}/docs/{fileName}";
+
+                if (url.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
+                    url = "https://" + url.Substring("http://".Length);
+
+                property.PresentationPdfUrl = url;
+                property.PresentationPdfName = file.FileName;
+
+                _context.ActionLogs.Add(new ActionLog
+                {
+                    UserId = User.GetUserId(),
+                    Action = "UploadPropertyPresentationPdf",
+                    Details = $"Uploaded PDF presentation for property {property.Title} ({property.Id}): {file.FileName}"
+                });
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    message = "Presentation uploaded",
+                    url,
+                    fileName = file.FileName
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "UploadPresentation failed for propertyId={PropertyId}", propertyId);
+                return StatusCode(500, new
+                {
+                    message = "Upload failed",
+                    error = ex.Message,
+                    type = ex.GetType().FullName
+                });
+            }
+        }
+
+        [HttpGet("{propertyId}/presentation")]
+        public async Task<IActionResult> GetPresentation(Guid propertyId)
+        {
+            var property = await _context.Properties.FindAsync(propertyId);
+            if (property == null)
+                return NotFound(new { message = "Property not found" });
+
+            return Ok(new PropertyPresentationResponse
+            {
+                Url = property.PresentationPdfUrl,
+                FileName = property.PresentationPdfName
+            });
         }
 
         [HttpPut("{id}")]

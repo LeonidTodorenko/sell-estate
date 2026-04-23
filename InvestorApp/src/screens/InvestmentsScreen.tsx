@@ -33,6 +33,7 @@ import mapSampleImage from '../assets/images/map-sample.png';
 import buttonMapImage from '../assets/images/button-map.png';
 import paymentPlanImage from '../assets/images/paymentplan.png';
 import { fetchPropertiesWithExtras, Property } from '../services/properties';
+import { Linking } from 'react-native';
 
 interface Investment {
   propertyId: string;
@@ -201,6 +202,9 @@ To airport: 25 minutes`;
 
 const preview = getPropertyPreview(property);
 
+const presentationPdfUrl = property?.presentationPdfUrl?.trim() || null;
+const presentationPdfName = property?.presentationPdfName?.trim() || 'Object Presentation';
+
   return (
     <View style={styles.card}>
       <View style={styles.mediaWrap}>
@@ -307,15 +311,32 @@ const preview = getPropertyPreview(property);
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.docRow} activeOpacity={0.85} onPress={() => {}}>
-            <View style={styles.docIconCircle}>
-              <Ionicons name="document-text-outline" size={16} color="#555" />
-            </View>
-            <View style={styles.docTextWrap}>
-              <Text style={styles.docTitle}>real estate.pdf</Text>
-              <Text style={styles.docSubtext}>PDF · 1.8 МБ</Text>
-            </View>
-          </TouchableOpacity>
+      <TouchableOpacity
+  style={[styles.docRow, !presentationPdfUrl && styles.docRowDisabled]}
+  activeOpacity={presentationPdfUrl ? 0.85 : 1}
+  disabled={!presentationPdfUrl}
+  onPress={async () => {
+    if (!presentationPdfUrl) return;
+
+    const supported = await Linking.canOpenURL(presentationPdfUrl);
+    if (!supported) {
+      Alert.alert('Error', 'Cannot open PDF');
+      return;
+    }
+
+    await Linking.openURL(presentationPdfUrl);
+  }}
+>
+  <View style={styles.docIconCircle}>
+    <Ionicons name="document-text-outline" size={16} color="#555" />
+  </View>
+  <View style={styles.docTextWrap}>
+    <Text style={styles.docTitle}>{presentationPdfName}</Text>
+    <Text style={styles.docSubtext}>
+      {presentationPdfUrl ? 'PDF · Open brochure' : 'No PDF uploaded yet'}
+    </Text>
+  </View>
+</TouchableOpacity>
 
           <View style={styles.statusCard}>
             <View style={styles.inlineStatusBadge}>
