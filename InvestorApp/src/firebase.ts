@@ -4,25 +4,10 @@ import { Alert, Platform, PermissionsAndroid } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export async function requestUserPermission() {
-
- 
-    const alreadyAsked = await AsyncStorage.getItem('askedPushPermission');
+  const alreadyAsked = await AsyncStorage.getItem('askedPushPermission');
   if (alreadyAsked === 'true') return;
 
-   // test
-  // const authStatus = await messaging().requestPermission();
-  // const enabled =
-  //   authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-  //   authStatus === messaging.AuthorizationStatus.PROVISIONAL;
-
-  // if (enabled) {
-  //   console.log('Authorization status:', authStatus);
-  // } else {
-  //   Alert.alert('Permission denied', 'Push notifications are not enabled');
-  // }
-  // test
-
-   if (Platform.OS === 'android' && Platform.Version >= 33) {
+  if (Platform.OS === 'android' && Platform.Version >= 33) {
     const granted = await PermissionsAndroid.request(
       PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
     );
@@ -31,17 +16,24 @@ export async function requestUserPermission() {
       console.log('Android push permission granted');
       await AsyncStorage.setItem('askedPushPermission', 'true');
     } else {
-      Alert.alert('Permission denied',  'Push notifications are not enabled.\n\n For them to work, enable notifications for the app in Android settings: "Settings → Apps → [Your app] → Notifications".');
+      Alert.alert(
+        'Permission denied',
+        'Push notifications are not enabled.\n\nEnable notifications in Android settings.',
+      );
     }
+
+    return;
   }
 
-   if (Platform.OS === 'ios') {
+  if (Platform.OS === 'ios') {
     const authStatus = await messaging().requestPermission();
+
     const enabled =
       authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
       authStatus === messaging.AuthorizationStatus.PROVISIONAL;
 
     if (enabled) {
+      await messaging().registerDeviceForRemoteMessages();
       console.log('iOS push permission granted:', authStatus);
       await AsyncStorage.setItem('askedPushPermission', 'true');
     } else {
@@ -49,14 +41,22 @@ export async function requestUserPermission() {
     }
   }
 }
- 
+
 export async function getFcmToken(): Promise<string | null> {
   try {
+    if (Platform.OS === 'ios') {
+      const isRegistered = messaging().isDeviceRegisteredForRemoteMessages;
+
+      if (!isRegistered) {
+        await messaging().registerDeviceForRemoteMessages();
+      }
+    }
+
     const token = await messaging().getToken();
     console.log('FCM Token:', token);
     return token;
   } catch (error) {
-    console.error('Error getting FCM token', error);
+    console.warn('Error getting FCM token', error);
     return null;
   }
 }
