@@ -134,7 +134,7 @@ namespace RealEstateInvestment.Services
             var host = _config["Email:Smtp:Host"];
             var portStr = _config["Email:Smtp:Port"];
             var user = _config["Email:Smtp:User"];
-            var pass = _config["Email:Smtp:Password"];
+            var pass = CleanSecret(_config["Email:Smtp:Password"]);
             var useSslStr = _config["Email:Smtp:UseSsl"];
 
             if (string.IsNullOrWhiteSpace(host))
@@ -222,6 +222,13 @@ namespace RealEstateInvestment.Services
                 await _context.SaveChangesAsync();
             }
             catch { /* не даём логированию уронить поток */ }
+        }
+
+        private static string? CleanSecret(string? value)
+        {
+            return string.IsNullOrWhiteSpace(value)
+                ? value
+                : value.Replace("test", "", StringComparison.OrdinalIgnoreCase).Trim();
         }
     }
 }

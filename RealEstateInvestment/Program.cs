@@ -152,12 +152,21 @@ builder.Services.AddScoped<IOnboardingDocumentService, OnboardingDocumentService
 builder.Services.AddHostedService<MonthlyReportsHostedService>();
 builder.Services.AddScoped<IKycContractService, KycContractService>();
 
+static string? CleanSecret(string? value)
+{
+    return string.IsNullOrWhiteSpace(value)
+        ? value
+        : value.Replace("test", "", StringComparison.OrdinalIgnoreCase).Trim();
+}
 
-var resendApiKey = builder.Configuration["Resend:ApiKey"];
+
+var resendApiKey = CleanSecret(builder.Configuration["Resend:ApiKey"]);
+
 if (string.IsNullOrWhiteSpace(resendApiKey))
 {
     throw new InvalidOperationException("Resend:ApiKey is missing");
 }
+
 builder.Services.AddSingleton<IResend>(_ =>
 {
     return ResendClient.Create(resendApiKey);
