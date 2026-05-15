@@ -367,25 +367,32 @@ const presentationPdfName = item.presentationPdfName?.trim() || 'Object Presenta
             </View>
           </TouchableOpacity>
 
-       <TouchableOpacity
+     <TouchableOpacity
   style={[styles.docRow, !presentationPdfUrl && styles.docRowDisabled]}
   activeOpacity={presentationPdfUrl ? 0.85 : 1}
   disabled={!presentationPdfUrl}
   onPress={async () => {
     if (!presentationPdfUrl) return;
 
-    const supported = await Linking.canOpenURL(presentationPdfUrl);
-    if (!supported) {
-      Alert.alert('Error', 'Cannot open PDF');
-      return;
-    }
+    try {
+      const url = normalizeUrl(presentationPdfUrl);
+      await Linking.openURL(url);
+    } catch (e: any) {
+      console.log('PDF open error:', e);
 
-    await Linking.openURL(presentationPdfUrl);
+      Alert.alert(
+        'Error',
+        e?.message
+          ? `Cannot open PDF: ${e.message}`
+          : 'Cannot open PDF. Please check that a PDF viewer or browser is installed.'
+      );
+    }
   }}
 >
   <View style={styles.docIconCircle}>
     <Ionicons name="document-text-outline" size={16} color="#555" />
   </View>
+
   <View style={styles.docTextWrap}>
     <Text style={styles.docTitle}>{presentationPdfName}</Text>
     <Text style={styles.docSubtext}>

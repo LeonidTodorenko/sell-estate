@@ -199,8 +199,7 @@ const LoginScreen = ({ navigation }: Props) => {
     };
   }, [currentSlide, showLoginPanel, progressAnim]);
 
-  const currentHero = kbShown ? 200 : HERO_HEIGHT; // <— СПЕЙСЕР МЕНЬШЕ при открытой клаве
-
+ 
   const handleNextSlide = () => {
     progressAnim.stopAnimation();
 
@@ -491,15 +490,15 @@ const LoginScreen = ({ navigation }: Props) => {
             },
           ]}
         >
-          <KeyboardAwareScrollView
-            contentContainerStyle={styles.loginScrollContent}
-            keyboardShouldPersistTaps="always"
-            enableOnAndroid
-            enableAutomaticScroll={true}
-            extraScrollHeight={32} // небольшой доп. отступ над клавиатурой
-            extraHeight={Platform.OS === 'android' ? 140 : 0}
-            showsVerticalScrollIndicator={false}
-          >
+         <KeyboardAwareScrollView
+  contentContainerStyle={styles.loginScrollContent}
+  keyboardShouldPersistTaps="handled"
+  enableOnAndroid
+  enableAutomaticScroll
+  extraScrollHeight={8}
+  extraHeight={0}
+  showsVerticalScrollIndicator={false}
+>
             {/* <KeyboardAvoidingView      style={{ flex: 1 }}       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}      >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}> */}
 
@@ -760,21 +759,21 @@ const styles = StyleSheet.create({
     zIndex: 20,
   },
 
-  loginScrollContent: {
-    flexGrow: 1,
-    justifyContent: 'flex-end',
-  },
+loginScrollContent: {
+  flexGrow: 1,
+  justifyContent: 'flex-end',
+  paddingTop: 20,
+},
 
-  panel: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: 28,
-    minHeight: SCREEN_HEIGHT * 0.58,
-    maxHeight: SCREEN_HEIGHT * 0.78,
-  },
+panel: {
+  backgroundColor: '#FFFFFF',
+  borderTopLeftRadius: 28,
+  borderTopRightRadius: 28,
+  paddingHorizontal: 20,
+  paddingTop: 24,
+  paddingBottom: Platform.OS === 'android' ? 18 : 28,
+  minHeight: SCREEN_HEIGHT * 0.56,
+},
 
   panelTitle: {
     fontSize: 24,
@@ -950,20 +949,22 @@ const styles = StyleSheet.create({
     // marginBottom: 12,
   },
 
-  passwordWrap: {
+passwordWrap: {
   position: 'relative',
   justifyContent: 'center',
+  marginBottom: 8,
 },
-
 passwordInput: {
-  paddingRight: 44,
+  paddingRight: 46,
+  marginBottom: 0,
 },
 
 eyeButton: {
   position: 'absolute',
   right: 14,
-  top: '50%',
-  marginTop: -11,
+  top: 0,
+  bottom: 0,
+  justifyContent: 'center',
   zIndex: 5,
 },
 

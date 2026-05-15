@@ -315,17 +315,26 @@ const presentationPdfName = property?.presentationPdfName?.trim() || 'Object Pre
   style={[styles.docRow, !presentationPdfUrl && styles.docRowDisabled]}
   activeOpacity={presentationPdfUrl ? 0.85 : 1}
   disabled={!presentationPdfUrl}
-  onPress={async () => {
-    if (!presentationPdfUrl) return;
+onPress={async () => {
+  if (!presentationPdfUrl) return;
 
-    const supported = await Linking.canOpenURL(presentationPdfUrl);
-    if (!supported) {
-      Alert.alert('Error', 'Cannot open PDF');
-      return;
-    }
+  try {
+    const url = normalizeUrl(presentationPdfUrl);
 
-    await Linking.openURL(presentationPdfUrl);
-  }}
+    console.log('PDF URL:', url);
+
+    await Linking.openURL(url);
+  } catch (e: any) {
+    console.log('PDF open error:', e);
+
+    Alert.alert(
+      'Error',
+      e?.message
+        ? `Cannot open PDF: ${e.message}`
+        : 'Cannot open PDF. Please check that a PDF viewer or browser is installed.'
+    );
+  }
+}}
 >
   <View style={styles.docIconCircle}>
     <Ionicons name="document-text-outline" size={16} color="#555" />
