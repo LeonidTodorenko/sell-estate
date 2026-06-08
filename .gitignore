@@ -41,4 +41,16 @@ yarn.lock
 /build
 
 **/google-services.json
+
+# Firebase Admin SDK (секреты)
 **/firebase-service-account.json
+
+# macOS
+.DS_Store
+
+# Watchman
+.watchman-cookie-*
+  
+# Local env
+.env
+.env.*
