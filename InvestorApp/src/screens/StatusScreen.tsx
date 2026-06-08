@@ -36,11 +36,12 @@ type UserStatusData = {
   referralFeePercent: number | null;
 };
 
+
 const LEVELS: StatusConfig[] = [
   {
     key: 'Explorer',
     minAssets: 0,
-    feePercent: 9,
+    feePercent: 7,
     title: 'Explorer',
     description:
       'Entry level for those who are just discovering the world of real estate investing.',
@@ -50,7 +51,7 @@ const LEVELS: StatusConfig[] = [
   {
     key: 'Expert',
     minAssets: 50_000,
-    feePercent: 7,
+    feePercent: 6,
     title: 'Expert',
     description:
       'Level for experienced investors who already have a diversified portfolio.',
@@ -60,7 +61,7 @@ const LEVELS: StatusConfig[] = [
   {
     key: 'Visionary',
     minAssets: 200_000,
-    feePercent: 5,
+    feePercent: 5.5,
     title: 'Visionary',
     description:
       'Level for those who look to the future and shape trends in the investment market.',
@@ -70,7 +71,7 @@ const LEVELS: StatusConfig[] = [
   {
     key: 'VIP',
     minAssets: 500_000,
-    feePercent: 3,
+    feePercent: 5,
     title: 'VIP',
     description:
       'Highest level for investors with major capital and maximum marketplace benefits.',

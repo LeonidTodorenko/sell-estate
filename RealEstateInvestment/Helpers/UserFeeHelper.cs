@@ -8,7 +8,7 @@ namespace RealEstateInvestment.Helpers
         public static UserClubStatus GetStatus(decimal totalAssets)
         {
             if (totalAssets >= 1_000_000m)
-                return UserClubStatus.VIP; // можно сделать отдельный Black, если захотите
+                return UserClubStatus.VIP;  
             if (totalAssets >= 100_000m)
                 return UserClubStatus.VIP;
             if (totalAssets >= 50_000m)
