@@ -593,7 +593,7 @@ const LoginScreen = ({ navigation }: Props) => {
   </Text>
 </Text>
 
-              <View style={styles.quickLoginWrap}>
+              {/* <View style={styles.quickLoginWrap}>
                 <Text
                   onPress={() =>
                     loginCore(
@@ -635,9 +635,10 @@ const LoginScreen = ({ navigation }: Props) => {
                 >
                   ➤ Login as Test User3
                 </Text>
+ 
+              </View> */}
 
-                {/* <BlueButton title="Test API" onPress={testApi} color="orange" /> */}
-              </View>
+              
             </View>
 
            

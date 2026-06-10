@@ -40,7 +40,7 @@ const HeaderMenu: React.FC = () => {
             Alert.alert(
             "CONTACTS",
             "You can reach us:\n\n" +
-            "Email: support@sell-estate.com\n" +
+            "Email: investor.real.estate.app@gmail.com\n" +
             "Phone: +971 55 123 4567\n" +
             "Address: Dubai, Business Bay, Tower 3\n"
             );

@@ -13,6 +13,7 @@ using System.Text.Json.Serialization;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Http.Features;
+using RealEstateInvestment.Helpers;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -297,5 +298,29 @@ using (var scope = app.Services.CreateScope())
         context.SaveChanges();
     }
 }
+
+app.MapGet("/privacy", () =>
+{
+    var html = LegalPages.PrivacyPolicyHtml;
+    return Results.Content(html, "text/html; charset=utf-8");
+});
+
+app.MapGet("/terms", () =>
+{
+    var html = LegalPages.TermsOfUseHtml;
+    return Results.Content(html, "text/html; charset=utf-8");
+});
+
+app.MapGet("/support", () =>
+{
+    return Results.Content("""
+    <html>
+    <body>
+        <h1>OwnersClub Support</h1>
+        <p>Email: 	    investor.real.estate.app@gmail.com</p>
+    </body>
+    </html>
+    """, "text/html");
+});
 
 app.Run();
