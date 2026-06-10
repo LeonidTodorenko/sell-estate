@@ -28,7 +28,7 @@ export default function App() {
   useEffect(() => {
     const setup = async () => {
       await requestUserPermission();
-      await getFcmToken();
+      // todo отключил файрбейз await getFcmToken();
 
       await notifee.createChannel({
         id: 'default',

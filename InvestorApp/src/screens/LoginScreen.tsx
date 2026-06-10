@@ -289,14 +289,15 @@ const LoginScreen = ({ navigation }: Props) => {
         writeLegacyUser(data), // чтобы старые места, читающие AsyncStorage('user'), были счастливы
       ]);
       resetForceLogoutFlag();
-      const fcmToken = await getFcmToken();
-      if (fcmToken) {
-        try {
-          await axios.post(`${API_BASE_URL}/notifications/register-token`, { token: fcmToken });
-        } catch (e) {
-          console.warn('Failed to register FCM token', e);
-        }
-      }
+      // todo отключил getFcmToken
+      // const fcmToken = await getFcmToken();
+      // if (fcmToken) {
+      //   try {
+      //     await axios.post(`${API_BASE_URL}/notifications/register-token`, { token: fcmToken });
+      //   } catch (e) {
+      //     console.warn('Failed to register FCM token', e);
+      //   }
+      // }
 
       const role = getRoleFromUserAndToken(user, accessToken);
       const target: keyof RootStackParamList =
