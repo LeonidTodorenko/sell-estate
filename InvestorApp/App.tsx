@@ -27,7 +27,7 @@ const queryClient = new QueryClient({
 export default function App() {
   useEffect(() => {
     const setup = async () => {
-      await requestUserPermission();
+     // todo отключил файрбейз   await requestUserPermission();
       // todo отключил файрбейз await getFcmToken();
 
       await notifee.createChannel({

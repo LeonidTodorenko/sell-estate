@@ -289,7 +289,7 @@ const LoginScreen = ({ navigation }: Props) => {
         writeLegacyUser(data), // чтобы старые места, читающие AsyncStorage('user'), были счастливы
       ]);
       resetForceLogoutFlag();
-      // todo отключил getFcmToken
+      // todo отключил файрбейз
       // const fcmToken = await getFcmToken();
       // if (fcmToken) {
       //   try {
