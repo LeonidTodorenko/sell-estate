@@ -496,8 +496,8 @@ const LoginScreen = ({ navigation }: Props) => {
   keyboardShouldPersistTaps="handled"
   enableOnAndroid
   enableAutomaticScroll
-  extraScrollHeight={8}
-  extraHeight={0}
+ extraScrollHeight={Platform.OS === 'android' ? 120 : 8}
+extraHeight={Platform.OS === 'android' ? 120 : 0}
   showsVerticalScrollIndicator={false}
 >
             {/* <KeyboardAvoidingView      style={{ flex: 1 }}       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}      >
@@ -753,13 +753,15 @@ const styles = StyleSheet.create({
     elevation: 0,
   },
 
-  loginPanelWrap: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 20,
-  },
+loginPanelWrap: {
+  position: Platform.OS === 'ios' ? 'absolute' : 'relative',
+  left: 0,
+  right: 0,
+  bottom: 0,
+  zIndex: 20,
+  flex: Platform.OS === 'android' ? 1 : undefined,
+  justifyContent: Platform.OS === 'android' ? 'flex-end' : undefined,
+},
 
 loginScrollContent: {
   flexGrow: 1,
