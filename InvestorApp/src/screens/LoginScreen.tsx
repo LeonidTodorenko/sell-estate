@@ -118,6 +118,8 @@ const LoginScreen = ({ navigation }: Props) => {
 
   const slide = slides[currentSlide];
   const isLastSlide = currentSlide === slides.length - 1;
+  const isAndroid = Platform.OS === 'android';
+const isAndroidKeyboardLogin = isAndroid && showLoginPanel && kbShown;
   
 
   useEffect(() => {
@@ -393,19 +395,27 @@ const LoginScreen = ({ navigation }: Props) => {
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#000' }}>
+   <View style={[styles.root, isAndroidKeyboardLogin && styles.rootKeyboard]}>
       {/* <ImageBackground
       source={loginBackground}
       resizeMode="cover"
       style={styles.background}
     > */}
 
-      <Animated.View style={[styles.heroWrap, heroAnimatedStyle]}>
-        <ImageBackground
-          source={slide.image ?? loginBackground}
-          resizeMode="cover"
-          style={styles.heroImage}
-        >
+    {!(isAndroid && showLoginPanel) && (
+  <Animated.View
+    style={[
+      styles.heroWrap,
+      heroAnimatedStyle, 
+    ]}
+  >
+       <ImageBackground
+  source={slide.image ?? loginBackground}
+  resizeMode="cover"
+  style={[
+    styles.heroImage, 
+  ]}
+>
           <View style={styles.heroOverlay} />
 
           {!!slide.innerImage && (
@@ -480,24 +490,32 @@ const LoginScreen = ({ navigation }: Props) => {
             </>
           )}
         </ImageBackground>
-      </Animated.View>
+       </Animated.View>
+)}
 
       {showLoginPanel && (
-        <Animated.View
-          style={[
-            styles.loginPanelWrap,
-            {
-              transform: [{ translateY: panelAnim }],
-            },
-          ]}
-        >
-         <KeyboardAwareScrollView
-  contentContainerStyle={styles.loginScrollContent}
+       <Animated.View
+  style={[
+    styles.loginPanelWrap,
+    isAndroid && styles.loginPanelWrapAndroid,
+    !isAndroid && {
+      transform: [{ translateY: panelAnim }],
+    },
+  ]}
+>
+    <KeyboardAwareScrollView
+  style={styles.loginScroll}
+  contentContainerStyle={[
+    styles.loginScrollContent,
+    isAndroid && styles.loginScrollContentAndroid,
+    isAndroidKeyboardLogin && styles.loginScrollContentAndroidKeyboard,
+  ]}
   keyboardShouldPersistTaps="handled"
   enableOnAndroid
   enableAutomaticScroll
- extraScrollHeight={Platform.OS === 'android' ? 120 : 8}
-extraHeight={Platform.OS === 'android' ? 120 : 0}
+  extraScrollHeight={isAndroid ? 180 : 8}
+  extraHeight={isAndroid ? 180 : 0}
+  enableResetScrollToCoords={false}
   showsVerticalScrollIndicator={false}
 >
             {/* <KeyboardAvoidingView      style={{ flex: 1 }}       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}      >
@@ -517,7 +535,13 @@ extraHeight={Platform.OS === 'android' ? 120 : 0}
               ]}
             >  */}
 
-            <View style={styles.panel}>
+           <View
+  style={[
+    styles.panel,
+    isAndroid && styles.panelAndroid,
+    isAndroidKeyboardLogin && styles.panelAndroidKeyboard,
+  ]}
+>
               <Text style={styles.panelTitle}>Log In</Text>
               <Text style={styles.panelSubtitle}>
                 Enter your email and password to continue
@@ -584,15 +608,17 @@ extraHeight={Platform.OS === 'android' ? 120 : 0}
                 </Pressable>
               </View>
 
-<Text style={styles.termsText}>
-  By continuing, you agree to the{' '}
-  <Text
-    style={styles.termsAccent}
-    onPress={() => navigation.navigate('Terms')}
-  >
-    Terms of Use
+
+  <Text style={styles.termsText}>
+    By continuing, you agree to the{' '}
+    <Text
+      style={styles.termsAccent}
+      onPress={() => navigation.navigate('Terms')}
+    >
+      Terms of Use
+    </Text>
   </Text>
-</Text>
+
 
               {/* <View style={styles.quickLoginWrap}>
                 <Text
@@ -656,6 +682,53 @@ extraHeight={Platform.OS === 'android' ? 120 : 0}
 };
 
 const styles = StyleSheet.create({
+  root: {
+  flex: 1,
+  backgroundColor: '#000',
+},
+rootKeyboard: {
+  backgroundColor: '#FFFFFF',
+},
+ 
+ 
+loginScroll: {
+  flex: 1,
+},
+ 
+loginPanelWrapAndroid: {
+  position: 'relative',
+  flex: 1,
+  justifyContent: 'flex-end',
+},
+
+loginScrollContentAndroid: {
+  flexGrow: 1,
+  justifyContent: 'center',
+  backgroundColor: '#FFFFFF',
+  paddingTop: 24,
+  paddingBottom: 24,
+},
+
+loginScrollContentAndroidKeyboard: {
+  justifyContent: 'flex-start',
+  paddingTop: 24,
+  paddingBottom: 240,
+},
+
+panelAndroid: {
+  minHeight: 0,
+  borderTopLeftRadius: 0,
+  borderTopRightRadius: 0,
+  paddingTop: 24,
+  paddingBottom: 24,
+},
+
+panelAndroidKeyboard: {
+  borderTopLeftRadius: 0,
+  borderTopRightRadius: 0,
+  paddingTop: 18,
+  paddingBottom: 24,
+},
   heroWrap: {
     flex: 1,
     backgroundColor: '#000',
