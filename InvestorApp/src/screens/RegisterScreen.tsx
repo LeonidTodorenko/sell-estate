@@ -24,7 +24,7 @@ const RegisterScreen = ({ navigation }: Props) => {
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
+  //const [phoneNumber, setPhoneNumber] = useState('');
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -63,7 +63,8 @@ const RegisterScreen = ({ navigation }: Props) => {
       return;
     }
 
-    if (!firstName.trim() || !lastName.trim() || !email.trim() || !phoneNumber.trim() || !password || !repeatPassword || !secretWord.trim()) {
+    // убрали по требованию apple телефон - потом может вернем if (!firstName.trim() || !lastName.trim() || !email.trim() || !phoneNumber.trim() || !password || !repeatPassword || !secretWord.trim()) {
+    if (!firstName.trim() || !lastName.trim() || !email.trim()  || !password || !repeatPassword || !secretWord.trim()) {
       Alert.alert('Registration failed', 'Please fill in all required fields');
       return;
     }
@@ -102,7 +103,7 @@ const RegisterScreen = ({ navigation }: Props) => {
           captchaId,
           captchaAnswer: parseInt(captchaAnswer, 10),
           referralCode: referralCode?.trim() || undefined,
-          phoneNumber, // если бэк пока не использует — ASP.NET обычно просто проигнорирует лишнее поле
+         //убрали по требованю apple phoneNumber, // если бэк пока не использует — ASP.NET обычно просто проигнорирует лишнее поле
     //         acceptTerms, // todo добавить это на бек
     // termsVersion: 'v1', // todo добавить это на бек
         },
@@ -164,10 +165,10 @@ const RegisterScreen = ({ navigation }: Props) => {
               <Text style={styles.verifyLink}>Verify email</Text>
             </Pressable>
 
-            <View style={styles.readonlyField}>
+            {/* <View style={styles.readonlyField}>
               <Text style={styles.readonlyLabel}>Phone Number</Text>
               <Text style={styles.readonlyValue}>{phoneNumber}</Text>
-            </View>
+            </View> */}
 
             <Pressable onPress={handleFakeVerifyPhone} style={styles.verifyLinkWrap}>
               <Text style={styles.verifyLink}>Verify phone</Text>
@@ -259,13 +260,13 @@ const RegisterScreen = ({ navigation }: Props) => {
             onChangeText={setEmail}
           />
 
-          <StyledInput
+          {/* <StyledInput
             style={styles.input}
             placeholder="Phone Number"
             value={phoneNumber}
             keyboardType="phone-pad"
             onChangeText={setPhoneNumber}
-          />
+          /> */}
 
           <StyledInput
             style={styles.input}
@@ -376,7 +377,7 @@ const RegisterScreen = ({ navigation }: Props) => {
             firstName.trim() &&
             lastName.trim() &&
             email.trim() &&
-            phoneNumber.trim() &&
+            //phoneNumber.trim() &&
             password &&
             repeatPassword &&
             password === repeatPassword

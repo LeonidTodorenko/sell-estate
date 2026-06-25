@@ -620,7 +620,7 @@ const isAndroidKeyboardLogin = isAndroid && showLoginPanel && kbShown;
   </Text>
 
 
-              {/* <View style={styles.quickLoginWrap}>
+             {/* <View style={styles.quickLoginWrap}>
                 <Text
                   onPress={() =>
                     loginCore(
@@ -663,7 +663,7 @@ const isAndroidKeyboardLogin = isAndroid && showLoginPanel && kbShown;
                   ➤ Login as Test User3
                 </Text>
  
-              </View> */}
+              </View>   */}
 
               
             </View>

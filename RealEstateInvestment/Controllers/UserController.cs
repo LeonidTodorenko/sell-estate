@@ -726,7 +726,7 @@ namespace RealEstateInvestment.Controllers
                 FullName = req.FullName,
                 Email = req.Email.Trim(),
                 PasswordHash = req.Password, // TODO: hash password
-                PhoneNumber = string.IsNullOrWhiteSpace(req.PhoneNumber) ? null : req.PhoneNumber.Trim(),
+               // убрали по требованию яблока PhoneNumber = string.IsNullOrWhiteSpace(req.PhoneNumber) ? null : req.PhoneNumber.Trim(),
                 SecretWord = req.SecretWord,
                 PinCode = req.PinCode,
                 IsEmailConfirmed = false,
@@ -992,8 +992,77 @@ namespace RealEstateInvestment.Controllers
             return Ok(new { adminId = admin.Id });
         }
 
-     
+        [HttpDelete("me")]
+        [Authorize]
+        public async Task<IActionResult> DeleteMyAccount()
+        {
+            var userId = User.GetUserId();
+            if (userId == Guid.Empty)
+                return Unauthorized();
 
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null)
+                return NotFound();
+
+            if (user.IsDeleted == true)
+                return Ok(new { message = "Account already deleted." });
+
+            var originalEmail = user.Email;
+            var originalFullName = user.FullName;
+
+            await _emailService.SendEmailAsync(
+                originalEmail,
+                "Your OwnersClub account has been deleted",
+                $"""
+        <p>Hello, {System.Net.WebUtility.HtmlEncode(originalFullName)}.</p>
+
+        <p>Your OwnersClub account deletion request has been processed.</p>
+
+        <p>Your account access has been disabled. Documents related to your real estate shares,
+        investment records, wallet balance, and any remaining funds will be reviewed by our manager.</p>
+
+        <p>Our manager will contact you regarding the return of funds and any documents related
+        to your property shares.</p>
+
+        <p>If you did not request this action, please contact support immediately.</p>
+
+        <p>OwnersClub Support</p>
+        """
+            );
+
+            user.IsDeleted = true;
+            user.DeletedAt = DateTime.UtcNow;
+            user.IsBlocked = true;
+
+            // email освобождаем для повторной регистрации, но сохраняем след в строке
+            user.Email = $"deleted_{user.Id}_{originalEmail}";
+
+            // гасим refresh tokens
+            var refreshTokens = await _context.RefreshTokens
+                .Where(x => x.UserId == user.Id && x.RevokedAt == null)
+                .ToListAsync();
+
+            foreach (var token in refreshTokens)
+                token.RevokedAt = DateTime.UtcNow;
+
+            // удаляем/отвязываем FCM токены
+            var fcmTokens = await _context.FcmDeviceTokens
+                .Where(x => x.UserId == user.Id)
+                .ToListAsync();
+
+            _context.FcmDeviceTokens.RemoveRange(fcmTokens);
+
+            _context.ActionLogs.Add(new ActionLog
+            {
+                UserId = user.Id,
+                Action = "DeleteAccount",
+                Details = $"User requested account deletion. Original email: {originalEmail}"
+            });
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Account deleted successfully" });
+        }
 
 
     }

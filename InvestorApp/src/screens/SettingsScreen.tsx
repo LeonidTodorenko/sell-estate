@@ -14,6 +14,10 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import theme from '../constants/theme';
 import { RootStackParamList } from '../navigation/AppNavigator';
 
+import { Alert } from 'react-native';
+import api from '../api';
+import { clearSession } from '../services/sessionStorage';
+
 import rightIcon from '../assets/images/kyc_right_m.png';
 import bellIcon from '../assets/images/setting_Button_icon_bell.png';
 import lockIcon from '../assets/images/setting_Button_icon_lock.png';
@@ -23,6 +27,37 @@ const SettingsScreen = () => {
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+
+  const handleDeleteAccount = () => {
+  Alert.alert(
+    'Delete account',
+    'Are you sure you want to delete your account? Your access will be disabled. Documents related to your shares and remaining funds will be reviewed by our manager, who will contact you.',
+    [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await api.delete('/users/me');
+
+            await clearSession();
+
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'Login' }],
+            });
+          } catch (error: any) {
+            Alert.alert(
+              'Error',
+              error.response?.data?.message || 'Failed to delete account'
+            );
+          }
+        },
+      },
+    ],
+  );
+};
 
   return (
     <View style={styles.screen}>
@@ -75,6 +110,30 @@ const SettingsScreen = () => {
 
             <Image source={rightIcon} style={styles.rightArrow} resizeMode="contain" />
           </Pressable>
+
+
+<View style={styles.divider} />
+
+<Pressable style={styles.row} onPress={handleDeleteAccount}>
+  <View style={styles.rowLeft}>
+    <View style={[styles.iconCircle, styles.dangerCircle]}>
+      <Text style={styles.deleteIcon}>!</Text>
+    </View>
+
+    <View style={{ flex: 1 }}>
+      <Text style={[styles.rowTitle, styles.deleteText]}>
+        Delete Account
+      </Text>
+      <Text style={styles.deleteSubtitle}>
+        Permanently disable your account
+      </Text>
+    </View>
+  </View>
+
+  <Image source={rightIcon} style={styles.rightArrow} resizeMode="contain" />
+</Pressable>
+
+
         </View>
       </ScrollView>
     </View>
@@ -170,6 +229,26 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: theme.colors.text,
   },
+
+  dangerCircle: {
+  backgroundColor: '#FEE2E2',
+},
+
+deleteIcon: {
+  fontSize: 18,
+  fontWeight: '700',
+  color: '#EF4444',
+},
+
+deleteText: {
+  color: '#EF4444',
+},
+
+deleteSubtitle: {
+  marginTop: 3,
+  fontSize: 13,
+  color: '#9CA3AF',
+},
 
   divider: {
     height: 1,

@@ -68,6 +68,9 @@ namespace RealEstateInvestment.Controllers
                 if (user == null || user.PasswordHash != request.Password)    // todo later hash or jwt
                     return Unauthorized(new { message = "Invalid email or password" });
 
+                if (user.IsDeleted == true)
+                    return Unauthorized(new { message = "Invalid email or password." }); // Account has been deleted. не говорим пользователю что знаем его емеил тк он удален
+
                 if (!user.IsEmailConfirmed)
                     return BadRequest(new { message = "Please confirm your email first." });
 
@@ -173,6 +176,13 @@ namespace RealEstateInvestment.Controllers
 
             var user = await _context.Users.FindAsync(tokenRow.UserId);
             if (user == null) return Unauthorized();
+             
+            if (user.IsDeleted == true)
+            {
+                tokenRow.RevokedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+                return Unauthorized(); // return Unauthorized(new { message = "Account has been deleted." });
+            }
 
             // ротация
             tokenRow.RevokedAt = DateTime.UtcNow;
@@ -250,6 +260,9 @@ namespace RealEstateInvestment.Controllers
 
             var user = await _context.Users.FindAsync(userId);
             if (user == null) return Unauthorized();
+
+            if ( user.IsDeleted == true)
+                return Unauthorized();// return Unauthorized(new { message = "Account has been deleted." });
 
             return Ok(new
             {
