@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useContext } from 'react';
+import { AuthContext } from '../contexts/AuthContext';
 import {
   View,
   Text,
@@ -77,6 +78,7 @@ type Slide =
 //   base64Data?: string | null;
 // }
 
+ 
 type PropertyCardProps = {
   item: Property;
   navigation: NativeStackNavigationProp<RootStackParamList>;
@@ -85,6 +87,7 @@ type PropertyCardProps = {
   openVideo: (url: string) => void;
   expanded: boolean;
   onToggleExpand: () => void;
+  isGuest: boolean;
 };
 
 // type ApiMedia = {
@@ -102,6 +105,8 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
   openVideo,
   expanded,
   onToggleExpand,
+    isGuest,
+
 }) => {
   const swiperRef = useRef<Swiper>(null);
   const [index, setIndex] = useState(0);
@@ -351,12 +356,20 @@ const presentationPdfName = item.presentationPdfName?.trim() || 'Object Presenta
             style={[styles.docRow, !item.hasPaymentPlan && styles.docRowDisabled]}
             activeOpacity={item.hasPaymentPlan ? 0.85 : 1}
             disabled={!item.hasPaymentPlan}
-            onPress={() =>
+           onPress={() => {
+              if (isGuest) {
+                Alert.alert(
+                  'Account required',
+                  'Please create an account or log in to view the payment plan.'
+                );
+                return;
+              }
+
               navigation.navigate('PaymentPlan', {
                 propertyId: item.id,
                 readonly: true,
-              })
-            }
+              });
+            }}
           >
             <Image source={paymentPlanImage} style={styles.docIconImage} />
             <View style={styles.docTextWrap}>
@@ -435,14 +448,22 @@ const presentationPdfName = item.presentationPdfName?.trim() || 'Object Presenta
 
       <View style={{ height: 14 }} />
 
-    <BlueButton
+<BlueButton
   title={item.hasPaymentPlan ? 'Invest' : 'Object not active'}
-  onPress={() =>
+  onPress={() => {
+    if (isGuest) {
+      Alert.alert(
+        'Account required',
+        'Please create an account or log in to invest in this property.'
+      );
+      return;
+    }
+
     navigation.navigate('BuyShares', {
       propertyId: item.id,
       propertyName: item.title,
-    })
-  }
+    });
+  }}
   disabled={!item.hasPaymentPlan}
   width="full"
   showArrow={false}
@@ -467,6 +488,7 @@ const PropertyListScreen = () => {
   const [modalImage, setModalImage] = useState<string | null>(null);
   //const [imageIndex, setImageIndex] = useState(0);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { isGuest } = useContext(AuthContext);
   const [videoModalVisible, setVideoModalVisible] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [expandedPropertyId, setExpandedPropertyId] = useState<string | null>(null);
@@ -620,6 +642,7 @@ useEffect(() => {
             openImage={openImage}
             openVideo={openVideo}
             expanded={expandedPropertyId === item.id}
+              isGuest={isGuest}
            onToggleExpand={() => {
             LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
             setExpandedPropertyId((prev) => (prev === item.id ? null : item.id));

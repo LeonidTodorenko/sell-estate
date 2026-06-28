@@ -161,13 +161,11 @@ const MyTheme = {
 
 // Роуты, где нижний бар ДОЛЖЕН БЫТЬ скрыт
 const HIDE_BAR_ROUTES = new Set<string>([
-  'Gate', 'Login', 'Register', 'ForgotPassword', 'ResetPassword',
-    'Terms',
-  'PrivacyPolicy',
+  'Gate', 'Login', 'Register', 'ForgotPassword', 'ResetPassword','TermsOfUse','Terms','PrivacyPolicy',
   // все админские:
   'AdminDashboards','AdminUsers','AdminInvestments','AdminKyc','AdminStats',
   'AdminProperties','AdminWithdrawals','AdminLogs','AdminMessages',
-  'AdminKycUpload','AdminSystemSettings','SuperUser','AdminChat','UsersLists','UserEdit','AdminFinanceFlowsScreen']);
+  'AdminKycUpload','AdminSystemSettings','SuperUser','AdminChat','UsersLists','UserEdit','AdminFinanceFlows']);
 
 
 export default function AppNavigator() {

@@ -14,7 +14,7 @@ using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 namespace RealEstateInvestment.Controllers
 {
     [ApiController]
-    [Authorize]
+    //  [Authorize] todo
     [Route("api/properties")]
     public class PropertyController : ControllerBase
     {
@@ -37,6 +37,7 @@ namespace RealEstateInvestment.Controllers
         }
 
         // Get a list of real estate properties
+        [AllowAnonymous]
         [HttpGet]
         public async Task<IActionResult> GetProperties()
         {
@@ -186,6 +187,7 @@ namespace RealEstateInvestment.Controllers
             return Ok(new { message = "Property deleted" });
         }
 
+        [AllowAnonymous]
         [HttpGet("{propertyId}/images")]
         public async Task<IActionResult> GetPropertyImages(Guid propertyId)
         {
@@ -322,7 +324,7 @@ namespace RealEstateInvestment.Controllers
             });
         }
 
-
+        [AllowAnonymous]
         [HttpGet("with-stats")]
         //[Authorize(Roles = "admin")] todo пока убрал тк нужен для приоритетного инестора для страницы юзера
         public async Task<IActionResult> GetPropertiesWithStats()
@@ -708,6 +710,7 @@ namespace RealEstateInvestment.Controllers
             }
         }
 
+        [AllowAnonymous]
         [HttpGet("{propertyId}/presentation")]
         public async Task<IActionResult> GetPresentation(Guid propertyId)
         {
@@ -822,7 +825,7 @@ namespace RealEstateInvestment.Controllers
             return Ok(new { message = "Video URL updated" });
         }
 
-
+        [AllowAnonymous]
         [HttpGet("{propertyId}/media")]
         public async Task<IActionResult> GetMedia(Guid propertyId)
         {

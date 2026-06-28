@@ -17,7 +17,7 @@ using Org.BouncyCastle.Ocsp;
 namespace RealEstateInvestment.Controllers
 {
     [ApiController]
-    [Authorize]
+    //[Authorize]
     [Route("api/users")]
     public class UserController : ControllerBase
     {
@@ -200,6 +200,7 @@ namespace RealEstateInvestment.Controllers
             public string PinOrPassword { get; set; }
         }
 
+        [AllowAnonymous]
         [HttpGet("{id}")]
         public async Task<IActionResult> GetUserById(Guid id)
         {

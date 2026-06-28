@@ -40,7 +40,7 @@ import { getRoleFromUserAndToken } from '../services/auth';
 import BlueButton from '../components/BlueButton';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
-//import { AuthContext } from '../contexts/AuthContext';
+import { AuthContext } from '../contexts/AuthContext';
 
 //import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -96,6 +96,7 @@ const slides: SlideItem[] = [
 
 const LoginScreen = ({ navigation }: Props) => {
   const { setLoading } = useLoading();
+  const { continueAsGuest } = React.useContext(AuthContext);
   //  const { signIn } = React.useContext(AuthContext);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -359,6 +360,15 @@ const isAndroidKeyboardLogin = isAndroid && showLoginPanel && kbShown;
 
   const handleLogin = () => loginCore({ email, password });
 
+  const handleGuestBrowse = async () => {
+  await continueAsGuest();
+
+  navigation.reset({
+    index: 0,
+    routes: [{ name: 'Properties' }],
+  });
+};
+
   const heroAnimatedStyle = useMemo(
     () => ({
       transform: [
@@ -606,6 +616,10 @@ const isAndroidKeyboardLogin = isAndroid && showLoginPanel && kbShown;
                     No account? <Text style={styles.createAccent}>Create</Text>
                   </Text>
                 </Pressable>
+
+                <Pressable onPress={handleGuestBrowse} style={styles.guestWrap}>
+                  <Text style={styles.guestText}>Browse Properties as Guest</Text>
+                </Pressable>
               </View>
 
 
@@ -689,7 +703,17 @@ const styles = StyleSheet.create({
 rootKeyboard: {
   backgroundColor: '#FFFFFF',
 },
- 
+guestWrap: {
+  marginTop: 14,
+  alignItems: 'center',
+  justifyContent: 'center',
+},
+
+guestText: {
+  fontSize: 15,
+  fontWeight: '700',
+  color: '#10B981',
+},
  
 loginScroll: {
   flex: 1,

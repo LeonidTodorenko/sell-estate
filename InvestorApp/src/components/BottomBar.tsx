@@ -1,14 +1,14 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { View, Pressable, Text, StyleSheet, Modal, Image } from 'react-native';
+import React, { useEffect, useMemo, useState, useContext } from 'react';
+import { View, Pressable, Text, StyleSheet, Modal, Image, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import { performLogout } from '../services/authLogout';
 import theme from '../constants/theme';
 import { navigationRef } from '../navigation/navigationRef';
+import { AuthContext } from '../contexts/AuthContext';
 
 export const BOTTOM_BAR_HEIGHT = 84;
 
-// icons
 import homeGreen from '../assets/images/home_green.png';
 import homeGray from '../assets/images/home_gray.png';
 
@@ -23,8 +23,7 @@ import supportGray from '../assets/images/support_gray.png';
 
 import personalGreen from '../assets/images/personal_green.png';
 import personalGray from '../assets/images/personal_gray.png';
- 
-import profileIcon from '../assets/images/DarkGradientUse/ID.png';
+
 import historyIcon from '../assets/images/DarkGradientUse/History.png';
 import statsIcon from '../assets/images/DarkGradientUse/port.png';
 import withdrawIcon from '../assets/images/DarkGradientUse/dollar.png';
@@ -80,12 +79,28 @@ function safeResetToLogin() {
 
 export default function BottomBar() {
   const insets = useSafeAreaInsets();
+  const { isGuest, signOut } = useContext(AuthContext);
+
   const [open, setOpen] = useState(false);
   const [routeName, setRouteName] = useState<string | undefined>(undefined);
 
-  useEffect(() => {
-    if (!navigationRef) return;
+  const guestBlock = () => {
+    Alert.alert(
+      'Account required',
+      'Please create an account or log in to use this feature.'
+    );
+  };
 
+  const guardedNavigate = (name: keyof RootStackParamList) => {
+    if (isGuest) {
+      guestBlock();
+      return;
+    }
+
+    safeNavigate(name);
+  };
+
+  useEffect(() => {
     const update = () => {
       const r = navigationRef.getCurrentRoute();
       setRouteName(r?.name);
@@ -112,7 +127,7 @@ export default function BottomBar() {
           iconActive={homeGreen}
           iconInactive={homeGray}
           active={isActive('Home')}
-          onPress={() => safeNavigate('Home')}
+          onPress={() => guardedNavigate('Home')}
         />
 
         <BTN
@@ -128,7 +143,7 @@ export default function BottomBar() {
           iconActive={marketGreen}
           iconInactive={marketGray}
           active={isActive('ShareMarketplaces')}
-          onPress={() => safeNavigate('ShareMarketplaces')}
+          onPress={() => guardedNavigate('ShareMarketplaces')}
         />
 
         <BTN
@@ -136,15 +151,15 @@ export default function BottomBar() {
           iconActive={supportGreen}
           iconInactive={supportGray}
           active={isActive('Chat')}
-          onPress={() => safeNavigate('Chat')}
+          onPress={() => guardedNavigate('Chat')}
         />
 
-         <BTN
+        <BTN
           label=" "
           iconActive={personalGreen}
           iconInactive={personalGray}
           active={isActive('Profile')}
-          onPress={() => safeNavigate('Profile')}
+          onPress={() => guardedNavigate('Profile')}
         />
 
         <BTN
@@ -159,43 +174,60 @@ export default function BottomBar() {
         <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
           <View style={styles.sheet} pointerEvents="box-none">
             <View style={styles.sheetBody}>
-              
-              
-              
-             {/* <Pressable style={styles.sheetItem} onPress={() => { setOpen(false); safeNavigate('Profile'); }}>
-  <Image source={profileIcon} style={styles.sheetIcon} />
-  <Text style={styles.sheetText}>Profile</Text>
-</Pressable> */}
+              <Pressable
+                style={styles.sheetItem}
+                onPress={() => {
+                  setOpen(false);
+                  guardedNavigate('MyInvestments');
+                }}
+              >
+                <Image source={historyIcon} style={styles.sheetIcon} />
+                <Text style={styles.sheetText}>History</Text>
+              </Pressable>
 
-<Pressable style={styles.sheetItem} onPress={() => { setOpen(false); safeNavigate('MyInvestments'); }}>
-  <Image source={historyIcon} style={styles.sheetIcon} />
-  <Text style={styles.sheetText}>History</Text>
-</Pressable>
+              <Pressable
+                style={styles.sheetItem}
+                onPress={() => {
+                  setOpen(false);
+                  guardedNavigate('MyFinance');
+                }}
+              >
+                <Image source={statsIcon} style={styles.sheetIcon} />
+                <Text style={styles.sheetText}>Statistics</Text>
+              </Pressable>
 
-<Pressable style={styles.sheetItem} onPress={() => { setOpen(false); safeNavigate('MyFinance'); }}>
-  <Image source={statsIcon} style={styles.sheetIcon} />
-  <Text style={styles.sheetText}>Statistics</Text>
-</Pressable>
+              <Pressable
+                style={styles.sheetItem}
+                onPress={() => {
+                  setOpen(false);
+                  guardedNavigate('Withdraw');
+                }}
+              >
+                <Image source={withdrawIcon} style={styles.sheetIcon} />
+                <Text style={styles.sheetText}>Withdraw</Text>
+              </Pressable>
 
-<Pressable style={styles.sheetItem} onPress={() => { setOpen(false); safeNavigate('Withdraw'); }}>
-  <Image source={withdrawIcon} style={styles.sheetIcon} />
-  <Text style={styles.sheetText}>Withdraw</Text>
-</Pressable>
+              <View style={styles.divider} />
 
-<View style={styles.divider} />
+              <Pressable
+                style={styles.sheetItem}
+                onPress={async () => {
+                  setOpen(false);
 
-<Pressable
-  style={styles.sheetItem}
-  onPress={async () => {
-    setOpen(false);
-    await performLogout(() => safeResetToLogin());
-  }}
->
-  <Image source={logoutIcon} style={styles.sheetIcon} />
-  <Text style={[styles.sheetText, { color: theme.colors.danger }]}>
-    Logout
-  </Text>
-</Pressable>
+                  if (isGuest) {
+                    await signOut();
+                    safeResetToLogin();
+                    return;
+                  }
+
+                  await performLogout(() => safeResetToLogin());
+                }}
+              >
+                <Image source={logoutIcon} style={styles.sheetIcon} />
+                <Text style={[styles.sheetText, { color: theme.colors.danger }]}>
+                  {isGuest ? 'Log In / Create Account' : 'Logout'}
+                </Text>
+              </Pressable>
             </View>
           </View>
         </Pressable>
@@ -269,7 +301,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: theme.radii.md,
     borderTopRightRadius: theme.radii.md,
   },
- 
+
   sheetText: {
     fontSize: theme.typography.sizes.md,
     color: theme.colors.text,
@@ -280,15 +312,16 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.border,
     marginVertical: theme.spacing.sm,
   },
-  sheetItem: {
-  flexDirection: 'row',   // 🔥 ключевое
-  alignItems: 'center',
-  paddingVertical: 12,
-},
 
-sheetIcon: {
-  width: 28,
-  height: 28,
-  marginRight: 12,
-},
+  sheetItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+
+  sheetIcon: {
+    width: 28,
+    height: 28,
+    marginRight: 12,
+  },
 });

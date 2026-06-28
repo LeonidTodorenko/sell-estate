@@ -7,7 +7,8 @@ using RealEstateInvestment.Models;
 namespace RealEstateInvestment.Controllers
 {
     [ApiController]
-    [Authorize]
+    //  [Authorize] todo
+    [AllowAnonymous]
     [Route("api/properties/{propertyId}/payment-plans")]
     public class PaymentPlanController : ControllerBase
     {
