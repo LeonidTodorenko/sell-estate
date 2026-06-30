@@ -651,9 +651,30 @@ useEffect(() => {
         )}
       />
 
-      <Modal visible={modalVisible} transparent={true} onRequestClose={() => setModalVisible(false)}>
+     <Modal
+        visible={modalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => {
+          setModalVisible(false);
+          setModalImage(null);
+        }}
+      >
         <View style={styles.modalView}>
-          {modalImage && <Image source={{ uri: modalImage }} style={styles.modalImage} />}
+          <TouchableOpacity
+            onPress={() => {
+              setModalVisible(false);
+              setModalImage(null);
+            }}
+            style={styles.imageCloseButton}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.imageCloseText}>✕</Text>
+          </TouchableOpacity>
+
+          {modalImage && (
+            <Image source={{ uri: modalImage }} style={styles.modalImage} />
+          )}
         </View>
       </Modal>
 
@@ -1215,6 +1236,25 @@ const styles = StyleSheet.create({
   elevation: 0,
   borderRadius: 12,
   marginBottom: 0,
+},
+imageCloseButton: {
+  position: 'absolute',
+  top: Platform.OS === 'ios' ? 56 : 36,
+  right: 20,
+  zIndex: 9999,
+  width: 44,
+  height: 44,
+  borderRadius: 22,
+  backgroundColor: 'rgba(0,0,0,0.65)',
+  alignItems: 'center',
+  justifyContent: 'center',
+},
+
+imageCloseText: {
+  color: '#FFFFFF',
+  fontSize: 24,
+  fontWeight: '700',
+  lineHeight: 26,
 },
 });
 

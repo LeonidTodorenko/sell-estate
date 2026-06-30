@@ -17,7 +17,7 @@ using Org.BouncyCastle.Ocsp;
 namespace RealEstateInvestment.Controllers
 {
     [ApiController]
-    //[Authorize]
+    //[Authorize] todo убрал вернуть после того как уберем гостевой режим
     [Route("api/users")]
     public class UserController : ControllerBase
     {

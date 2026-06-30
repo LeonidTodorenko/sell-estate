@@ -10,6 +10,9 @@ import {
   Pressable,
   Image,
   ScrollView,
+  KeyboardAvoidingView,
+  Keyboard,
+  Platform,
 } from 'react-native';
 import api from '../api';
 import { formatCurrency } from '../utils/format';
@@ -694,69 +697,86 @@ const openBuyModal = (offer: ShareOffer) => {
         renderItem={renderOfferCard}
       />
 
-      <Modal visible={bidModalVisible} transparent animationType="slide" onRequestClose={() => setBidModalVisible(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.bottomModal}>
-            <Text style={styles.modalTitle}>Place a Bid</Text>
+     <Modal
+  visible={bidModalVisible}
+  transparent
+  animationType="slide"
+  onRequestClose={() => setBidModalVisible(false)}
+>
+  <KeyboardAvoidingView
+    style={styles.modalKeyboardRoot}
+    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0}
+  >
+    <Pressable style={styles.modalOverlay} onPress={Keyboard.dismiss}>
+      <Pressable style={styles.bottomModal} onPress={() => {}}>
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.modalScrollContent}
+        >
+          <Text style={styles.modalTitle}>Place a Bid</Text>
 
-            {currentOffer && (
-              <View style={styles.modalOfferSummary}>
-                <Text style={styles.modalOfferTitle}>{currentOffer.propertyTitle}</Text>
-                <Text style={styles.modalOfferPrice}>
-                  {formatCurrency(currentOffer.startPricePerShare ?? 0)} min / share
-                </Text>
-              </View>
-            )}
-
-            <Text style={styles.modalLabel}>Number of shares</Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder="1"
-              keyboardType="numeric"
-              value={bidShares}
-              onChangeText={setBidShares}
-              placeholderTextColor="#9CA3AF"
-            />
-
-            <Text style={styles.modalLabel}>Price per share</Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder="1250"
-              keyboardType="numeric"
-              value={bidPrice}
-              onChangeText={setBidPrice}
-              placeholderTextColor="#9CA3AF"
-            />
-
-            <Text style={styles.modalLabel}>Enter password to confirm</Text>
-            <InlinePasswordField
-              value={bidPinOrPassword}
-              onChangeText={setBidPinOrPassword}
-              placeholder="Enter password to confirm"
-              secure={!showBidPassword}
-              setSecure={(v) => setShowBidPassword(!v)}
-            />
-
-            <View style={styles.modalBottomButtons}>
-              <Pressable onPress={() => setBidModalVisible(false)} style={styles.modalCancelBtn}>
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </Pressable>
-
-              <BlueButton
-                title="Place Bid"
-                onPress={submitBid}
-                width="full"
-                showArrow={false}
-                bgColor="#10B981"
-                textColor="#FFFFFF"
-                borderColor="#10B981"
-                paddingVertical={12}
-                style={styles.modalConfirmBtn}
-              />
+          {currentOffer && (
+            <View style={styles.modalOfferSummary}>
+              <Text style={styles.modalOfferTitle}>{currentOffer.propertyTitle}</Text>
+              <Text style={styles.modalOfferPrice}>
+                {formatCurrency(currentOffer.startPricePerShare ?? 0)} min / share
+              </Text>
             </View>
+          )}
+
+          <Text style={styles.modalLabel}>Number of shares</Text>
+          <TextInput
+            style={styles.modalInput}
+            placeholder="1"
+            keyboardType="numeric"
+            value={bidShares}
+            onChangeText={setBidShares}
+            placeholderTextColor="#9CA3AF"
+          />
+
+          <Text style={styles.modalLabel}>Price per share</Text>
+          <TextInput
+            style={styles.modalInput}
+            placeholder="1250"
+            keyboardType="numeric"
+            value={bidPrice}
+            onChangeText={setBidPrice}
+            placeholderTextColor="#9CA3AF"
+          />
+
+          <Text style={styles.modalLabel}>Enter password to confirm</Text>
+          <InlinePasswordField
+            value={bidPinOrPassword}
+            onChangeText={setBidPinOrPassword}
+            placeholder="Enter password to confirm"
+            secure={!showBidPassword}
+            setSecure={(v) => setShowBidPassword(!v)}
+          />
+
+          <View style={styles.modalBottomButtons}>
+            <Pressable onPress={() => setBidModalVisible(false)} style={styles.modalCancelBtn}>
+              <Text style={styles.modalCancelText}>Cancel</Text>
+            </Pressable>
+
+            <BlueButton
+              title="Place Bid"
+              onPress={submitBid}
+              width="full"
+              showArrow={false}
+              bgColor="#10B981"
+              textColor="#FFFFFF"
+              borderColor="#10B981"
+              paddingVertical={12}
+              style={styles.modalConfirmBtn}
+            />
           </View>
-        </View>
-      </Modal>
+        </ScrollView>
+      </Pressable>
+    </Pressable>
+  </KeyboardAvoidingView>
+</Modal>
 
       <Modal visible={buyModalVisible} transparent animationType="slide" onRequestClose={() => setBuyModalVisible(false)}>
         <View style={styles.modalOverlay}>
@@ -1419,5 +1439,13 @@ singleActionButton: {
   marginTop: 4,
   fontSize: 12,
   color: theme.colors.textSecondary,
+},
+modalKeyboardRoot: {
+  flex: 1,
+  justifyContent: 'flex-end',
+},
+
+modalScrollContent: {
+  paddingBottom: Platform.OS === 'ios' ? 20 : 0,
 },
 });
