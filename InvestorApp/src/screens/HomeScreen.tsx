@@ -13,11 +13,12 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
 import BlueButton from '../components/BlueButton';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchPropertiesWithExtras, Property } from '../services/properties';
 import { useFocusEffect } from '@react-navigation/native';
 import theme from '../constants/theme';
 import { LineChart } from 'react-native-chart-kit';
+import ScreenLoader from '../components/ScreenLoader';
 
 import inboxIcon from '../assets/images/inbox_icon.png';
 import historyIcon from '../assets/images/history_icon.png';
@@ -112,6 +113,18 @@ type ClubInfo = {
   canInvite?: boolean;
   referrerRewardPercent?: number;
   referrerRewardYears?: number;
+};
+
+type HomeData = {
+  userFullName: string;
+  userAvatar: string | null;
+  totals: Totals;
+  unread: number;
+  marketListings: HomeMarketCard[];
+  myInvestments: Investment[];
+  investmentImagesMap: Record<string, PropertyImage[]>;
+  stats: AssetStats | null;
+  clubInfo: ClubInfo | null;
 };
 
 function money(n: number) {
@@ -355,141 +368,268 @@ const InvestmentRow = ({
   </Pressable>
 );
 
+async function fetchHomeData(): Promise<HomeData | null> {
+  const stored = await AsyncStorage.getItem('user');
+  if (!stored) return null;
+
+  const u = JSON.parse(stored);
+
+  const [
+    assetsRes,
+    unreadRes,
+    propertiesRes,
+    investmentsRes,
+    statsRes,
+    clubInfoRes,
+    offersRes,
+  ] = await Promise.all([
+    api.get(`/users/${u.userId}/total-assets`, { silentLoading: true } as any),
+    api.get(`/messages/unread-count/${u.userId}`, { silentLoading: true } as any).catch(() => ({ data: { count: 0 } })),
+    fetchPropertiesWithExtras(20).catch(() => []),
+    api.get(`/investments/with-aggregated/${u.userId}`, { silentLoading: true } as any).catch(() => ({ data: [] })),
+    api.get(`/users/${u.userId}/assets-summary`, { silentLoading: true } as any).catch(() => ({ data: null })),
+    api.get(`/share-offers/${u.userId}/club-info`, { silentLoading: true } as any).catch(() => ({ data: null })),
+    api.get(`/share-offers/active`, { silentLoading: true } as any).catch(() => ({ data: [] })),
+  ]);
+
+  const a = assetsRes.data;
+
+  const totals: Totals = {
+    walletBalance: a.walletBalance ?? 0,
+    investmentValue: a.investmentValue ?? 0,
+    pendingApplicationsValue: a.pendingApplicationsValue ?? 0,
+    marketValue: a.marketValue ?? 0,
+    rentalIncome: a.rentalIncome ?? 0,
+    totalAssets: a.totalAssets ?? (a.walletBalance ?? 0) + (a.investmentValue ?? 0),
+  };
+
+  const propertiesById = new Map<string, Property>();
+  (propertiesRes ?? []).forEach((p: Property) => {
+    propertiesById.set(p.id, p);
+  });
+
+  const rawOffers: ShareOffer[] = (offersRes?.data ?? []).filter((o: ShareOffer) => o.isActive);
+  const topOffers = rawOffers.slice(0, 5);
+
+  const bidsCountsEntries = await Promise.all(
+    topOffers.map(async (offer) => {
+      try {
+        const res = await api.get(`/share-offers/${offer.id}/bids`, { silentLoading: true } as any);
+        return [offer.id, Array.isArray(res.data) ? res.data.length : 0] as const;
+      } catch {
+        return [offer.id, 0] as const;
+      }
+    }),
+  );
+
+  const bidsCountsMap = Object.fromEntries(bidsCountsEntries);
+
+  const marketListings: HomeMarketCard[] = topOffers.map((offer) => {
+    const property = propertiesById.get(offer.propertyId);
+
+    return {
+      id: offer.id,
+      propertyId: offer.propertyId,
+      propertyTitle: offer.propertyTitle,
+      location: property?.location ?? '',
+      sharesForSale: offer.sharesForSale,
+      startPricePerShare: offer.startPricePerShare ?? 0,
+      buyoutPricePerShare: offer.buyoutPricePerShare ?? null,
+      expirationDate: offer.expirationDate,
+      preview: property ? getPropertyPreview(property) : null,
+      bidsCount: bidsCountsMap[offer.id] ?? 0,
+    };
+  });
+
+  const myInvestments: Investment[] = (investmentsRes?.data ?? []).slice(0, 5);
+
+  const investmentImagesMap: Record<string, PropertyImage[]> = {};
+  await Promise.all(
+    myInvestments.map(async (inv) => {
+      try {
+        const res = await api.get(`/properties/${inv.propertyId}/images`, { silentLoading: true } as any);
+        investmentImagesMap[inv.propertyId] = res.data ?? [];
+      } catch {
+        investmentImagesMap[inv.propertyId] = [];
+      }
+    }),
+  );
+
+  return {
+    userFullName: u.fullName || '',
+    userAvatar: u.avatarBase64 || u.AvatarBase64 || null,
+    totals,
+    unread: unreadRes?.data?.count ?? 0,
+    marketListings,
+    myInvestments,
+    investmentImagesMap,
+    stats: statsRes?.data ?? null,
+    clubInfo: clubInfoRes?.data ?? null,
+  };
+}
+
 export default function MainHomeScreen({ navigation }: any) {
-  const [userFullName, setUserFullName] = useState<string>('');
-  const [totals, setTotals] = useState<Totals | null>(null);
-  const [unread, setUnread] = useState<number>(0);
-  const [refreshing, setRefreshing] = useState(false);
+  // const [userFullName, setUserFullName] = useState<string>('');
+  // const [totals, setTotals] = useState<Totals | null>(null);
+  // const [unread, setUnread] = useState<number>(0);
+  //const [refreshing, setRefreshing] = useState(false);
   //const [activeListings, setActiveListings] = useState<Property[]>([]);
-  const [marketListings, setMarketListings] = useState<HomeMarketCard[]>([]);
-  const [myInvestments, setMyInvestments] = useState<Investment[]>([]);
-  const [investmentImagesMap, setInvestmentImagesMap] = useState<Record<string, PropertyImage[]>>({});
-  const [stats, setStats] = useState<AssetStats | null>(null);
-  const [clubInfo, setClubInfo] = useState<ClubInfo | null>(null);
+  // const [marketListings, setMarketListings] = useState<HomeMarketCard[]>([]);
+  // const [myInvestments, setMyInvestments] = useState<Investment[]>([]);
+  // const [investmentImagesMap, setInvestmentImagesMap] = useState<Record<string, PropertyImage[]>>({});
+  // const [stats, setStats] = useState<AssetStats | null>(null);
+  // const [clubInfo, setClubInfo] = useState<ClubInfo | null>(null);
   const [chartRange, setChartRange] = useState<'3m' | '6m' | '1y' | 'all'>('1y');
-  const [userAvatar, setUserAvatar] = useState<string | null>(null);
+  //const [userAvatar, setUserAvatar] = useState<string | null>(null);
+const {
+  data: homeData,
+  isLoading,
+  isFetching,
+  refetch,
+} = useQuery({
+  queryKey: ['home'],
+  queryFn: fetchHomeData,
+  staleTime: 60_000,
+  gcTime: 10 * 60_000,
+});
+
+const userFullName = homeData?.userFullName ?? '';
+const userAvatar = homeData?.userAvatar ?? null;
+const totals = homeData?.totals ?? null;
+const unread = homeData?.unread ?? 0;
+const marketListings = homeData?.marketListings ?? [];
+const myInvestments = homeData?.myInvestments ?? [];
+const investmentImagesMap = homeData?.investmentImagesMap ?? {};
+const stats = homeData?.stats ?? null;
+const clubInfo = homeData?.clubInfo ?? null;
+ 
 
   
 
-  const load = useCallback(async () => {
-    const stored = await AsyncStorage.getItem('user');
-    if (!stored) return;
+//   const load = useCallback(async () => {
+//     const stored = await AsyncStorage.getItem('user');
+//     if (!stored) return;
 
-    const u = JSON.parse(stored);
-    setUserFullName(u.fullName || '');
-    setUserAvatar(u.avatarBase64 || u.AvatarBase64 || null);
+//     const u = JSON.parse(stored);
+//     setUserFullName(u.fullName || '');
+//     setUserAvatar(u.avatarBase64 || u.AvatarBase64 || null);
 
-   const [assetsRes, unreadRes, propertiesRes, investmentsRes, statsRes, clubInfoRes, offersRes] = await Promise.all([
-  api.get(`/users/${u.userId}/total-assets`),
-  api.get(`/messages/unread-count/${u.userId}`).catch(() => ({ data: { count: 0 } })),
-  fetchPropertiesWithExtras(20).catch(() => []),
-  api.get(`/investments/with-aggregated/${u.userId}`).catch(() => ({ data: [] })),
-  api.get(`/users/${u.userId}/assets-summary`).catch(() => ({ data: null })),
-  api.get(`/share-offers/${u.userId}/club-info`).catch(() => ({ data: null })),
-  api.get(`/share-offers/active`).catch(() => ({ data: [] })),
-]);
+//    const [assetsRes, unreadRes, propertiesRes, investmentsRes, statsRes, clubInfoRes, offersRes] = await Promise.all([
+//   api.get(`/users/${u.userId}/total-assets`),
+//   api.get(`/messages/unread-count/${u.userId}`).catch(() => ({ data: { count: 0 } })),
+//   fetchPropertiesWithExtras(20).catch(() => []),
+//   api.get(`/investments/with-aggregated/${u.userId}`).catch(() => ({ data: [] })),
+//   api.get(`/users/${u.userId}/assets-summary`).catch(() => ({ data: null })),
+//   api.get(`/share-offers/${u.userId}/club-info`).catch(() => ({ data: null })),
+//   api.get(`/share-offers/active`, { silentLoading: true } as any).catch(() => ({ data: [] })),
+// ]);
 
-    const a = assetsRes.data;
-    setTotals({
-      walletBalance: a.walletBalance ?? 0,
-      investmentValue: a.investmentValue ?? 0,
-      pendingApplicationsValue: a.pendingApplicationsValue ?? 0,
-      marketValue: a.marketValue ?? 0,
-      rentalIncome: a.rentalIncome ?? 0,
-      totalAssets: a.totalAssets ?? (a.walletBalance ?? 0) + (a.investmentValue ?? 0),
-    });
+//     const a = assetsRes.data;
+//     setTotals({
+//       walletBalance: a.walletBalance ?? 0,
+//       investmentValue: a.investmentValue ?? 0,
+//       pendingApplicationsValue: a.pendingApplicationsValue ?? 0,
+//       marketValue: a.marketValue ?? 0,
+//       rentalIncome: a.rentalIncome ?? 0,
+//       totalAssets: a.totalAssets ?? (a.walletBalance ?? 0) + (a.investmentValue ?? 0),
+//     });
 
-    setUnread(unreadRes?.data?.count ?? 0);
-    setStats(statsRes?.data ?? null);
-    setClubInfo(clubInfoRes?.data ?? null);
+//     setUnread(unreadRes?.data?.count ?? 0);
+//     setStats(statsRes?.data ?? null);
+//     setClubInfo(clubInfoRes?.data ?? null);
 
-    // const preparedListings = (propertiesRes ?? [])
-    //   .filter((p: Property) => (p.availableShares ?? 0) > 0)
-    //   .slice(0, 5);
+//     // const preparedListings = (propertiesRes ?? [])
+//     //   .filter((p: Property) => (p.availableShares ?? 0) > 0)
+//     //   .slice(0, 5);
 
-    // setActiveListings(preparedListings);
+//     // setActiveListings(preparedListings);
 
-    const propertiesById = new Map<string, Property>();
-(propertiesRes ?? []).forEach((p: Property) => {
-  propertiesById.set(p.id, p);
-});
+//     const propertiesById = new Map<string, Property>();
+// (propertiesRes ?? []).forEach((p: Property) => {
+//   propertiesById.set(p.id, p);
+// });
 
-const rawOffers: ShareOffer[] = (offersRes?.data ?? [])
-  .filter((o: ShareOffer) => o.isActive);
+// const rawOffers: ShareOffer[] = (offersRes?.data ?? [])
+//   .filter((o: ShareOffer) => o.isActive);
 
-const topOffers = rawOffers.slice(0, 5);
+// const topOffers = rawOffers.slice(0, 5);
 
-// подтягиваем количество бидов для карточек
-const bidsCountsEntries = await Promise.all(
-  topOffers.map(async (offer) => {
-    try {
-      const res = await api.get(`/share-offers/${offer.id}/bids`);
-      return [offer.id, Array.isArray(res.data) ? res.data.length : 0] as const;
-    } catch {
-      return [offer.id, 0] as const;
-    }
-  })
-);
+// // подтягиваем количество бидов для карточек
+// const bidsCountsEntries = await Promise.all(
+//   topOffers.map(async (offer) => {
+//     try {
+//       const res = await api.get(`/share-offers/${offer.id}/bids`);
+//       return [offer.id, Array.isArray(res.data) ? res.data.length : 0] as const;
+//     } catch {
+//       return [offer.id, 0] as const;
+//     }
+//   })
+// );
 
-const bidsCountsMap = Object.fromEntries(bidsCountsEntries);
+// const bidsCountsMap = Object.fromEntries(bidsCountsEntries);
 
-const preparedMarketListings: HomeMarketCard[] = topOffers.map((offer) => {
-  const property = propertiesById.get(offer.propertyId);
+// const preparedMarketListings: HomeMarketCard[] = topOffers.map((offer) => {
+//   const property = propertiesById.get(offer.propertyId);
 
-  return {
-    id: offer.id,
-    propertyId: offer.propertyId,
-    propertyTitle: offer.propertyTitle,
-    location: property?.location ?? '',
-    sharesForSale: offer.sharesForSale,
-    startPricePerShare: offer.startPricePerShare ?? 0,
-    buyoutPricePerShare: offer.buyoutPricePerShare ?? null,
-    expirationDate: offer.expirationDate,
-    preview: property ? getPropertyPreview(property) : null,
-    bidsCount: bidsCountsMap[offer.id] ?? 0,
-  };
-});
+//   return {
+//     id: offer.id,
+//     propertyId: offer.propertyId,
+//     propertyTitle: offer.propertyTitle,
+//     location: property?.location ?? '',
+//     sharesForSale: offer.sharesForSale,
+//     startPricePerShare: offer.startPricePerShare ?? 0,
+//     buyoutPricePerShare: offer.buyoutPricePerShare ?? null,
+//     expirationDate: offer.expirationDate,
+//     preview: property ? getPropertyPreview(property) : null,
+//     bidsCount: bidsCountsMap[offer.id] ?? 0,
+//   };
+// });
 
-setMarketListings(preparedMarketListings);
+// setMarketListings(preparedMarketListings);
 
 
-    const investments: Investment[] = (investmentsRes?.data ?? []).slice(0, 5);
-    setMyInvestments(investments);
+//     const investments: Investment[] = (investmentsRes?.data ?? []).slice(0, 5);
+//     setMyInvestments(investments);
 
-    const imagesResult: Record<string, PropertyImage[]> = {};
-    await Promise.all(
-      investments.map(async (inv) => {
-        try {
-          const res = await api.get(`/properties/${inv.propertyId}/images`);
-          imagesResult[inv.propertyId] = res.data ?? [];
-        } catch {
-          imagesResult[inv.propertyId] = [];
-        }
-      })
-    );
-    setInvestmentImagesMap(imagesResult);
-  }, []);
+//     const imagesResult: Record<string, PropertyImage[]> = {};
+//     await Promise.all(
+//       investments.map(async (inv) => {
+//         try {
+//           const res = await api.get(`/properties/${inv.propertyId}/images`);
+//           imagesResult[inv.propertyId] = res.data ?? [];
+//         } catch {
+//           imagesResult[inv.propertyId] = [];
+//         }
+//       })
+//     );
+//     setInvestmentImagesMap(imagesResult);
+//   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  // useEffect(() => {
+  //   load();
+  // }, [load]);
+
+  // const onRefresh = async () => {
+  //   setRefreshing(true);
+  //   try {
+  //     await load();
+  //   } finally {
+  //     setRefreshing(false);
+  //   }
+  // };
 
   const onRefresh = async () => {
-    setRefreshing(true);
-    try {
-      await load();
-    } finally {
-      setRefreshing(false);
-    }
-  };
+  await refetch();
+};
 
   const qc = useQueryClient();
 
   useFocusEffect(
     useCallback(() => {
-      qc.prefetchQuery({
+     qc.prefetchQuery({
         queryKey: ['properties', 'withExtras'],
-        queryFn: () => fetchPropertiesWithExtras(8),
+        queryFn: () => fetchPropertiesWithExtras(20),
+        staleTime: 60_000,
       });
     }, [qc])
   );
@@ -542,11 +682,15 @@ setMarketListings(preparedMarketListings);
   const chartWidth = Dimensions.get('window').width - theme.spacing.lg * 2 - theme.spacing.md * 2;
   const badge = getClubBadge(clubInfo?.status);
 
+  if (isLoading && !homeData) {
+  return <ScreenLoader />;
+}
+
   return (
     <ScrollView
       style={styles.container}
       contentContainerStyle={{ paddingBottom: theme.spacing.xl }}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      refreshControl={<RefreshControl refreshing={isFetching && !isLoading} onRefresh={onRefresh} />}
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.heroBlock}>

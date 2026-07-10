@@ -30,6 +30,24 @@ namespace RealEstateInvestment.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateOffer([FromBody] CreateShareOfferRequest request)
         {
+
+            var seller = await _context.Users.FindAsync(request.SellerId);
+
+            if (seller == null)
+                return BadRequest("Seller not found");
+
+            if (!string.IsNullOrEmpty(seller.PinCode))
+            {
+                if (request.PinOrPassword != seller.PinCode &&
+                    request.PinOrPassword != seller.PasswordHash)
+                    return BadRequest("Invalid PIN");
+            }
+            else
+            {
+                if (request.PinOrPassword != seller.PasswordHash)
+                    return BadRequest("Invalid password");
+            }
+
             var investments = await _context.Investments
                 .Where(i => i.UserId == request.SellerId && i.PropertyId == request.PropertyId)
                 .OrderBy(i => i.CreatedAt)
@@ -87,6 +105,7 @@ namespace RealEstateInvestment.Controllers
             public decimal StartPricePerShare { get; set; }
             public decimal? BuyoutPricePerShare { get; set; }
             public DateTime ExpirationDate { get; set; }
+            public string PinOrPassword { get; set; } = string.Empty;
         }
 
         [HttpGet("user/{id}/grouped")]
@@ -180,6 +199,18 @@ namespace RealEstateInvestment.Controllers
             var property = investments.First().Property;
             var user = investments.First().User;
 
+            if (!string.IsNullOrEmpty(user.PinCode))
+            {
+                if (request.PinOrPassword != user.PinCode &&
+                    request.PinOrPassword != user.PasswordHash)
+                    return BadRequest("Invalid PIN");
+            }
+            else
+            {
+                if (request.PinOrPassword != user.PasswordHash)
+                    return BadRequest("Invalid password");
+            }
+
             if (property.BuybackPricePerShare == null)
                 return BadRequest("No buyback price available");
 
@@ -269,6 +300,7 @@ namespace RealEstateInvestment.Controllers
         {
             public Guid UserId { get; set; }
             public Guid PropertyId { get; set; }
+            public string PinOrPassword { get; set; } = string.Empty;
         }
 
         [HttpGet("user/{id}/with-property")]

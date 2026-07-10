@@ -204,7 +204,7 @@ const ShareMarketplaceScreen = () => {
     try {
       setLoading(true);
       const [offersRes, propertiesRes] = await Promise.all([
-        api.get<ShareOffer[]>('/share-offers/active'),
+        api.get<ShareOffer[]>('/share-offers/active', { silentLoading: true } as any),
         fetchPropertiesWithExtras(50).catch(() => []),
       ]);
 

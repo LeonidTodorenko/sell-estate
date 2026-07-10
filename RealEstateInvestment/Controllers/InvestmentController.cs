@@ -124,8 +124,10 @@ namespace RealEstateInvestment.Controllers
             var now = DateTime.UtcNow;
             var step = property.PaymentPlans?
                 .FirstOrDefault(p => p.EventDate <= now && now <= p.DueDate);
-            if (step == null)
-                return BadRequest(new { message = "No active payment step" }); // todo убрать потом
+
+            // разрешили любой шаг платежи
+            //if (step == null)
+            //    return BadRequest(new { message = "No active payment step" });  
 
             //if (DateTime.UtcNow > property.ApplicationDeadline)
             //    return BadRequest(new { message = "The application deadline has expired" });

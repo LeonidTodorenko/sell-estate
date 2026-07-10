@@ -24,7 +24,7 @@ const RegisterScreen = ({ navigation }: Props) => {
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  //const [phoneNumber, setPhoneNumber] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -103,7 +103,7 @@ const RegisterScreen = ({ navigation }: Props) => {
           captchaId,
           captchaAnswer: parseInt(captchaAnswer, 10),
           referralCode: referralCode?.trim() || undefined,
-         //убрали по требованю apple phoneNumber, // если бэк пока не использует — ASP.NET обычно просто проигнорирует лишнее поле
+         phoneNumber: phoneNumber.trim() || undefined,
     //         acceptTerms, // todo добавить это на бек
     // termsVersion: 'v1', // todo добавить это на бек
         },
@@ -153,7 +153,7 @@ const RegisterScreen = ({ navigation }: Props) => {
         >
           <View style={styles.card}>
             <Text style={styles.noticeTitle}>
-              For your investment security, both email and phone need to be verified
+            For your investment security, please verify your email. Phone verification is optional and can help us contact you faster.
             </Text>
 
             <View style={styles.readonlyField}>
@@ -165,14 +165,18 @@ const RegisterScreen = ({ navigation }: Props) => {
               <Text style={styles.verifyLink}>Verify email</Text>
             </Pressable>
 
-            {/* <View style={styles.readonlyField}>
-              <Text style={styles.readonlyLabel}>Phone Number</Text>
-              <Text style={styles.readonlyValue}>{phoneNumber}</Text>
-            </View> */}
+          {!!phoneNumber.trim() && (
+            <>
+              <View style={styles.readonlyField}>
+                <Text style={styles.readonlyLabel}>Phone Number</Text>
+                <Text style={styles.readonlyValue}>{phoneNumber}</Text>
+              </View>
 
-            <Pressable onPress={handleFakeVerifyPhone} style={styles.verifyLinkWrap}>
-              <Text style={styles.verifyLink}>Verify phone</Text>
-            </Pressable>
+              <Pressable onPress={handleFakeVerifyPhone} style={styles.verifyLinkWrap}>
+                <Text style={styles.verifyLink}>Verify phone</Text>
+              </Pressable>
+            </>
+          )}
 
             <Text style={styles.rulesTitle}>Without both contacts verified:</Text>
 
@@ -260,13 +264,13 @@ const RegisterScreen = ({ navigation }: Props) => {
             onChangeText={setEmail}
           />
 
-          {/* <StyledInput
-            style={styles.input}
-            placeholder="Phone Number"
-            value={phoneNumber}
-            keyboardType="phone-pad"
-            onChangeText={setPhoneNumber}
-          /> */}
+        <StyledInput
+          style={styles.input}
+          placeholder="Phone Number (optional)"
+          value={phoneNumber}
+          keyboardType="phone-pad"
+          onChangeText={setPhoneNumber}
+        />
 
           <StyledInput
             style={styles.input}

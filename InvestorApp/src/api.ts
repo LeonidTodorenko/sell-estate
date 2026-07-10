@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 import { saveSession, loadSession, clearSession } from './services/sessionStorage';
 import { handleApiError } from './utils/apiError'; 
 import { resetToLogin } from './navigation/navigationRef'; 
+import { showGlobalLoading, hideGlobalLoading } from './contexts/LoadingContext';
 
 
 export  const API_BASE_URL =
@@ -22,6 +23,7 @@ export const api = axios.create({
 });
 type ApiExtraConfig = {
   silentError?: boolean;
+  silentLoading?: boolean;
   errorContext?: string;
   errorTitle?: string;
 };
@@ -62,6 +64,13 @@ async function ensureTokenLoaded() {
 
 // Подстановка токена в каждый запрос
 api.interceptors.request.use(async (config) => {
+
+  const extra = config as any as ApiExtraConfig;
+
+if (!extra.silentLoading) {
+  showGlobalLoading();
+  (config as any)._globalLoading = true;
+}
 
    // пропускаем auth-эндпоинты
   const url = (config.url || '').toLowerCase();
@@ -132,9 +141,20 @@ export async function tryRefresh(
 
 // Перехватываем 401 и делаем «тихий» рефреш + ретрай запроса
 api.interceptors.response.use(
-  (r) => r,
+  (r) => {
+    if ((r.config as any)._globalLoading) {
+      hideGlobalLoading();
+    }
+
+    return r;
+  },
   async (error) => {
-   const original = (error?.config ?? {}) as any & ApiExtraConfig;
+    const original = (error?.config ?? {}) as any & ApiExtraConfig;
+
+    if (original?._globalLoading) {
+      hideGlobalLoading();
+    }
+
     const url = (original?.url || '').toLowerCase();
      
       const isAuthEndpoint =

@@ -727,7 +727,6 @@ namespace RealEstateInvestment.Controllers
                 FullName = req.FullName,
                 Email = req.Email.Trim(),
                 PasswordHash = req.Password, // TODO: hash password
-               // убрали по требованию яблока PhoneNumber = string.IsNullOrWhiteSpace(req.PhoneNumber) ? null : req.PhoneNumber.Trim(),
                 SecretWord = req.SecretWord,
                 PinCode = req.PinCode,
                 IsEmailConfirmed = false,
@@ -735,7 +734,8 @@ namespace RealEstateInvestment.Controllers
                 Role = "under-registration",
                 TermsAcceptedAt = DateTime.UtcNow,
                 TermsVersion = string.IsNullOrWhiteSpace(req.TermsVersion) ? "v1" : req.TermsVersion.Trim(),
-                ClientNumber = clientNumber
+                ClientNumber = clientNumber,
+                PhoneNumber = string.IsNullOrWhiteSpace(req.PhoneNumber) ? null : req.PhoneNumber.Trim(),
 
             };
 

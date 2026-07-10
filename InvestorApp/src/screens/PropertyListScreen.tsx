@@ -19,15 +19,16 @@ import api from '../api';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
-import { useFocusEffect } from '@react-navigation/native';
+//import { useFocusEffect } from '@react-navigation/native';
 import { useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 
 import theme from '../constants/theme';
 
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
-import InvestButton from '../components/InvestButton';
+//import InvestButton from '../components/InvestButton';
 import Video from 'react-native-video';
 
 import { fetchPropertiesWithExtras, Property } from '../services/properties';
@@ -38,6 +39,7 @@ import buttonMapImage from '../assets/images/button-map.png';
 import paymentPlanImage from '../assets/images/paymentplan.png';
 
 import { Linking } from 'react-native';
+import ScreenLoader from '../components/ScreenLoader';
 
 // interface PropertyImage {
 //   id: string;
@@ -479,11 +481,40 @@ const presentationPdfName = item.presentationPdfName?.trim() || 'Object Presenta
   );
 };
 
+async function fetchPriorityUserMap(): Promise<UserMap> {
+  const userResponses = await api.get(
+    '/properties/with-stats',
+    { silentLoading: true } as any
+  );
+
+  const userIds = userResponses.data
+    .filter((p: Property) => p.priorityInvestorId)
+    .map((p: Property) => p.priorityInvestorId);
+
+  const uniqueIds = [...new Set(userIds)];
+  const map: UserMap = {};
+
+  if (uniqueIds.length > 0) {
+    const usersRes = await Promise.all(
+      uniqueIds.map((id) =>
+        api.get(`/users/${id}`, { silentLoading: true } as any)
+      )
+    );
+
+    usersRes.forEach((res) => {
+      const user = res.data;
+      map[user.id] = user.fullName;
+    });
+  }
+
+  return map;
+}
+
 const PropertyListScreen = () => {
   const [videoError, setVideoError] = useState<any>(null);
   const [buffering, setBuffering] = useState(false);
-  const [properties, setProperties] = useState<Property[]>([]);
-  const [userMap, setUserMap] = useState<UserMap>({});
+  //const [properties, setProperties] = useState<Property[]>([]);
+  //const [userMap, setUserMap] = useState<UserMap>({});
   const [modalVisible, setModalVisible] = useState(false);
   const [modalImage, setModalImage] = useState<string | null>(null);
   //const [imageIndex, setImageIndex] = useState(0);
@@ -492,6 +523,24 @@ const PropertyListScreen = () => {
   const [videoModalVisible, setVideoModalVisible] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [expandedPropertyId, setExpandedPropertyId] = useState<string | null>(null);
+  const {
+  data: properties = [],
+  isLoading,
+  //refetch,
+} = useQuery({
+  queryKey: ['properties', 'withExtras'],
+  queryFn: () => fetchPropertiesWithExtras(20),
+  staleTime: 60_000,
+  gcTime: 10 * 60_000,
+});
+const {
+  data: userMap = {},
+} = useQuery({
+  queryKey: ['properties', 'priorityUserMap'],
+  queryFn: fetchPriorityUserMap,
+  staleTime: 5 * 60_000,
+  gcTime: 30 * 60_000,
+});
 
 useEffect(() => {
   if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -520,110 +569,114 @@ useEffect(() => {
     setVideoModalVisible(true);
   };
 
-  useFocusEffect(
-    useCallback(() => {
-      // const loadProperties = async () => {
-      //   try {
-      //     const res = await api.get('/properties');
+  // useFocusEffect(
+  //   useCallback(() => {
+  //     // const loadProperties = async () => {
+  //     //   try {
+  //     //     const res = await api.get('/properties');
 
-      //     const propertiesWithExtras = await Promise.all(
-      //       res.data.map(async (p: Property) => {
+  //     //     const propertiesWithExtras = await Promise.all(
+  //     //       res.data.map(async (p: Property) => {
 
-      //         const [imgRes, mediaRes, paymentPlanRes] = await Promise.all([
-      //           api.get(`/properties/${p.id}/images`),
-      //           api.get(`/properties/${p.id}/media`),
-      //           api.get(`/properties/${p.id}/payment-plans`),
-      //         ]);
-      //         const normalizedMedia: PropertyMedia[] = (mediaRes.data ?? []).map((m: ApiMedia) => ({
-      //           id: m.id,
-      //           type: m.type === 2 ? 'video' : 'image',
-      //           url: m.url ?? null,
-      //           base64Data: m.base64Data ?? null,
-      //          }));
+  //     //         const [imgRes, mediaRes, paymentPlanRes] = await Promise.all([
+  //     //           api.get(`/properties/${p.id}/images`),
+  //     //           api.get(`/properties/${p.id}/media`),
+  //     //           api.get(`/properties/${p.id}/payment-plans`),
+  //     //         ]);
+  //     //         const normalizedMedia: PropertyMedia[] = (mediaRes.data ?? []).map((m: ApiMedia) => ({
+  //     //           id: m.id,
+  //     //           type: m.type === 2 ? 'video' : 'image',
+  //     //           url: m.url ?? null,
+  //     //           base64Data: m.base64Data ?? null,
+  //     //          }));
 
-      //         return {
-      //           ...p,
-      //           images: imgRes.data,
-      //           media: normalizedMedia,
-      //           hasPaymentPlan: paymentPlanRes.data && paymentPlanRes.data.length > 0,
-      //         };
-      //       })
-      //     );
+  //     //         return {
+  //     //           ...p,
+  //     //           images: imgRes.data,
+  //     //           media: normalizedMedia,
+  //     //           hasPaymentPlan: paymentPlanRes.data && paymentPlanRes.data.length > 0,
+  //     //         };
+  //     //       })
+  //     //     );
 
-      //       const sortedProperties = propertiesWithExtras.sort((a, b) =>
-      //           a.title.localeCompare(b.title)
-      //         );
+  //     //       const sortedProperties = propertiesWithExtras.sort((a, b) =>
+  //     //           a.title.localeCompare(b.title)
+  //     //         );
 
-      //     setProperties(sortedProperties);
+  //     //     setProperties(sortedProperties);
 
-      //     const userResponses = await api.get('/properties/with-stats');
-      //     const userIds = userResponses.data.filter((p: Property) => p.priorityInvestorId).map((p: Property) => p.priorityInvestorId);
-      //     const uniqueIds = [...new Set(userIds)];
-      //     const map: UserMap = {};
+  //     //     const userResponses = await api.get('/properties/with-stats');
+  //     //     const userIds = userResponses.data.filter((p: Property) => p.priorityInvestorId).map((p: Property) => p.priorityInvestorId);
+  //     //     const uniqueIds = [...new Set(userIds)];
+  //     //     const map: UserMap = {};
 
-      //     if (uniqueIds.length > 0) {
-      //       const usersRes = await Promise.all(uniqueIds.map((id) => api.get(`/users/${id}`)));
-      //       usersRes.forEach((res) => {
-      //         const user = res.data;
-      //         map[user.id] = user.fullName;
-      //       });
-      //     }
+  //     //     if (uniqueIds.length > 0) {
+  //     //       const usersRes = await Promise.all(uniqueIds.map((id) => api.get(`/users/${id}`)));
+  //     //       usersRes.forEach((res) => {
+  //     //         const user = res.data;
+  //     //         map[user.id] = user.fullName;
+  //     //       });
+  //     //     }
 
-      //     setUserMap(map);
-      //   }
-      //    catch (error: any) {
-      //                let message = 'Failed to load properties ';
-      //                     console.error(error);
-      //                     if (error.response && error.response.data) {
-      //                       message = JSON.stringify(error.response.data);
-      //                     } else if (error.message) {
-      //                       message = error.message;
-      //                     }
-      //                     Alert.alert('Error', 'Failed to load properties ' + message);
-      //                   console.error(message);
-      //             }
+  //     //     setUserMap(map);
+  //     //   }
+  //     //    catch (error: any) {
+  //     //                let message = 'Failed to load properties ';
+  //     //                     console.error(error);
+  //     //                     if (error.response && error.response.data) {
+  //     //                       message = JSON.stringify(error.response.data);
+  //     //                     } else if (error.message) {
+  //     //                       message = error.message;
+  //     //                     }
+  //     //                     Alert.alert('Error', 'Failed to load properties ' + message);
+  //     //                   console.error(message);
+  //     //             }
 
-      // };
+  //     // };
 
-      // loadProperties();
+  //     // loadProperties();
 
-      const loadProperties = async () => {
-        try {
-          const data = await fetchPropertiesWithExtras(8); // кеш для первых 8
-          setProperties(data);
+  //     const loadProperties = async () => {
+  //       try {
+  //         // const data = await fetchPropertiesWithExtras(20); // кеш для первых 20
+  //         // setProperties(data);
 
-          const userResponses = await api.get('/properties/with-stats');
-          const userIds = userResponses.data
-            .filter((p: Property) => p.priorityInvestorId)
-            .map((p: Property) => p.priorityInvestorId);
+  //         const userResponses = await api.get('/properties/with-stats');
+  //         const userIds = userResponses.data
+  //           .filter((p: Property) => p.priorityInvestorId)
+  //           .map((p: Property) => p.priorityInvestorId);
 
-          const uniqueIds = [...new Set(userIds)];
-          const map: UserMap = {};
+  //         const uniqueIds = [...new Set(userIds)];
+  //         const map: UserMap = {};
 
-          if (uniqueIds.length > 0) {
-            const usersRes = await Promise.all(uniqueIds.map((id) => api.get(`/users/${id}`)));
-            usersRes.forEach((res) => {
-              const user = res.data;
-              map[user.id] = user.fullName;
-            });
-          }
+  //         if (uniqueIds.length > 0) {
+  //           const usersRes = await Promise.all(uniqueIds.map((id) => api.get(`/users/${id}`)));
+  //           usersRes.forEach((res) => {
+  //             const user = res.data;
+  //             map[user.id] = user.fullName;
+  //           });
+  //         }
 
-          setUserMap(map);
-        } catch (error: any) {
-          let message = 'Failed to load properties ';
-          console.error(error);
-          if (error.response && error.response.data) {
-            message = JSON.stringify(error.response.data);
-          } else if (error.message) {
-            message = error.message;
-          }
-          Alert.alert('Error', 'Failed to load properties ' + message);
-        }
-      };
+  //         setUserMap(map);
+  //       } catch (error: any) {
+  //         let message = 'Failed to load properties ';
+  //         console.error(error);
+  //         if (error.response && error.response.data) {
+  //           message = JSON.stringify(error.response.data);
+  //         } else if (error.message) {
+  //           message = error.message;
+  //         }
+  //         Alert.alert('Error', 'Failed to load properties ' + message);
+  //       }
+  //     };
 
-      loadProperties();
-    }, [])
-  );
+  //     loadProperties();
+  //   }, [])
+  // );
+
+  if (isLoading && properties.length === 0) {
+    return <ScreenLoader />;
+}
 
   return (
     <View style={styles.container}>

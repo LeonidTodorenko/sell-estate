@@ -487,6 +487,8 @@ const InvestmentsScreen = () => {
   const [inputShares, setInputShares] = useState('');
   const [inputStartPrice, setInputStartPrice] = useState('');
   const [inputBuyoutPrice, setInputBuyoutPrice] = useState('');
+  const [sellPinOrPassword, setSellPinOrPassword] = useState('');
+  const [showSellPassword, setShowSellPassword] = useState(false);
   const [expirationDate, setExpirationDate] = useState<Date>(
     new Date(Date.now() + 7 * 86400000),
   );
@@ -563,6 +565,9 @@ const InvestmentsScreen = () => {
         setInputBuyoutPrice('');
         setExpirationDate(new Date(Date.now() + 7 * 86400000));
 
+        setSellPinOrPassword('');
+        setShowSellPassword(false);
+
         setSellState({
           visible: true,
           investment,
@@ -586,12 +591,18 @@ const InvestmentsScreen = () => {
       property: null,
       mode: 'menu',
     });
-    setShowDatePicker(false);
+  setSellPinOrPassword('');
+setShowSellPassword(false);
   };
 
   const handleSellToPlatform = async () => {
     const grouped = sellState.groupedInvestment;
     if (!grouped || !userId) return;
+
+    if (!sellPinOrPassword.trim()) {
+    Alert.alert('Validation', 'Enter PIN or password');
+    return;
+}
 
     Alert.alert(
       'Confirm Sale',
@@ -606,7 +617,8 @@ const InvestmentsScreen = () => {
             try {
               await api.post('/share-offers/sell-to-platform', {
                 userId,
-                propertyId: grouped.propertyId,
+                 propertyId: grouped.propertyId,
+                 pinOrPassword: sellPinOrPassword,
               });
 
               Alert.alert('Success', 'Shares sold to platform');
@@ -646,6 +658,11 @@ const InvestmentsScreen = () => {
       return;
     }
 
+    if (!sellPinOrPassword.trim()) {
+      Alert.alert('Validation', 'Enter PIN or password');
+      return;
+    }
+
     try {
       await api.post('/share-offers', {
         sellerId: userId,
@@ -654,6 +671,7 @@ const InvestmentsScreen = () => {
         startPricePerShare: startPrice,
         buyoutPricePerShare: buyoutPrice,
         expirationDate: expirationDate.toISOString(),
+         pinOrPassword: sellPinOrPassword,
       });
 
       Alert.alert('Success', 'Offer listed on marketplace');
@@ -713,10 +731,18 @@ const InvestmentsScreen = () => {
         onRequestClose={closeSellModal}
       >
         <View style={styles.sellOverlay}>
-          <View style={styles.sellSheet}>
-            <View style={styles.sheetHandle} />
+       <View style={styles.sellSheet}>
+        <View style={styles.sheetHeader}>
+          <View style={styles.sheetHandlePlaceholder} />
 
-            <Text style={styles.sellTitle}>Sell Shares</Text>
+          <View style={styles.sheetHandle} />
+
+          <Pressable onPress={closeSellModal} style={styles.sheetCloseButton}>
+            <Ionicons name="close" size={24} color="#111827" />
+          </Pressable>
+        </View>
+
+        <Text style={styles.sellTitle}>Sell Shares</Text>
             <View style={styles.sellDivider} />
 
             <ScrollView showsVerticalScrollIndicator={false}>
@@ -783,6 +809,29 @@ const InvestmentsScreen = () => {
                         </Text>
                       </View>
 
+                      <Text style={styles.modalFieldLabel}>Enter PIN or password</Text>
+                      <View style={styles.pinInputWrap}>
+                        <TextInput
+                          placeholder="Enter PIN or password"
+                          value={sellPinOrPassword}
+                          onChangeText={setSellPinOrPassword}
+                          secureTextEntry={!showSellPassword}
+                          style={styles.modalInput}
+                          placeholderTextColor="#9CA3AF"
+                        />
+
+                        <Pressable
+                          onPress={() => setShowSellPassword((prev) => !prev)}
+                          style={styles.pinEyeButton}
+                        >
+                          <Ionicons
+                            name={showSellPassword ? 'eye-outline' : 'eye-off-outline'}
+                            size={20}
+                            color="#6B7280"
+                          />
+                        </Pressable>
+                      </View>
+
                       <BlueButton
                         title="Sell to Platform"
                         onPress={handleSellToPlatform}
@@ -795,6 +844,7 @@ const InvestmentsScreen = () => {
                         style={styles.modalPrimaryBtn}
                       />
                     </View>
+                    
                   )}
 
                   <View style={styles.sellOptionCard}>
@@ -814,7 +864,20 @@ const InvestmentsScreen = () => {
                       paddingVertical={12}
                       style={styles.modalPrimaryBtn}
                     />
+
+                    
+
                   </View>
+
+                     <Pressable
+                      onPress={closeSellModal}
+                      style={styles.modalCancelFullBtn}
+                    >
+                      <Text style={styles.modalCancelFullText}>
+                        Cancel
+                      </Text>
+                    </Pressable>
+                    
                 </>
               ) : (
                 <View style={styles.sellOptionCard}>
@@ -890,7 +953,33 @@ const InvestmentsScreen = () => {
                     />
                   )}
 
+               
+                <Text style={styles.modalFieldLabel}>Enter PIN or password</Text>
+                    <View style={styles.pinInputWrap}>
+                      <TextInput
+                        placeholder="Enter PIN or password"
+                        value={sellPinOrPassword}
+                        onChangeText={setSellPinOrPassword}
+                        secureTextEntry={!showSellPassword}
+                        style={styles.modalInput}
+                        placeholderTextColor="#9CA3AF"
+                      />
+
+                      <Pressable
+                        onPress={() => setShowSellPassword((prev) => !prev)}
+                        style={styles.pinEyeButton}
+                      >
+                        <Ionicons
+                          name={showSellPassword ? 'eye-outline' : 'eye-off-outline'}
+                          size={20}
+                          color="#6B7280"
+                        />
+                      </Pressable>
+                    </View>
+
+
                   <View style={styles.modalActionRow}>
+ 
                     <Pressable
                       onPress={() => setSellState((prev) => ({ ...prev, mode: 'menu' }))}
                       style={styles.modalBackBtn}
@@ -1354,14 +1443,13 @@ const styles = StyleSheet.create({
     maxHeight: '85%',
   },
 
-  sheetHandle: {
-    width: 64,
-    height: 6,
-    borderRadius: 999,
-    backgroundColor: '#C4C4C4',
-    alignSelf: 'center',
-    marginBottom: 18,
-  },
+sheetHandle: {
+  width: 64,
+  height: 6,
+  borderRadius: 999,
+  backgroundColor: '#C4C4C4',
+  alignSelf: 'center',
+},
 
   sellTitle: {
     fontSize: 24,
@@ -1490,6 +1578,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderRadius: 12,
     backgroundColor: '#F8F8F8',
+    paddingRight: 44,
   },
 
   expirationText: {
@@ -1536,4 +1625,59 @@ const styles = StyleSheet.create({
     shadowOpacity: 0,
     elevation: 0,
   },
+
+  pinInputWrap: {
+  position: 'relative',
+},
+
+pinEyeButton: {
+  position: 'absolute',
+  right: 12,
+  top: 14,
+  width: 28,
+  height: 28,
+  alignItems: 'center',
+  justifyContent: 'center',
+},
+sheetHeader: {
+  position: 'relative',
+  alignItems: 'center',
+  justifyContent: 'center',
+  marginBottom: 18,
+  height: 32,
+},
+
+sheetHandlePlaceholder: {
+  position: 'absolute',
+  left: 0,
+  width: 44,
+  height: 44,
+},
+
+sheetCloseButton: {
+  position: 'absolute',
+  right: 0,
+  top: -6,
+  width: 44,
+  height: 44,
+  borderRadius: 22,
+  alignItems: 'center',
+  justifyContent: 'center',
+  backgroundColor: '#ECECEC',
+},
+
+modalCancelFullBtn: {
+  height: 46,
+  borderRadius: 14,
+  alignItems: 'center',
+  justifyContent: 'center',
+  backgroundColor: '#E5E7EB',
+  marginBottom: 4,
+},
+
+modalCancelFullText: {
+  fontSize: 15,
+  fontWeight: '700',
+  color: '#374151',
+},
 });
