@@ -121,8 +121,20 @@ namespace RealEstateInvestment.Controllers
 
 
             // Проверка, что есть активный этап
+            //var now = DateTime.UtcNow;
+            //var step = property.PaymentPlans?
+            //    .FirstOrDefault(p => p.EventDate <= now && now <= p.DueDate);
+
             var now = DateTime.UtcNow;
-            var step = property.PaymentPlans?
+
+            var orderedSteps = property.PaymentPlans
+                .OrderBy(p => p.EventDate)
+                .ToList();
+
+            var firstStep = orderedSteps.First();
+            var lastStep = orderedSteps.Last();
+
+            var activeStep = orderedSteps
                 .FirstOrDefault(p => p.EventDate <= now && now <= p.DueDate);
 
             // разрешили любой шаг платежи
@@ -143,18 +155,25 @@ namespace RealEstateInvestment.Controllers
                 return BadRequest(new { message = "Not enough free shares" });
 
             // Если это первый шаг — сохраняем как заявку
-            var minEventDate = property.PaymentPlans.Min(p => p.EventDate);
+            //var minEventDate = property.PaymentPlans.Min(p => p.EventDate);
+            var minEventDate = firstStep.EventDate;
 
-            if (DateTime.UtcNow < minEventDate)
+            if (now < minEventDate)
                 return BadRequest(new { message = "The application date in not started yet, please try again later." });
 
-            if (step.EventDate == minEventDate)
+            var accountingStep = activeStep ?? lastStep;
+
+            var isFirstStep =
+                activeStep != null &&
+                activeStep.EventDate == firstStep.EventDate;
+
+            if (isFirstStep)
             {
                 user.WalletBalance -= expectedAmount;
                 property.AvailableShares -= req.RequestedShares;
                 var wasPrior = false;
                 // Если сумма >= нужной для текущего этапа — пользователь становится приоритетным
-                if (expectedAmount >= step.Total && property.PriorityInvestorId == null)
+                if (expectedAmount >= firstStep.Total && property.PriorityInvestorId == null)
                 {
                     property.PriorityInvestorId = req.UserId;
                     wasPrior = true;
@@ -165,7 +184,7 @@ namespace RealEstateInvestment.Controllers
                 {
                     UserId = req.UserId,
                     PropertyId = req.PropertyId,
-                    RequestedAmount = req.RequestedAmount,
+                    RequestedAmount = expectedAmount,
                     RequestedShares = req.RequestedShares,
                     StepNumber = req.StepNumber,
                     IsPriority = wasPrior,
@@ -187,11 +206,11 @@ namespace RealEstateInvestment.Controllers
                     Id = Guid.NewGuid(),
                     UserId = req.UserId,
                     Type = TransactionType.Investment,
-                    Amount = req.RequestedAmount,
+                    Amount = expectedAmount,
                     Shares = req.RequestedShares,
                     PropertyId = property.Id,
                     PropertyTitle = property.Title,
-                    Timestamp = DateTime.UtcNow,
+                    Timestamp = now,
                     Notes = "Investment"
                 });
 
@@ -203,7 +222,7 @@ namespace RealEstateInvestment.Controllers
                 user.WalletBalance -= expectedAmount;
                 property.AvailableShares -= req.RequestedShares;
 
-                step.Paid += expectedAmount; // todo учесть шаг для междусобытийных периодов
+                accountingStep.Paid += expectedAmount; // step.Paid += expectedAmount; // todo учесть шаг для междусобытийных периодов
 
                 _context.Investments.Add(new Investment
                 {
@@ -236,7 +255,7 @@ namespace RealEstateInvestment.Controllers
                 //});
 
             }
-             
+
             await _context.SaveChangesAsync();
             return Ok(new { message = "Application submitted" });
         }
@@ -372,7 +391,7 @@ namespace RealEstateInvestment.Controllers
 
             return Ok(new { message = "First milestone is covered, no action needed" });
         }
-         
+
         // Get user investments
         [HttpGet("user/{userId}")]
         public async Task<IActionResult> GetUserInvestments(Guid userId)
@@ -453,7 +472,7 @@ namespace RealEstateInvestment.Controllers
 
             return Ok(new { message = "User KYC rejected" });
         }
-         
+
         [HttpGet("with-aggregated/{userId}")]
         public async Task<IActionResult> GetUserAggregatedInvestments(Guid userId)
         {
@@ -479,7 +498,7 @@ namespace RealEstateInvestment.Controllers
                     {
                         PropertyId = g.Key.PropertyId,
                         PropertyTitle = g.Key.Title,
-                        PropertyPrice= g.Key.Price,
+                        PropertyPrice = g.Key.Price,
                         PropertyTotalShares = g.Key.TotalShares,
                         MonthlyRentalIncome = g.Key.MonthlyRentalIncome,
                         ConfirmedShares = g.Sum(x => x.i.Shares),
@@ -521,7 +540,7 @@ namespace RealEstateInvestment.Controllers
                     TotalInvested = c.ConfirmedAmount,
                     c.OwnershipPercent,
                     MonthlyRentalIncome = Math.Round(userRentalIncome, 2),
-                    TotalShareValue = (c.ConfirmedShares + (p?.PendingShares ?? 0))* (c.PropertyPrice / c.PropertyTotalShares)
+                    TotalShareValue = (c.ConfirmedShares + (p?.PendingShares ?? 0)) * (c.PropertyPrice / c.PropertyTotalShares)
                 };
             });
 

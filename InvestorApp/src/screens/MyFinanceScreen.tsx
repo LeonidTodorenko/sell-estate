@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -22,6 +23,7 @@ import api from '../api';
 import theme from '../constants/theme';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { handleApiError } from '../utils/apiError';
+import { useQuery } from '@tanstack/react-query';
 
 interface HistoryPoint {
   date: string;   // yyyy-MM-dd
@@ -42,6 +44,35 @@ interface AssetStats {
 
 type RangeKey = '3m' | '6m' | '1y' | 'all';
 type RentalRangeKey = '6m' | '1y' | 'all' | 'custom';
+
+
+// Данные финансового экрана загружаются одним React Query-запросом.
+// userId берём из AsyncStorage внутри queryFn, чтобы пока не менять
+// текущую архитектуру авторизации приложения.
+async function fetchFinanceStats(): Promise<AssetStats | null> {
+  const stored = await AsyncStorage.getItem('user');
+
+  if (!stored) {
+    return null;
+  }
+
+  const user = JSON.parse(stored);
+  const userId = user?.userId ?? user?.id;
+
+  if (!userId) {
+    return null;
+  }
+
+  const response = await api.get(`/users/${userId}/assets-summary`, {
+    // Экран показывает свой локальный loader, поэтому глобальный overlay не нужен.
+    silentLoading: true,
+    silentError: true,
+    errorContext: 'Failed to load assets-summary',
+    errorTitle: 'Assets-summary',
+  } as any);
+
+  return response.data ?? null;
+}
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -302,8 +333,23 @@ const StatCard = ({
 const MyFinanceScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
-  const [stats, setStats] = useState<AssetStats | null>(null);
-  const [loading, setLoading] = useState(true);
+  // React Query хранит статистику в кеше.
+  // Этот же ключ можно инвалидировать после инвестиций, выплат аренды,
+  // пополнений и других финансовых операций.
+  const {
+    data: stats,
+    isLoading,
+    isFetching,
+    isError,
+    error,
+    refetch,
+  } = useQuery<AssetStats | null>({
+    queryKey: ['finance', 'assets-summary'],
+    queryFn: fetchFinanceStats,
+    staleTime: 60_000,
+    gcTime: 10 * 60_000,
+    retry: 1,
+  });
 
   const [overallRange, setOverallRange] = useState<RangeKey>('1y');
   const [propertyRange, setPropertyRange] = useState<RangeKey>('1y');
@@ -315,32 +361,9 @@ const MyFinanceScreen = () => {
   const [rangeModalVisible, setRangeModalVisible] = useState(false);
   const [pickerTarget, setPickerTarget] = useState<'start' | 'end' | null>(null);
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const stored = await AsyncStorage.getItem('user');
-        if (!stored) {
-          setLoading(false);
-          return;
-        }
+  // Отдельный useEffect больше не нужен:
+  // загрузкой, повторными запросами и кешем управляет React Query.
 
-        const user = JSON.parse(stored);
-
-        const statRes = await api.get(`/users/${user.userId}/assets-summary`, {
-          errorContext: 'Failed to load assets-summary',
-          errorTitle: 'Assets-summary',
-        } as any);
-
-        setStats(statRes.data);
-      } catch (e) {
-        handleApiError(e, 'Failed to load finance data');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadData();
-  }, []);
 
   const overallHistory = useMemo(() => {
     if (!stats?.combinedHistory?.length) return [];
@@ -406,10 +429,29 @@ const MyFinanceScreen = () => {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <View style={styles.loadingWrap}>
-        <ActivityIndicator color={theme.colors.primary} />
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
+
+  if (isError) {
+    return (
+      <View style={styles.loadingWrap}>
+        <Text style={styles.emptyText}>Failed to load finance data</Text>
+
+        <Pressable
+          style={styles.retryButton}
+          onPress={() => {
+            // Показываем централизованную ошибку только после явного действия пользователя.
+            handleApiError(error, 'Failed to load finance data');
+            refetch();
+          }}
+        >
+          <Text style={styles.retryButtonText}>Try again</Text>
+        </Pressable>
       </View>
     );
   }
@@ -418,6 +460,10 @@ const MyFinanceScreen = () => {
     return (
       <View style={styles.loadingWrap}>
         <Text style={styles.emptyText}>No statistics available</Text>
+
+        <Pressable style={styles.retryButton} onPress={() => refetch()}>
+          <Text style={styles.retryButtonText}>Refresh</Text>
+        </Pressable>
       </View>
     );
   }
@@ -427,6 +473,15 @@ const MyFinanceScreen = () => {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl
+            // При первом открытии используется полноэкранный loader.
+            // Spinner pull-to-refresh показываем только при фоновой перезагрузке.
+            refreshing={isFetching && !isLoading}
+            onRefresh={refetch}
+            tintColor={theme.colors.primary}
+          />
+        }
       >
         <View style={styles.headerShell}>
           <View style={styles.headerRow}>
@@ -713,6 +768,24 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     color: '#6B7280',
+  },
+
+
+  retryButton: {
+    marginTop: 16,
+    minWidth: 120,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: theme.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 18,
+  },
+
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
   },
 
   headerShell: {

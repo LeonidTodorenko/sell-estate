@@ -1,10 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-  View, Text, FlatList, StyleSheet, TextInput,  
+  View,
+  Text,
+  FlatList,
+  StyleSheet,
+  TextInput,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useQuery } from '@tanstack/react-query';
+
 import api from '../api';
 import BlueButton from '../components/BlueButton';
+import ScreenLoader from '../components/ScreenLoader';
 import theme from '../constants/theme';
 
 interface Investment {
@@ -15,94 +22,145 @@ interface Investment {
   createdAt: string;
 }
 
+async function fetchUserInvestments(userId: string): Promise<Investment[]> {
+  const response = await api.get<Investment[]>(
+    `/investments/user/${userId}`,
+    { silentLoading: true } as any,
+  );
+
+  return [...(response.data ?? [])].sort(
+    (a, b) =>
+      new Date(b.createdAt).getTime() -
+      new Date(a.createdAt).getTime(),
+  );
+}
+
 const MyInvestmentsScreen = () => {
-  const [investments, setInvestments] = useState<Investment[]>([]);
-  const [filtered, setFiltered] = useState<Investment[]>([]);
+  const [userId, setUserId] = useState<string | null>(null);
+
   const [minShares, setMinShares] = useState('');
   const [minAmount, setMinAmount] = useState('');
   const [daysBack, setDaysBack] = useState('30');
 
   useEffect(() => {
-    const loadInvestments = async () => {
+    const loadUserId = async () => {
       try {
         const stored = await AsyncStorage.getItem('user');
-        if (!stored) return;
+
+        if (!stored) {
+          setUserId(null);
+          return;
+        }
 
         const user = JSON.parse(stored);
-        const response = await api.get(`/investments/user/${user.userId}`);
-        
-        const sorted = response.data.sort((a: Investment, b: Investment) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
-        setInvestments(sorted);
-        setFiltered(sorted);
+        setUserId(user.userId ?? user.id ?? user.user?.id ?? null);
       } catch (error) {
-        console.error('Failed to load investments', error);
+        console.error('Failed to read user session', error);
+        setUserId(null);
       }
     };
 
-    loadInvestments();
+    loadUserId();
   }, []);
 
-  const applyFilters = () => {
-    const now = new Date();
-    const sinceDate = new Date();
-    sinceDate.setDate(now.getDate() - parseInt(daysBack || '0', 10));
+  const {
+    data: investments = [],
+    isLoading,
+    isFetching,
+    refetch,
+    isError,
+  } = useQuery({
+    queryKey: ['myInvestmentsHistory', userId],
+    queryFn: () => fetchUserInvestments(userId!),
+    enabled: !!userId,
+    staleTime: 2 * 60_000,
+    gcTime: 15 * 60_000,
+  });
 
-    const minS = parseInt(minShares, 10) || 0;
-    const minA = parseFloat(minAmount) || 0;
+  const filtered = useMemo(() => {
+    const minS = Number.parseInt(minShares, 10) || 0;
+    const minA = Number.parseFloat(minAmount) || 0;
+    const parsedDays = Number.parseInt(daysBack, 10);
 
-    const filteredData = investments.filter(i =>
-      i.shares >= minS &&
-      i.investedAmount >= minA &&
-      new Date(i.createdAt) >= sinceDate
+    const sinceDate =
+      Number.isFinite(parsedDays) && parsedDays > 0
+        ? new Date(Date.now() - parsedDays * 24 * 60 * 60 * 1000)
+        : null;
+
+    return investments.filter((investment) => {
+      const matchesShares = investment.shares >= minS;
+      const matchesAmount = investment.investedAmount >= minA;
+      const matchesDate =
+        !sinceDate || new Date(investment.createdAt) >= sinceDate;
+
+      return matchesShares && matchesAmount && matchesDate;
+    });
+  }, [investments, minShares, minAmount, daysBack]);
+
+  if (!userId || (isLoading && investments.length === 0)) {
+    return <ScreenLoader />;
+  }
+
+  if (isError && investments.length === 0) {
+    return (
+      <View style={styles.centerState}>
+        <Text style={styles.errorText}>Failed to load investments.</Text>
+
+        <BlueButton
+          title="Try Again"
+          onPress={() => refetch()}
+        />
+      </View>
     );
-
-    setFiltered(filteredData);
-  };
+  }
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Investment</Text>
 
       <View style={styles.filters}>
-  <View style={styles.filterGroup}>
-    <Text style={styles.label}>Min Shares:</Text>
-    <TextInput
-      style={styles.input}
-      keyboardType="numeric"
-      value={minShares}
-      onChangeText={setMinShares}
-    />
-  </View>
+        <View style={styles.filterGroup}>
+          <Text style={styles.label}>Min Shares:</Text>
+          <TextInput
+            style={styles.input}
+            keyboardType="numeric"
+            value={minShares}
+            onChangeText={setMinShares}
+          />
+        </View>
 
-  <View style={styles.filterGroup}>
-    <Text style={styles.label}>Min Amount:</Text>
-    <TextInput
-      style={styles.input}
-      keyboardType="numeric"
-      value={minAmount}
-      onChangeText={setMinAmount}
-    />
-  </View>
+        <View style={styles.filterGroup}>
+          <Text style={styles.label}>Min Amount:</Text>
+          <TextInput
+            style={styles.input}
+            keyboardType="numeric"
+            value={minAmount}
+            onChangeText={setMinAmount}
+          />
+        </View>
 
-  <View style={styles.filterGroup}>
-    <Text style={styles.label}>Last X days:</Text>
-    <TextInput
-      style={styles.input}
-      keyboardType="numeric"
-      value={daysBack}
-      onChangeText={setDaysBack}
-    />
-  </View>
+        <View style={styles.filterGroup}>
+          <Text style={styles.label}>Last X days:</Text>
+          <TextInput
+            style={styles.input}
+            keyboardType="numeric"
+            value={daysBack}
+            onChangeText={setDaysBack}
+          />
+        </View>
 
-  <BlueButton title="Apply Filters" onPress={applyFilters} />
-</View>
-
+        <BlueButton
+          title={isFetching ? 'Refreshing...' : 'Refresh'}
+          onPress={() => refetch()}
+          disabled={isFetching}
+        />
+      </View>
 
       <FlatList
         data={filtered}
         keyExtractor={(item) => item.id}
+        refreshing={isFetching && !isLoading}
+        onRefresh={refetch}
         renderItem={({ item }) => (
           <View style={styles.card}>
             <Text>Property ID: {item.propertyId}</Text>
@@ -112,7 +170,9 @@ const MyInvestmentsScreen = () => {
           </View>
         )}
         ListEmptyComponent={
-          <Text style={{ textAlign: 'center', marginTop: 20 }}>No investments match your filters.</Text>
+          <Text style={styles.emptyText}>
+            No investments match your filters.
+          </Text>
         }
       />
     </View>
@@ -120,8 +180,20 @@ const MyInvestmentsScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 ,backgroundColor: theme.colors.background},
-  title: { fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 20, display: 'none'  },
+  container: {
+    flex: 1,
+    padding: 16,
+    backgroundColor: theme.colors.background,
+  },
+
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 20,
+    display: 'none',
+  },
+
   card: {
     borderWidth: 1,
     borderColor: '#ccc',
@@ -129,9 +201,11 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     marginBottom: 10,
   },
+
   filters: {
     marginBottom: 16,
   },
+
   input: {
     borderWidth: 1,
     borderColor: '#aaa',
@@ -139,13 +213,36 @@ const styles = StyleSheet.create({
     marginVertical: 6,
     borderRadius: 6,
   },
+
   label: {
-  fontWeight: 'bold',
-  marginBottom: 4,
-},
-filterGroup: {
-  marginBottom: 12,
-},
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+
+  filterGroup: {
+    marginBottom: 12,
+  },
+
+  centerState: {
+    flex: 1,
+    padding: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.colors.background,
+  },
+
+  errorText: {
+    fontSize: 16,
+    color: theme.colors.danger,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+
+  emptyText: {
+    textAlign: 'center',
+    marginTop: 20,
+    color: theme.colors.textSecondary,
+  },
 });
 
 export default MyInvestmentsScreen;

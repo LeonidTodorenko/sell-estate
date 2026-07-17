@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,12 +9,14 @@ import {
   ScrollView,
   Image,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import theme from '../constants/theme';
 import { useNavigation } from '@react-navigation/native';
+import { useQuery } from '@tanstack/react-query';
 
 import icon1 from '../assets/images/history11.png';
 import icon2 from '../assets/images/history12.png';
@@ -230,11 +232,37 @@ function getIcon(type: string) {
   return icon4;
 }
 
+
+async function fetchTransactions(fromDate: Date | null,toDate: Date | null): Promise<UserTransaction[]> {
+  const stored = await AsyncStorage.getItem('user');
+  if (!stored) return [];
+  const user = JSON.parse(stored);
+  const params = new URLSearchParams();
+  if (fromDate) params.append('from', fromDate.toISOString());
+  if (toDate) params.append('to', toDate.toISOString());
+
+  const res = await api.get(
+    `/users/transactions/user/${user.userId}?${params.toString()}`,
+    { silentLoading: true } as any,
+  );
+  return Array.isArray(res.data) ? res.data : [];
+}
+
+
 export default function UserTransactionsScreen() {
   const navigation = useNavigation<any>();
 
-  const [transactions, setTransactions] = useState<UserTransaction[]>([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    data: transactions = [],
+    isLoading,
+    isFetching,
+    refetch,
+  } = useQuery({
+    queryKey: ['transactions', fromDate?.toISOString(), toDate?.toISOString()],
+    queryFn: () => fetchTransactions(fromDate, toDate),
+    staleTime: 60000,
+    gcTime: 600000,
+  });
   const [activeFilter, setActiveFilter] = useState<FilterValue>('');
 
   const [fromDate, setFromDate] = useState<Date | null>(null);
@@ -242,35 +270,7 @@ export default function UserTransactionsScreen() {
   const [dateMode, setDateMode] = useState<'from' | 'to' | null>(null);
   const [isDatePickerVisible, setDatePickerVisible] = useState(false);
 
-  const fetchTransactions = useCallback(async () => {
-    try {
-      setLoading(true);
-
-      const stored = await AsyncStorage.getItem('user');
-      if (!stored) return;
-
-      const user = JSON.parse(stored);
-
-      const params = new URLSearchParams();
-      if (fromDate) params.append('from', fromDate.toISOString());
-      if (toDate) params.append('to', toDate.toISOString());
-
-      const res = await api.get(
-        `/users/transactions/user/${user.userId}?${params.toString()}`
-      );
-
-      setTransactions(Array.isArray(res.data) ? res.data : []);
-    } catch (err) {
-      console.error(err);
-      Alert.alert('Error', 'Failed to load transactions');
-    } finally {
-      setLoading(false);
-    }
-  }, [fromDate, toDate]);
-
-  useEffect(() => {
-    fetchTransactions();
-  }, [fetchTransactions]);
+  // Загрузка выполняется React Query.
 
   const filteredTransactions = useMemo(() => {
     if (!activeFilter) return transactions;
@@ -377,12 +377,13 @@ export default function UserTransactionsScreen() {
           )}
         </View>
 
-        {loading ? (
+        {isLoading ? (
           <View style={styles.loaderWrap}>
             <ActivityIndicator size="large" color={theme.colors.primary} />
           </View>
         ) : (
           <SectionList
+            refreshControl={<RefreshControl refreshing={isFetching && !isLoading} onRefresh={refetch} tintColor={theme.colors.primary} />}
             sections={sections}
             keyExtractor={(item) => item.id}
             stickySectionHeadersEnabled={false}

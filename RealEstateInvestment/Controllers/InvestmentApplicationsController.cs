@@ -34,8 +34,20 @@ namespace RealEstateInvestment.Controllers
                 return BadRequest(new { message = "No payment plan found" });
 
             // Проверка, что есть активный этап
+            //var now = DateTime.UtcNow;
+            //var step = property.PaymentPlans?
+            //    .FirstOrDefault(p => p.EventDate <= now && now <= p.DueDate);
+
             var now = DateTime.UtcNow;
-            var step = property.PaymentPlans?
+
+            var orderedSteps = property.PaymentPlans
+                .OrderBy(p => p.EventDate)
+                .ToList();
+
+            var firstStep = orderedSteps.First();
+            var lastStep = orderedSteps.Last();
+
+            var activeStep = orderedSteps
                 .FirstOrDefault(p => p.EventDate <= now && now <= p.DueDate);
 
             // разрешили любой шаг платежи
@@ -49,14 +61,34 @@ namespace RealEstateInvestment.Controllers
             var pricePerShare = property.Price / property.TotalShares;
             var expectedAmount = req.RequestedShares * pricePerShare;
 
+            if (req.RequestedShares <= 0)
+                return BadRequest(new { message = "RequestedShares must be greater than zero" });
+
+            if (property.AvailableShares < req.RequestedShares)
+                return BadRequest(new { message = "Not enough free shares" });
+
             if (user.WalletBalance < expectedAmount)
                 return BadRequest(new { message = "Insufficient funds" });
 
 
             // Если это первый шаг — сохраняем как заявку
-            var minEventDate = property.PaymentPlans.Min(p => p.EventDate);
+            var minEventDate = firstStep.EventDate;
 
-            if (step.EventDate == minEventDate)
+            if (now < minEventDate)
+            {
+                return BadRequest(new
+                {
+                    message = "The application date has not started yet. Please try again later."
+                });
+            }
+
+            var accountingStep = activeStep ?? lastStep;
+
+            var isFirstStep =
+                activeStep != null &&
+                activeStep.EventDate == firstStep.EventDate;
+
+            if (isFirstStep)
             {
                 // Это самый первый шаг
                 var app = new InvestmentApplication
@@ -75,7 +107,7 @@ namespace RealEstateInvestment.Controllers
                 _context.InvestmentApplications.Add(app);
 
                 // Если сумма >= нужной для текущего этапа — пользователь становится приоритетным
-                if (expectedAmount >= step.Total)
+                if (expectedAmount >= firstStep.Total)
                 {
                     property.PriorityInvestorId = req.UserId;
                 }
@@ -85,6 +117,7 @@ namespace RealEstateInvestment.Controllers
                 // Автоматическое превращение заявки в инвестицию
                 user.WalletBalance -= expectedAmount;
                 property.AvailableShares -= req.RequestedShares;
+                accountingStep.Paid += expectedAmount;
 
                 _context.Investments.Add(new Investment
                 {

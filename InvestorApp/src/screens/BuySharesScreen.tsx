@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -7,9 +7,11 @@ import {
   Image,
   Pressable,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../api';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import StyledInput from '../components/StyledInput';
@@ -30,8 +32,30 @@ type PropertyLike = {
   location: string;
   price: number;
   totalShares: number;
+  availableShares?: number;
   images?: PropertyImage[];
   media?: any[];
+};
+
+type PaymentPlanStep = {
+  id?: string;
+  eventDate: string;
+  dueDate: string;
+};
+
+type BuySharesData = {
+  property: PropertyLike;
+  sharePrice: number;
+  propertyPreview: string | null;
+  isFirstStep: boolean;
+};
+
+type InvestmentPayload = {
+  userId: string;
+  propertyId: string;
+  requestedShares: number;
+  requestedAmount: number;
+  pinOrPassword: string;
 };
 
 function money(n: number) {
@@ -63,135 +87,238 @@ function getPropertyPreview(item: PropertyLike | null): string | null {
   return uri.startsWith('http://') ? uri.replace(/^http:\/\//i, 'https://') : uri;
 }
 
+/**
+ * Загружает все данные, необходимые экрану покупки.
+ *
+ * Запросы изображений, media и payment plan выполняются параллельно.
+ * React Query кеширует результат отдельно для каждого propertyId.
+ */
+async function fetchBuySharesData(propertyId: string): Promise<BuySharesData> {
+  const [propertiesRes, imagesRes, mediaRes, plansRes] = await Promise.all([
+    api.get<PropertyLike[]>('/properties', { silentLoading: true } as any),
+    api
+      .get<PropertyImage[]>(`/properties/${propertyId}/images`, {
+        silentLoading: true,
+      } as any)
+      .catch(() => ({ data: [] as PropertyImage[] })),
+    api
+      .get<any[]>(`/properties/${propertyId}/media`, {
+        silentLoading: true,
+      } as any)
+      .catch(() => ({ data: [] as any[] })),
+    api
+      .get<PaymentPlanStep[]>(`/properties/${propertyId}/payment-plans`, {
+        silentLoading: true,
+      } as any)
+      .catch(() => ({ data: [] as PaymentPlanStep[] })),
+  ]);
+
+  const property = propertiesRes.data.find((item) => item.id === propertyId);
+  if (!property) {
+    throw new Error('Property not found');
+  }
+
+  const fullProperty: PropertyLike = {
+    ...property,
+    images: imagesRes.data ?? [],
+    media: mediaRes.data ?? [],
+  };
+
+  if (!property.totalShares || property.totalShares <= 0) {
+    throw new Error('The property has an invalid total shares value');
+  }
+
+  const sharePrice = Number(property.price ?? 0) / Number(property.totalShares);
+
+  // Определяем, является ли текущий активный этап первым этапом плана.
+  const plans = Array.isArray(plansRes.data) ? plansRes.data : [];
+  let isFirstStep = false;
+
+  if (plans.length > 0) {
+    const now = new Date();
+
+    const activeStep = plans.find(
+      (plan) =>
+        new Date(plan.eventDate).getTime() <= now.getTime() &&
+        now.getTime() <= new Date(plan.dueDate).getTime(),
+    );
+
+    const firstStep = [...plans].sort(
+      (left, right) =>
+        new Date(left.eventDate).getTime() - new Date(right.eventDate).getTime(),
+    )[0];
+
+    isFirstStep =
+      !!activeStep &&
+      new Date(activeStep.eventDate).getTime() ===
+        new Date(firstStep.eventDate).getTime();
+  }
+
+  return {
+    property: fullProperty,
+    sharePrice,
+    propertyPreview: getPropertyPreview(fullProperty),
+    isFirstStep,
+  };
+}
+
 const BuySharesScreen = () => {
   const route = useRoute<BuyRouteProp>();
   const navigation = useNavigation<any>();
+  const queryClient = useQueryClient();
+
   const propertyId = route.params.propertyId;
   const propertyNameFromRoute = route.params.propertyName;
 
+  // Локально оставляем только значения формы и состояние success-экрана.
   const [shares, setShares] = useState('');
-  const [sharePrice, setSharePrice] = useState<number | null>(null);
   const [pinOrPassword, setPinOrPassword] = useState('');
-  const [isFirstStep, setIsFirstStep] = useState(false);
-
-  const [property, setProperty] = useState<PropertyLike | null>(null);
-  const [propertyPreview, setPropertyPreview] = useState<string | null>(null);
-
   const [showPassword, setShowPassword] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
 
   const [successVisible, setSuccessVisible] = useState(false);
-  const [successShares, setSuccessShares] = useState<number>(0);
-  const [successAmount, setSuccessAmount] = useState<number>(0);
+  const [successShares, setSuccessShares] = useState(0);
+  const [successAmount, setSuccessAmount] = useState(0);
 
-  useEffect(() => {
-    const checkIfFirstStep = async () => {
-      try {
-        const res = await api.get(`/properties/${propertyId}/payment-plans`);
-        const plans = res.data;
+  /**
+   * Данные объекта и payment plan больше не загружаются через два useEffect.
+   * При повторном открытии этого объекта React Query сначала отдаст кеш.
+   */
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ['buyShares', propertyId],
+    queryFn: () => fetchBuySharesData(propertyId),
+    staleTime: 60_000,
+    gcTime: 10 * 60_000,
+  });
 
-        if (!Array.isArray(plans) || plans.length === 0) {
-          setIsFirstStep(false);
-          return;
-        }
+  const property = data?.property ?? null;
+  const sharePrice = data?.sharePrice ?? null;
+  const propertyPreview = data?.propertyPreview ?? null;
+  const isFirstStep = data?.isFirstStep ?? false;
 
-        const now = new Date();
-        const active = plans.find(
-          (p: any) => new Date(p.eventDate) <= now && now <= new Date(p.dueDate),
-        );
+  const parsedShares = Number.parseInt(shares, 10);
+  const validShares = Number.isInteger(parsedShares) && parsedShares > 0 ? parsedShares : 0;
 
-        const earliest = plans.reduce((min: any, p: any) => {
-          return new Date(p.eventDate) < new Date(min.eventDate) ? p : min;
-        }, plans[0]);
+  const calculatedAmount = useMemo(
+    () => (sharePrice && validShares > 0 ? validShares * sharePrice : 0),
+    [sharePrice, validShares],
+  );
 
-        if (active && active.eventDate === earliest.eventDate) {
-          setIsFirstStep(true);
-        } else {
-          setIsFirstStep(false);
-        }
-      } catch (error: any) {
-        let message = 'Failed to check step ';
-        console.error(error);
-        if (error.response && error.response.data) {
-          message = JSON.stringify(error.response.data);
-        } else if (error.message) {
-          message = error.message;
-        }
-        Alert.alert('Error', 'Failed to check step ' + message);
-        console.error(message);
-      }
-    };
+  /**
+   * Покупка оформлена как mutation.
+   * React Query сам предоставляет pending-состояние и не даёт путать его
+   * с состоянием первоначальной загрузки экрана.
+   */
+  const investMutation = useMutation({
+    mutationFn: async (payload: InvestmentPayload) => {
+      return api.post('/investments/apply', payload, {
+        silentLoading: true,
+      } as any);
+    },
+    onSuccess: async (_response, variables) => {
+      setSuccessShares(variables.requestedShares);
+      setSuccessAmount(variables.requestedAmount);
+      setSuccessVisible(true);
+      setPinOrPassword('');
 
-    checkIfFirstStep();
-  }, [propertyId]);
+      // После инвестиции обновляем все экраны, данные которых изменились.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['home'] }),
+        queryClient.invalidateQueries({ queryKey: ['profile'] }),
+        queryClient.invalidateQueries({ queryKey: ['investments'] }),
+        queryClient.invalidateQueries({ queryKey: ['myInvestmentsHistory'] }),
+        queryClient.invalidateQueries({ queryKey: ['groupedInvestments'] }),
+        queryClient.invalidateQueries({ queryKey: ['properties', 'withExtras'] }),
+        queryClient.invalidateQueries({ queryKey: ['buyShares', propertyId] }),
+      ]);
+    },
+    onError: (mutationError: any) => {
+      const responseData = mutationError?.response?.data;
+      const message =
+        responseData?.message ||
+        (typeof responseData === 'string' ? responseData : null) ||
+        mutationError?.message ||
+        'Failed to invest';
 
-useEffect(() => {
-  const loadProperty = async () => {
+      Alert.alert('Error', message);
+    },
+  });
+
+  const executeBuy = async (
+    requestedShares: number,
+    requestedAmount: number,
+  ) => {
     try {
-      const res = await api.get(`/properties`);
-      const prop = res.data.find((p: any) => p.id === propertyId);
-      if (!prop) return Alert.alert('Error', 'Property not found');
-
-      let images: any[] = [];
-      let media: any[] = [];
-
-      try {
-        const [imagesRes, mediaRes] = await Promise.all([
-          api.get(`/properties/${propertyId}/images`).catch(() => ({ data: [] })),
-          api.get(`/properties/${propertyId}/media`).catch(() => ({ data: [] })),
-        ]);
-
-        images = imagesRes.data ?? [];
-        media = mediaRes.data ?? [];
-      } catch {
-        images = [];
-        media = [];
+      const stored = await AsyncStorage.getItem('user');
+      if (!stored) {
+        Alert.alert('Error', 'No user found');
+        return;
       }
 
-      const fullProp = {
-        ...prop,
-        images,
-        media,
-      };
+      const user = JSON.parse(stored);
+      const userId = user?.userId ?? user?.id ?? user?.user?.id;
 
-      const pricePerShare = prop.price / prop.totalShares;
-      setSharePrice(pricePerShare);
-      setProperty(fullProp);
-      setPropertyPreview(getPropertyPreview(fullProp));
-    } catch (err) {
-      console.error(err);
-      Alert.alert('Error', 'Failed to load property');
+      if (!userId) {
+        Alert.alert('Error', 'User identifier was not found');
+        return;
+      }
+
+      investMutation.mutate({
+        userId,
+        propertyId,
+        requestedShares,
+        requestedAmount,
+        pinOrPassword,
+      });
+    } catch (sessionError: any) {
+      Alert.alert(
+        'Error',
+        sessionError?.message || 'Failed to read the current user session',
+      );
     }
   };
 
-  loadProperty();
-}, [propertyId]);
-
-  const parsedShares = parseInt(shares, 10);
-  const validShares = Number.isInteger(parsedShares) && parsedShares > 0 ? parsedShares : 0;
-  const calculatedAmount = sharePrice && validShares > 0 ? validShares * sharePrice : 0;
-
-  const handleBuy = async () => {
-    if (submitting) return;
+  const handleBuy = () => {
+    if (investMutation.isPending) return;
 
     if (!/^\d+$/.test(shares)) {
-      return Alert.alert('Validation', 'Only whole number of shares allowed (1, 2, 3...)');
+      Alert.alert('Validation', 'Only whole number of shares allowed (1, 2, 3...)');
+      return;
     }
 
-    const parsedSharesLocal = parseInt(shares, 10);
-    if (!parsedSharesLocal || parsedSharesLocal <= 0) {
-      return Alert.alert('Validation', 'Enter a valid number of shares (whole number > 0)');
+    const requestedShares = Number.parseInt(shares, 10);
+    if (!requestedShares || requestedShares <= 0) {
+      Alert.alert('Validation', 'Enter a valid number of shares (whole number > 0)');
+      return;
     }
 
-    if (!sharePrice) {
-      return Alert.alert('Validation', 'Share price is not loaded yet');
+    if (!sharePrice || sharePrice <= 0) {
+      Alert.alert('Validation', 'Share price is not loaded yet');
+      return;
     }
 
-    const requestedAmount = sharePrice * parsedSharesLocal;
-
-    if (!pinOrPassword) {
-      return Alert.alert('Validation', 'Enter PIN or password');
+    if (
+      typeof property?.availableShares === 'number' &&
+      requestedShares > property.availableShares
+    ) {
+      Alert.alert(
+        'Validation',
+        `Only ${property.availableShares} shares are currently available`,
+      );
+      return;
     }
+
+    if (!pinOrPassword.trim()) {
+      Alert.alert('Validation', 'Enter PIN or password');
+      return;
+    }
+
+    const requestedAmount = sharePrice * requestedShares;
 
     if (isFirstStep) {
       Alert.alert(
@@ -201,47 +328,50 @@ useEffect(() => {
           { text: 'Cancel', style: 'cancel' },
           {
             text: 'Ok',
-            onPress: () => executeBuy(parsedSharesLocal, requestedAmount),
+            onPress: () => executeBuy(requestedShares, requestedAmount),
           },
         ],
       );
-    } else {
-      executeBuy(parsedSharesLocal, requestedAmount);
+      return;
     }
+
+    executeBuy(requestedShares, requestedAmount);
   };
 
-  const executeBuy = async (parsedSharesLocal: number, requestedAmount: number) => {
-    const stored = await AsyncStorage.getItem('user');
-    if (!stored) return Alert.alert('Error', 'No user found');
+  const submitting = investMutation.isPending;
 
-    const user = JSON.parse(stored);
+  // Начальная загрузка: запросы идут с silentLoading, поэтому показываем локальный loader.
+  if (isLoading) {
+    return (
+      <View style={styles.queryStateContainer}>
+        <ActivityIndicator size="large" color={theme.colors.success} />
+        <Text style={styles.queryStateText}>Loading property...</Text>
+      </View>
+    );
+  }
 
-    try {
-      setSubmitting(true);
-
-      await api.post('/investments/apply', {
-        userId: user.userId,
-        propertyId,
-        requestedShares: parsedSharesLocal,
-        requestedAmount,
-        pinOrPassword,
-      });
-
-      setSuccessShares(parsedSharesLocal);
-      setSuccessAmount(requestedAmount);
-      setSuccessVisible(true);
-    } catch (error: any) {
-      let message = 'Failed to invest ';
-      if (error.response && error.response.data) {
-        message = JSON.stringify(error.response.data);
-      } else if (error.message) {
-        message = error.message;
-      }
-      Alert.alert('Error', message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  // Ошибка загрузки с возможностью повторить запрос.
+  if (isError || !data) {
+    return (
+      <View style={styles.queryStateContainer}>
+        <Text style={styles.queryStateTitle}>Failed to load property</Text>
+        <Text style={styles.queryStateText}>
+          {error instanceof Error ? error.message : 'Please try again'}
+        </Text>
+        <BlueButton
+          title="Try again"
+          onPress={() => refetch()}
+          width="full"
+          showArrow={false}
+          bgColor="#10B981"
+          textColor="#FFFFFF"
+          borderColor="#10B981"
+          paddingVertical={12}
+          style={styles.retryButton}
+        />
+      </View>
+    );
+  }
 
   const orderTitle = property?.title || propertyNameFromRoute || 'Property';
   const orderLocation = property?.location || 'Dubai Hills Estate, Dubai, UAE 77777';
@@ -807,6 +937,39 @@ successPropertyImage: {
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '500',
+  },
+
+
+  queryStateContainer: {
+    flex: 1,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ECECEC',
+  },
+
+  queryStateTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: theme.colors.text,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+
+  queryStateText: {
+    marginTop: 10,
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+  },
+
+  retryButton: {
+    width: '100%',
+    marginTop: 18,
+    marginBottom: 0,
+    borderRadius: 10,
+    shadowOpacity: 0,
+    elevation: 0,
   },
 });
 

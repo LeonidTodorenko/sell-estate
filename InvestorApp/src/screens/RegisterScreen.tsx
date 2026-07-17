@@ -6,6 +6,7 @@ import {
   Alert,
   Pressable,
   ScrollView,
+  Platform,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
@@ -470,13 +471,17 @@ checkboxPressable: {
     marginBottom: 20,
   },
 
-  input: {
-    marginBottom: 10,
-    backgroundColor: '#F5F5F5',
-    borderWidth: 0,
-    borderRadius: 14,
-    paddingLeft:10,
-  },
+input: {
+  width: '100%',
+  minHeight: 52,
+  marginBottom: 10,
+  backgroundColor: '#F5F5F5',
+  borderWidth: 0,
+  borderRadius: 14,
+  paddingHorizontal: 14,
+  paddingVertical: Platform.OS === 'ios' ? 14 : 12,
+  fontSize: 16,
+},
 
   helperText: {
     fontSize: 14,

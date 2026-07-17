@@ -1,4 +1,10 @@
-import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import React, {
+  useState,
+  useCallback,
+  useMemo,
+  useRef,
+  useEffect,
+} from "react";
 import {
   View,
   Text,
@@ -14,26 +20,26 @@ import {
   LayoutAnimation,
   UIManager,
   ScrollView,
-} from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import api from '../api';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/AppNavigator';
-import { useLoading } from '../contexts/LoadingContext';
-import Swiper from 'react-native-swiper';
-import theme from '../constants/theme';
-import BlueButton from '../components/BlueButton';
-import DateTimePicker from '@react-native-community/datetimepicker';
+} from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import api from "../api";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { RootStackParamList } from "../navigation/AppNavigator";
+import Swiper from "react-native-swiper";
+import theme from "../constants/theme";
+import BlueButton from "../components/BlueButton";
+import DateTimePicker from "@react-native-community/datetimepicker";
 
-import Ionicons from 'react-native-vector-icons/Ionicons';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import Ionicons from "react-native-vector-icons/Ionicons";
+import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 
-import mapSampleImage from '../assets/images/map-sample.png';
-import buttonMapImage from '../assets/images/button-map.png';
-import paymentPlanImage from '../assets/images/paymentplan.png';
-import { fetchPropertiesWithExtras, Property } from '../services/properties';
-import { Linking } from 'react-native';
+import mapSampleImage from "../assets/images/map-sample.png";
+import buttonMapImage from "../assets/images/button-map.png";
+import paymentPlanImage from "../assets/images/paymentplan.png";
+import { fetchPropertiesWithExtras, Property } from "../services/properties";
+import { Linking } from "react-native";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 interface Investment {
   propertyId: string;
@@ -58,15 +64,15 @@ interface GroupedInvestment {
 }
 
 type Slide =
-  | { kind: 'image'; id: string; uri: string }
-  | { kind: 'video'; id: string; uri: string };
+  | { kind: "image"; id: string; uri: string }
+  | { kind: "video"; id: string; uri: string };
 
 const normalizeUrl = (u?: string | null) =>
-  (u ?? '').trim().replace(/^http:\/\//i, 'https://');
+  (u ?? "").trim().replace(/^http:\/\//i, "https://");
 
 function formatMoney(value?: number | null) {
   const n = Number(value ?? 0);
-  return `$${n.toLocaleString('en-US', {
+  return `$${n.toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
@@ -74,7 +80,7 @@ function formatMoney(value?: number | null) {
 
 function formatMoneyNoCents(value?: number | null) {
   const n = Number(value ?? 0);
-  return `$${n.toLocaleString('en-US', {
+  return `$${n.toLocaleString("en-US", {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   })}`;
@@ -83,15 +89,17 @@ function formatMoneyNoCents(value?: number | null) {
 function getPropertyPreview(item?: Property | null): string | null {
   if (!item) return null;
 
-  const firstImage = item.images?.find((img: any) => !!img?.base64Data)?.base64Data;
+  const firstImage = item.images?.find(
+    (img: any) => !!img?.base64Data,
+  )?.base64Data;
   if (firstImage) return firstImage;
 
   const firstMediaImage = item.media?.find((m: any) => {
-    const typeString = String(m?.type ?? '').toLowerCase();
-    const uri = (m?.base64Data ?? m?.url ?? '').trim();
+    const typeString = String(m?.type ?? "").toLowerCase();
+    const uri = (m?.base64Data ?? m?.url ?? "").trim();
     const isVideo =
-      typeString === 'video' ||
-      typeString === '2' ||
+      typeString === "video" ||
+      typeString === "2" ||
       /\.(mp4|mov|webm)(\?.*)?$/i.test(uri);
 
     return !isVideo && !!uri;
@@ -99,13 +107,15 @@ function getPropertyPreview(item?: Property | null): string | null {
 
   if (!firstMediaImage) return null;
 
-  const uri = (firstMediaImage.base64Data ?? firstMediaImage.url ?? '').trim();
+  const uri = (firstMediaImage.base64Data ?? firstMediaImage.url ?? "").trim();
   if (!uri) return null;
 
-  return uri.startsWith('http://') ? uri.replace(/^http:\/\//i, 'https://') : uri;
+  return uri.startsWith("http://")
+    ? uri.replace(/^http:\/\//i, "https://")
+    : uri;
 }
 
-type SellMode = 'menu' | 'listing';
+type SellMode = "menu" | "listing";
 
 type SellModalState = {
   visible: boolean;
@@ -143,25 +153,25 @@ const InvestmentCard: React.FC<InvestmentCardProps> = ({
     const fromImages: Slide[] = (property.images ?? [])
       .filter((img: any) => !!img?.base64Data)
       .map((img: any) => ({
-        kind: 'image' as const,
+        kind: "image" as const,
         id: img.id,
         uri: img.base64Data,
       }));
 
     const fromMedia: Slide[] = (property.media ?? [])
       .map((m: any) => {
-        const uriRaw = (m.base64Data ?? m.url ?? '')?.trim();
-        const uri = uriRaw.startsWith('http') ? normalizeUrl(uriRaw) : uriRaw;
+        const uriRaw = (m.base64Data ?? m.url ?? "")?.trim();
+        const uri = uriRaw.startsWith("http") ? normalizeUrl(uriRaw) : uriRaw;
         if (!uri) return null;
 
         const typeString = String(m.type).toLowerCase();
         const isVideo =
-          typeString === 'video' ||
-          typeString === '2' ||
+          typeString === "video" ||
+          typeString === "2" ||
           /\.(mp4|mov|webm)(\?.*)?$/i.test(uri);
 
         return {
-          kind: (isVideo ? 'video' : 'image') as 'video' | 'image',
+          kind: (isVideo ? "video" : "image") as "video" | "image",
           id: m.id,
           uri,
         };
@@ -171,39 +181,42 @@ const InvestmentCard: React.FC<InvestmentCardProps> = ({
     return [...fromImages, ...fromMedia].filter((s) => !!s.uri);
   }, [property]);
 
- const totalSlides = slides.length;
-const location = property?.location || 'Dubai Hills Estate / Dubai, UAE';
-const profit = investment.totalShareValue - investment.totalInvested;
-const yieldText =
-  property?.expectedYieldText?.trim() || '12-15% per annum (est.)';
-const listingType = property?.listingType === 'rent' ? 'For Rent' : 'For Sale';
-const statusDotColor = property?.listingType === 'rent' ? '#5B8DEF' : '#10B981';
+  const totalSlides = slides.length;
+  const location = property?.location || "Dubai Hills Estate / Dubai, UAE";
+  const profit = investment.totalShareValue - investment.totalInvested;
+  const yieldText =
+    property?.expectedYieldText?.trim() || "12-15% per annum (est.)";
+  const listingType =
+    property?.listingType === "rent" ? "For Rent" : "For Sale";
+  const statusDotColor =
+    property?.listingType === "rent" ? "#5B8DEF" : "#10B981";
 
-const commissioningText = property?.expectedCompletionDate
-  ? new Date(property.expectedCompletionDate).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-    })
-  : 'Q2 2026';
+  const commissioningText = property?.expectedCompletionDate
+    ? new Date(property.expectedCompletionDate).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+      })
+    : "Q2 2026";
 
-const plannedSaleText = property?.plannedSaleDate
-  ? new Date(property.plannedSaleDate).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-    })
-  : 'Q4 2027';
+  const plannedSaleText = property?.plannedSaleDate
+    ? new Date(property.plannedSaleDate).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+      })
+    : "Q4 2027";
 
-const aboutText =
-  property?.about?.trim() ||
-  `Modern residential complex in the heart of Dubai Hills Estate. Golf course
+  const aboutText =
+    property?.about?.trim() ||
+    `Modern residential complex in the heart of Dubai Hills Estate. Golf course
 view. Amenities: pool, fitness, parks, schools, restaurants.
 To city center: 15 minutes
 To airport: 25 minutes`;
 
-const preview = getPropertyPreview(property);
+  const preview = getPropertyPreview(property);
 
-const presentationPdfUrl = property?.presentationPdfUrl?.trim() || null;
-const presentationPdfName = property?.presentationPdfName?.trim() || 'Object Presentation';
+  const presentationPdfUrl = property?.presentationPdfUrl?.trim() || null;
+  const presentationPdfName =
+    property?.presentationPdfName?.trim() || "Object Presentation";
 
   return (
     <View style={styles.card}>
@@ -226,11 +239,14 @@ const presentationPdfName = property?.presentationPdfName?.trim() || 'Object Pre
                   key={slide.id}
                   activeOpacity={0.9}
                   onPress={() => {
-                    if (slide.kind === 'image') onOpenImage(slide.uri);
+                    if (slide.kind === "image") onOpenImage(slide.uri);
                   }}
                 >
-                  {slide.kind === 'image' ? (
-                    <Image source={{ uri: slide.uri }} style={styles.carouselImage} />
+                  {slide.kind === "image" ? (
+                    <Image
+                      source={{ uri: slide.uri }}
+                      style={styles.carouselImage}
+                    />
                   ) : (
                     <View style={[styles.carouselImage, styles.videoSlide]}>
                       <Text style={styles.videoSlideText}>▶ Play video</Text>
@@ -269,7 +285,7 @@ const presentationPdfName = property?.presentationPdfName?.trim() || 'Object Pre
               activeOpacity={0.9}
               style={styles.mapPreviewWrap}
               onPress={() =>
-                navigation.navigate('PropertyMap', {
+                navigation.navigate("PropertyMap", {
                   latitude: property?.latitude ?? 25.2048,
                   longitude: property?.longitude ?? 55.2708,
                   title: investment.propertyTitle,
@@ -284,7 +300,11 @@ const presentationPdfName = property?.presentationPdfName?.trim() || 'Object Pre
           <View style={styles.infoCard}>
             <View style={styles.yieldRow}>
               <View style={styles.metricCircle}>
-                <MaterialCommunityIcons name="finance" size={18} color="#2B2B2B" />
+                <MaterialCommunityIcons
+                  name="finance"
+                  size={18}
+                  color="#2B2B2B"
+                />
               </View>
               <View style={{ marginLeft: 10 }}>
                 <Text style={styles.yieldTitle}>{yieldText}</Text>
@@ -294,11 +314,14 @@ const presentationPdfName = property?.presentationPdfName?.trim() || 'Object Pre
           </View>
 
           <TouchableOpacity
-            style={[styles.docRow, !(property?.hasPaymentPlan ?? false) && styles.docRowDisabled]}
+            style={[
+              styles.docRow,
+              !(property?.hasPaymentPlan ?? false) && styles.docRowDisabled,
+            ]}
             activeOpacity={property?.hasPaymentPlan ? 0.85 : 1}
             disabled={!property?.hasPaymentPlan}
             onPress={() =>
-              navigation.navigate('PaymentPlan', {
+              navigation.navigate("PaymentPlan", {
                 propertyId: investment.propertyId,
                 readonly: true,
               })
@@ -311,46 +334,58 @@ const presentationPdfName = property?.presentationPdfName?.trim() || 'Object Pre
             </View>
           </TouchableOpacity>
 
-      <TouchableOpacity
-  style={[styles.docRow, !presentationPdfUrl && styles.docRowDisabled]}
-  activeOpacity={presentationPdfUrl ? 0.85 : 1}
-  disabled={!presentationPdfUrl}
-onPress={async () => {
-  if (!presentationPdfUrl) return;
+          <TouchableOpacity
+            style={[
+              styles.docRow,
+              !presentationPdfUrl && styles.docRowDisabled,
+            ]}
+            activeOpacity={presentationPdfUrl ? 0.85 : 1}
+            disabled={!presentationPdfUrl}
+            onPress={async () => {
+              if (!presentationPdfUrl) return;
 
-  try {
-    const url = normalizeUrl(presentationPdfUrl);
+              try {
+                const url = normalizeUrl(presentationPdfUrl);
 
-    console.log('PDF URL:', url);
+                console.log("PDF URL:", url);
 
-    await Linking.openURL(url);
-  } catch (e: any) {
-    console.log('PDF open error:', e);
+                await Linking.openURL(url);
+              } catch (e: any) {
+                console.log("PDF open error:", e);
 
-    Alert.alert(
-      'Error',
-      e?.message
-        ? `Cannot open PDF: ${e.message}`
-        : 'Cannot open PDF. Please check that a PDF viewer or browser is installed.'
-    );
-  }
-}}
->
-  <View style={styles.docIconCircle}>
-    <Ionicons name="document-text-outline" size={16} color="#555" />
-  </View>
-  <View style={styles.docTextWrap}>
-    <Text style={styles.docTitle}>{presentationPdfName}</Text>
-    <Text style={styles.docSubtext}>
-      {presentationPdfUrl ? 'PDF · Open brochure' : 'No PDF uploaded yet'}
-    </Text>
-  </View>
-</TouchableOpacity>
+                Alert.alert(
+                  "Error",
+                  e?.message
+                    ? `Cannot open PDF: ${e.message}`
+                    : "Cannot open PDF. Please check that a PDF viewer or browser is installed.",
+                );
+              }
+            }}
+          >
+            <View style={styles.docIconCircle}>
+              <Ionicons name="document-text-outline" size={16} color="#555" />
+            </View>
+            <View style={styles.docTextWrap}>
+              <Text style={styles.docTitle}>{presentationPdfName}</Text>
+              <Text style={styles.docSubtext}>
+                {presentationPdfUrl
+                  ? "PDF · Open brochure"
+                  : "No PDF uploaded yet"}
+              </Text>
+            </View>
+          </TouchableOpacity>
 
           <View style={styles.statusCard}>
             <View style={styles.inlineStatusBadge}>
-              <View style={[styles.statusDot, { backgroundColor: statusDotColor }]} />
-              <Text style={[styles.inlineStatusBadgeText, { color: statusDotColor }]}>
+              <View
+                style={[styles.statusDot, { backgroundColor: statusDotColor }]}
+              />
+              <Text
+                style={[
+                  styles.inlineStatusBadgeText,
+                  { color: statusDotColor },
+                ]}
+              >
                 {listingType}
               </Text>
             </View>
@@ -368,12 +403,10 @@ onPress={async () => {
             </View>
           </View>
 
-         <View style={styles.aboutCard}>
-  <Text style={styles.aboutTitle}>About the property</Text>
-  <Text style={styles.aboutText}>
-    {aboutText}
-  </Text>
-</View>
+          <View style={styles.aboutCard}>
+            <Text style={styles.aboutTitle}>About the property</Text>
+            <Text style={styles.aboutText}>{aboutText}</Text>
+          </View>
 
           <View style={styles.infoCard}>
             <Text style={styles.sectionTitle}>Your shares</Text>
@@ -389,7 +422,9 @@ onPress={async () => {
                 )}
 
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.shareObjectName}>{investment.propertyTitle}</Text>
+                  <Text style={styles.shareObjectName}>
+                    {investment.propertyTitle}
+                  </Text>
 
                   <View style={styles.shareMetaRow}>
                     <MaterialCommunityIcons
@@ -397,12 +432,18 @@ onPress={async () => {
                       size={14}
                       color="#8E8E93"
                     />
-                    <Text style={styles.shareMetaText}>{investment.totalShares} shares</Text>
+                    <Text style={styles.shareMetaText}>
+                      {investment.totalShares} shares
+                    </Text>
 
                     {investment.marketShares > 0 && (
                       <>
                         <Text style={styles.metaDot}>•</Text>
-                        <Ionicons name="lock-closed-outline" size={13} color="#A3A3A3" />
+                        <Ionicons
+                          name="lock-closed-outline"
+                          size={13}
+                          color="#A3A3A3"
+                        />
                         <Text style={styles.shareMetaText}>
                           {investment.marketShares} shares
                         </Text>
@@ -413,11 +454,17 @@ onPress={async () => {
               </View>
 
               <View style={styles.shareSummaryRight}>
-                <Text style={styles.shareValue}>{formatMoney(investment.totalShareValue)}</Text>
+                <Text style={styles.shareValue}>
+                  {formatMoney(investment.totalShareValue)}
+                </Text>
                 {profit >= 0 ? (
-                  <Text style={styles.shareProfit}>↗ + {formatMoneyNoCents(profit)}</Text>
+                  <Text style={styles.shareProfit}>
+                    ↗ + {formatMoneyNoCents(profit)}
+                  </Text>
                 ) : (
-                  <Text style={styles.shareLoss}>↘ - {formatMoneyNoCents(Math.abs(profit))}</Text>
+                  <Text style={styles.shareLoss}>
+                    ↘ - {formatMoneyNoCents(Math.abs(profit))}
+                  </Text>
                 )}
               </View>
             </View>
@@ -441,7 +488,7 @@ onPress={async () => {
         <BlueButton
           title="Invest"
           onPress={() =>
-            navigation.navigate('BuyShares', {
+            navigation.navigate("BuyShares", {
               propertyId: investment.propertyId,
               propertyName: investment.propertyTitle,
             })
@@ -456,20 +503,56 @@ onPress={async () => {
         />
       </View>
 
-      <TouchableOpacity activeOpacity={0.8} onPress={onToggleExpand} style={styles.toggleExpandBtn}>
-        <Text style={styles.toggleExpandText}>{expanded ? 'Hide details' : 'More details'}</Text>
+      <TouchableOpacity
+        activeOpacity={0.8}
+        onPress={onToggleExpand}
+        style={styles.toggleExpandBtn}
+      >
+        <Text style={styles.toggleExpandText}>
+          {expanded ? "Hide details" : "More details"}
+        </Text>
       </TouchableOpacity>
     </View>
   );
 };
 
-const InvestmentsScreen = () => {
-  const { setLoading } = useLoading();
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+type InvestmentsScreenData = {
+  investments: Investment[];
+  propertiesMap: Record<string, Property>;
+};
 
-  const [investments, setInvestments] = useState<Investment[]>([]);
-  const [propertiesMap, setPropertiesMap] = useState<Record<string, Property>>({});
-  const [expandedPropertyId, setExpandedPropertyId] = useState<string | null>(null);
+async function fetchInvestmentsScreenData(
+  userId: string,
+): Promise<InvestmentsScreenData> {
+  const [investmentsRes, propertiesRes] = await Promise.all([
+    api.get<Investment[]>(`/investments/with-aggregated/${userId}`, {
+      silentLoading: true,
+    } as any),
+    fetchPropertiesWithExtras(50).catch((error) => {
+      console.warn("Failed to load property extras", error);
+      return [];
+    }),
+  ]);
+
+  const propertiesMap: Record<string, Property> = {};
+  (propertiesRes ?? []).forEach((property: Property) => {
+    propertiesMap[property.id] = property;
+  });
+
+  return {
+    investments: investmentsRes.data ?? [],
+    propertiesMap,
+  };
+}
+
+const InvestmentsScreen = () => {
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const queryClient = useQueryClient();
+
+  const [expandedPropertyId, setExpandedPropertyId] = useState<string | null>(
+    null,
+  );
 
   const [modalVisible, setModalVisible] = useState(false);
   const [modalImage, setModalImage] = useState<string | null>(null);
@@ -479,15 +562,16 @@ const InvestmentsScreen = () => {
     investment: null,
     groupedInvestment: null,
     property: null,
-    mode: 'menu',
+    mode: "menu",
   });
 
-  const [userId, setUserId] = useState<string>('');
+  const [userId, setUserId] = useState<string | null>(null);
+  const [sessionLoading, setSessionLoading] = useState(true);
 
-  const [inputShares, setInputShares] = useState('');
-  const [inputStartPrice, setInputStartPrice] = useState('');
-  const [inputBuyoutPrice, setInputBuyoutPrice] = useState('');
-  const [sellPinOrPassword, setSellPinOrPassword] = useState('');
+  const [inputShares, setInputShares] = useState("");
+  const [inputStartPrice, setInputStartPrice] = useState("");
+  const [inputBuyoutPrice, setInputBuyoutPrice] = useState("");
+  const [sellPinOrPassword, setSellPinOrPassword] = useState("");
   const [showSellPassword, setShowSellPassword] = useState(false);
   const [expirationDate, setExpirationDate] = useState<Date>(
     new Date(Date.now() + 7 * 86400000),
@@ -495,10 +579,54 @@ const InvestmentsScreen = () => {
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   useEffect(() => {
-    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+    if (
+      Platform.OS === "android" &&
+      UIManager.setLayoutAnimationEnabledExperimental
+    ) {
       UIManager.setLayoutAnimationEnabledExperimental(true);
     }
   }, []);
+
+  useEffect(() => {
+    const loadSession = async () => {
+      try {
+        const stored = await AsyncStorage.getItem("user");
+
+        if (!stored) {
+          setUserId(null);
+          return;
+        }
+
+        const parsed = JSON.parse(stored);
+        const resolvedUserId =
+          parsed.userId ??
+          parsed.id ??
+          parsed.user?.id ??
+          parsed.user?.userId ??
+          null;
+
+        setUserId(resolvedUserId);
+      } catch (error) {
+        console.error("Failed to read user session", error);
+        setUserId(null);
+      } finally {
+        setSessionLoading(false);
+      }
+    };
+
+    loadSession();
+  }, []);
+
+  const { data, isLoading, isFetching, isError, refetch } = useQuery({
+    queryKey: ["investments", "aggregated", userId],
+    queryFn: () => fetchInvestmentsScreenData(userId!),
+    enabled: !!userId,
+    staleTime: 2 * 60_000,
+    gcTime: 15 * 60_000,
+  });
+
+  const investments = data?.investments ?? [];
+  const propertiesMap = data?.propertiesMap ?? {};
 
   const openImage = (uri: string) => {
     setModalImage(uri);
@@ -506,66 +634,72 @@ const InvestmentsScreen = () => {
   };
 
   const loadGroupedInvestmentForProperty = useCallback(
-    async (uid: string, propertyId: string) => {
-      const res = await api.get(`/share-offers/user/${uid}/grouped`);
-      const found = (res.data as GroupedInvestment[]).find((x) => x.propertyId === propertyId);
-      return found ?? null;
-    },
-    [],
-  );
+    async (
+      uid: string,
+      propertyId: string,
+    ): Promise<GroupedInvestment | null> => {
+      const grouped = await queryClient.fetchQuery({
+        queryKey: ["groupedInvestments", uid],
+        queryFn: async () => {
+          const res = await api.get<GroupedInvestment[]>(
+            `/share-offers/user/${uid}/grouped`,
+            { silentLoading: true } as any,
+          );
 
-  const loadInvestments = useCallback(async () => {
-    try {
-      setLoading(true);
-
-      const stored = await AsyncStorage.getItem('user');
-      if (!stored) {
-        Alert.alert('Error', 'No user found');
-        return;
-      }
-
-      const user = JSON.parse(stored);
-      setUserId(user.userId);
-
-      const [investmentsRes, propertiesRes] = await Promise.all([
-        api.get(`/investments/with-aggregated/${user.userId}`),
-        fetchPropertiesWithExtras(50).catch(() => []),
-      ]);
-
-      setInvestments(investmentsRes.data ?? []);
-
-      const propMap: Record<string, Property> = {};
-      (propertiesRes ?? []).forEach((p: Property) => {
-        propMap[p.id] = p;
+          return res.data ?? [];
+        },
+        staleTime: 60_000,
       });
-      setPropertiesMap(propMap);
-    } catch (err) {
-      console.error(err);
-      Alert.alert('Error', 'Failed to load investments');
-    } finally {
-      setLoading(false);
-    }
-  }, [setLoading]);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadInvestments();
-    }, [loadInvestments]),
+      return grouped.find((item) => item.propertyId === propertyId) ?? null;
+    },
+    [queryClient],
   );
+
+  const refreshInvestmentRelatedQueries = useCallback(async () => {
+    if (!userId) return;
+
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: ["investments", "aggregated", userId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["myInvestmentsHistory", userId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["groupedInvestments", userId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["home", userId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["profile", userId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["marketplace"],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["properties", "withExtras"],
+      }),
+    ]);
+  }, [queryClient, userId]);
 
   const openSellModal = useCallback(
     async (investment: Investment, property?: Property | null) => {
       try {
         if (!userId) return;
 
-        const groupedInvestment = await loadGroupedInvestmentForProperty(userId, investment.propertyId);
+        const groupedInvestment = await loadGroupedInvestmentForProperty(
+          userId,
+          investment.propertyId,
+        );
 
-        setInputShares('');
-        setInputStartPrice('');
-        setInputBuyoutPrice('');
+        setInputShares("");
+        setInputStartPrice("");
+        setInputBuyoutPrice("");
         setExpirationDate(new Date(Date.now() + 7 * 86400000));
 
-        setSellPinOrPassword('');
+        setSellPinOrPassword("");
         setShowSellPassword(false);
 
         setSellState({
@@ -573,11 +707,11 @@ const InvestmentsScreen = () => {
           investment,
           groupedInvestment,
           property: property ?? null,
-          mode: 'menu',
+          mode: "menu",
         });
       } catch (error) {
         console.error(error);
-        Alert.alert('Error', 'Failed to prepare sale options');
+        Alert.alert("Error", "Failed to prepare sale options");
       }
     },
     [userId, loadGroupedInvestmentForProperty],
@@ -589,10 +723,10 @@ const InvestmentsScreen = () => {
       investment: null,
       groupedInvestment: null,
       property: null,
-      mode: 'menu',
+      mode: "menu",
     });
-  setSellPinOrPassword('');
-setShowSellPassword(false);
+    setSellPinOrPassword("");
+    setShowSellPassword(false);
   };
 
   const handleSellToPlatform = async () => {
@@ -600,33 +734,33 @@ setShowSellPassword(false);
     if (!grouped || !userId) return;
 
     if (!sellPinOrPassword.trim()) {
-    Alert.alert('Validation', 'Enter PIN or password');
-    return;
-}
+      Alert.alert("Validation", "Enter PIN or password");
+      return;
+    }
 
     Alert.alert(
-      'Confirm Sale',
+      "Confirm Sale",
       `Sell ${grouped.shares} shares of ${grouped.propertyTitle} for ${formatMoney(
         (grouped.buybackPricePerShare ?? 0) * grouped.shares,
       )}?`,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: "Cancel", style: "cancel" },
         {
-          text: 'Sell',
+          text: "Sell",
           onPress: async () => {
             try {
-              await api.post('/share-offers/sell-to-platform', {
+              await api.post("/share-offers/sell-to-platform", {
                 userId,
-                 propertyId: grouped.propertyId,
-                 pinOrPassword: sellPinOrPassword,
+                propertyId: grouped.propertyId,
+                pinOrPassword: sellPinOrPassword,
               });
 
-              Alert.alert('Success', 'Shares sold to platform');
+              Alert.alert("Success", "Shares sold to platform");
               closeSellModal();
-              await loadInvestments();
+              await refreshInvestmentRelatedQueries();
             } catch (error) {
               console.error(error);
-              Alert.alert('Error', 'Failed to sell shares');
+              Alert.alert("Error", "Failed to sell shares");
             }
           },
         },
@@ -643,70 +777,114 @@ setShowSellPassword(false);
     const buyoutPrice = inputBuyoutPrice ? parseFloat(inputBuyoutPrice) : null;
 
     if (isNaN(shares) || shares <= 0 || isNaN(startPrice) || startPrice <= 0) {
-      Alert.alert('Validation', 'Enter valid shares and start price');
+      Alert.alert("Validation", "Enter valid shares and start price");
       return;
     }
 
     if (shares > grouped.shares) {
-      Alert.alert('Validation', `You cannot sell more than ${grouped.shares} shares`);
+      Alert.alert(
+        "Validation",
+        `You cannot sell more than ${grouped.shares} shares`,
+      );
       return;
     }
 
-    const daysDiff = Math.ceil((expirationDate.getTime() - Date.now()) / 86400000);
+    const daysDiff = Math.ceil(
+      (expirationDate.getTime() - Date.now()) / 86400000,
+    );
     if (daysDiff < 7) {
-      Alert.alert('Validation', 'Minimum auction duration is 7 days');
+      Alert.alert("Validation", "Minimum auction duration is 7 days");
       return;
     }
 
     if (!sellPinOrPassword.trim()) {
-      Alert.alert('Validation', 'Enter PIN or password');
+      Alert.alert("Validation", "Enter PIN or password");
       return;
     }
 
     try {
-      await api.post('/share-offers', {
+      await api.post("/share-offers", {
         sellerId: userId,
         propertyId: grouped.propertyId,
         sharesForSale: shares,
         startPricePerShare: startPrice,
         buyoutPricePerShare: buyoutPrice,
         expirationDate: expirationDate.toISOString(),
-         pinOrPassword: sellPinOrPassword,
+        pinOrPassword: sellPinOrPassword,
       });
 
-      Alert.alert('Success', 'Offer listed on marketplace');
+      Alert.alert("Success", "Offer listed on marketplace");
       closeSellModal();
-      await loadInvestments();
+      await refreshInvestmentRelatedQueries();
     } catch (error: any) {
-      let message = 'Failed to create offer';
+      let message = "Failed to create offer";
       console.error(error);
       if (error.response && error.response.data) {
         message = JSON.stringify(error.response.data);
       } else if (error.message) {
         message = error.message;
       }
-      Alert.alert('Error', message);
+      Alert.alert("Error", message);
     }
   };
 
+  if (sessionLoading || (isLoading && !data)) {
+    return (
+      <View style={styles.centerState}>
+        <Text style={styles.loadingText}>Loading investments...</Text>
+      </View>
+    );
+  }
+
+  if (!userId) {
+    return (
+      <View style={styles.centerState}>
+        <Text style={styles.errorText}>User session was not found.</Text>
+      </View>
+    );
+  }
+
+  if (isError && !data) {
+    return (
+      <View style={styles.centerState}>
+        <Text style={styles.errorText}>Failed to load investments.</Text>
+        <BlueButton title="Try Again" onPress={() => refetch()} />
+      </View>
+    );
+  }
+
   const sellPreview = getPropertyPreview(sellState.property);
   const sellProfit =
-    (sellState.investment?.totalShareValue ?? 0) - (sellState.investment?.totalInvested ?? 0);
+    (sellState.investment?.totalShareValue ?? 0) -
+    (sellState.investment?.totalInvested ?? 0);
 
   return (
     <View style={styles.container}>
       <FlatList
         data={investments}
         keyExtractor={(item) => item.propertyId}
+        refreshing={isFetching && !isLoading}
+        onRefresh={refetch}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
+        ListEmptyComponent={
+          !isLoading ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyText}>
+                You do not have investments yet.
+              </Text>
+            </View>
+          ) : null
+        }
         renderItem={({ item }) => (
           <InvestmentCard
             investment={item}
             property={propertiesMap[item.propertyId]}
             expanded={expandedPropertyId === item.propertyId}
             onToggleExpand={() => {
-              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+              LayoutAnimation.configureNext(
+                LayoutAnimation.Presets.easeInEaseOut,
+              );
               setExpandedPropertyId((prev) =>
                 prev === item.propertyId ? null : item.propertyId,
               );
@@ -718,9 +896,15 @@ setShowSellPassword(false);
         )}
       />
 
-      <Modal visible={modalVisible} transparent onRequestClose={() => setModalVisible(false)}>
+      <Modal
+        visible={modalVisible}
+        transparent
+        onRequestClose={() => setModalVisible(false)}
+      >
         <View style={styles.modalView}>
-          {modalImage && <Image source={{ uri: modalImage }} style={styles.modalImage} />}
+          {modalImage && (
+            <Image source={{ uri: modalImage }} style={styles.modalImage} />
+          )}
         </View>
       </Modal>
 
@@ -731,25 +915,31 @@ setShowSellPassword(false);
         onRequestClose={closeSellModal}
       >
         <View style={styles.sellOverlay}>
-       <View style={styles.sellSheet}>
-        <View style={styles.sheetHeader}>
-          <View style={styles.sheetHandlePlaceholder} />
+          <View style={styles.sellSheet}>
+            <View style={styles.sheetHeader}>
+              <View style={styles.sheetHandlePlaceholder} />
 
-          <View style={styles.sheetHandle} />
+              <View style={styles.sheetHandle} />
 
-          <Pressable onPress={closeSellModal} style={styles.sheetCloseButton}>
-            <Ionicons name="close" size={24} color="#111827" />
-          </Pressable>
-        </View>
+              <Pressable
+                onPress={closeSellModal}
+                style={styles.sheetCloseButton}
+              >
+                <Ionicons name="close" size={24} color="#111827" />
+              </Pressable>
+            </View>
 
-        <Text style={styles.sellTitle}>Sell Shares</Text>
+            <Text style={styles.sellTitle}>Sell Shares</Text>
             <View style={styles.sellDivider} />
 
             <ScrollView showsVerticalScrollIndicator={false}>
               <View style={styles.sellHeaderRow}>
                 <View style={styles.sellHeaderLeft}>
                   {sellPreview ? (
-                    <Image source={{ uri: sellPreview }} style={styles.sellThumb} />
+                    <Image
+                      source={{ uri: sellPreview }}
+                      style={styles.sellThumb}
+                    />
                   ) : (
                     <View style={[styles.sellThumb, styles.imageFallback]}>
                       <Text style={styles.imageFallbackText}>No</Text>
@@ -758,7 +948,7 @@ setShowSellPassword(false);
 
                   <View style={{ flex: 1 }}>
                     <Text style={styles.sellPropertyName}>
-                      {sellState.investment?.propertyTitle ?? ''}
+                      {sellState.investment?.propertyTitle ?? ""}
                     </Text>
 
                     <View style={styles.shareMetaRow}>
@@ -768,7 +958,9 @@ setShowSellPassword(false);
                         color="#8E8E93"
                       />
                       <Text style={styles.shareMetaText}>
-                        {sellState.groupedInvestment?.shares ?? sellState.investment?.totalShares ?? 0}{' '}
+                        {sellState.groupedInvestment?.shares ??
+                          sellState.investment?.totalShares ??
+                          0}{" "}
                         shares
                       </Text>
                     </View>
@@ -780,20 +972,28 @@ setShowSellPassword(false);
                     {formatMoney(sellState.investment?.totalShareValue ?? 0)}
                   </Text>
                   {sellProfit >= 0 ? (
-                    <Text style={styles.shareProfit}>↗ + {formatMoneyNoCents(sellProfit)}</Text>
+                    <Text style={styles.shareProfit}>
+                      ↗ + {formatMoneyNoCents(sellProfit)}
+                    </Text>
                   ) : (
-                    <Text style={styles.shareLoss}>↘ - {formatMoneyNoCents(Math.abs(sellProfit))}</Text>
+                    <Text style={styles.shareLoss}>
+                      ↘ - {formatMoneyNoCents(Math.abs(sellProfit))}
+                    </Text>
                   )}
                 </View>
               </View>
 
-              {sellState.mode === 'menu' ? (
+              {sellState.mode === "menu" ? (
                 <>
-                  <Text style={styles.sellQuestion}>How would you like to sell?</Text>
+                  <Text style={styles.sellQuestion}>
+                    How would you like to sell?
+                  </Text>
 
                   {!!sellState.groupedInvestment?.buybackPricePerShare && (
                     <View style={styles.sellOptionCard}>
-                      <Text style={styles.sellOptionTitle}>Sell to Platform</Text>
+                      <Text style={styles.sellOptionTitle}>
+                        Sell to Platform
+                      </Text>
                       <Text style={styles.sellOptionSubtitle}>
                         Instant sale at platform price (buyback).
                       </Text>
@@ -801,15 +1001,22 @@ setShowSellPassword(false);
                       <View style={styles.sellPriceBlock}>
                         <View>
                           <Text style={styles.sellPriceLabel}>Price</Text>
-                          <Text style={styles.sellPriceSub}>Instant crediting</Text>
+                          <Text style={styles.sellPriceSub}>
+                            Instant crediting
+                          </Text>
                         </View>
 
                         <Text style={styles.sellPriceValue}>
-                          ${sellState.groupedInvestment.buybackPricePerShare.toFixed(0)}
+                          $
+                          {sellState.groupedInvestment.buybackPricePerShare.toFixed(
+                            0,
+                          )}
                         </Text>
                       </View>
 
-                      <Text style={styles.modalFieldLabel}>Enter PIN or password</Text>
+                      <Text style={styles.modalFieldLabel}>
+                        Enter PIN or password
+                      </Text>
                       <View style={styles.pinInputWrap}>
                         <TextInput
                           placeholder="Enter PIN or password"
@@ -825,7 +1032,11 @@ setShowSellPassword(false);
                           style={styles.pinEyeButton}
                         >
                           <Ionicons
-                            name={showSellPassword ? 'eye-outline' : 'eye-off-outline'}
+                            name={
+                              showSellPassword
+                                ? "eye-outline"
+                                : "eye-off-outline"
+                            }
                             size={20}
                             color="#6B7280"
                           />
@@ -844,7 +1055,6 @@ setShowSellPassword(false);
                         style={styles.modalPrimaryBtn}
                       />
                     </View>
-                    
                   )}
 
                   <View style={styles.sellOptionCard}>
@@ -855,7 +1065,9 @@ setShowSellPassword(false);
 
                     <BlueButton
                       title="Create Listing"
-                      onPress={() => setSellState((prev) => ({ ...prev, mode: 'listing' }))}
+                      onPress={() =>
+                        setSellState((prev) => ({ ...prev, mode: "listing" }))
+                      }
                       width="full"
                       showArrow={false}
                       bgColor="#05060D"
@@ -864,20 +1076,14 @@ setShowSellPassword(false);
                       paddingVertical={12}
                       style={styles.modalPrimaryBtn}
                     />
-
-                    
-
                   </View>
 
-                     <Pressable
-                      onPress={closeSellModal}
-                      style={styles.modalCancelFullBtn}
-                    >
-                      <Text style={styles.modalCancelFullText}>
-                        Cancel
-                      </Text>
-                    </Pressable>
-                    
+                  <Pressable
+                    onPress={closeSellModal}
+                    style={styles.modalCancelFullBtn}
+                  >
+                    <Text style={styles.modalCancelFullText}>Cancel</Text>
+                  </Pressable>
                 </>
               ) : (
                 <View style={styles.sellOptionCard}>
@@ -896,7 +1102,9 @@ setShowSellPassword(false);
                     placeholderTextColor="#9CA3AF"
                   />
 
-                  <Text style={styles.modalFieldLabel}>Start price per share</Text>
+                  <Text style={styles.modalFieldLabel}>
+                    Start price per share
+                  </Text>
                   <TextInput
                     placeholder="Start price per share"
                     value={inputStartPrice}
@@ -906,7 +1114,8 @@ setShowSellPassword(false);
                       styles.modalInput,
                       sellState.groupedInvestment &&
                       parseFloat(inputStartPrice) > 0 &&
-                      parseFloat(inputStartPrice) < sellState.groupedInvestment.averagePrice
+                      parseFloat(inputStartPrice) <
+                        sellState.groupedInvestment.averagePrice
                         ? styles.inputWarning
                         : null,
                     ]}
@@ -915,13 +1124,16 @@ setShowSellPassword(false);
 
                   {sellState.groupedInvestment &&
                     parseFloat(inputStartPrice) > 0 &&
-                    parseFloat(inputStartPrice) < sellState.groupedInvestment.averagePrice && (
+                    parseFloat(inputStartPrice) <
+                      sellState.groupedInvestment.averagePrice && (
                       <Text style={styles.warningText}>
                         ⚠️ Price is below your average share price
                       </Text>
                     )}
 
-                  <Text style={styles.modalFieldLabel}>Buyout price per share (optional)</Text>
+                  <Text style={styles.modalFieldLabel}>
+                    Buyout price per share (optional)
+                  </Text>
                   <TextInput
                     placeholder="Buyout price per share"
                     value={inputBuyoutPrice}
@@ -932,7 +1144,10 @@ setShowSellPassword(false);
                   />
 
                   <Text style={styles.modalFieldLabel}>Expiration date</Text>
-                  <TouchableOpacity activeOpacity={0.85} onPress={() => setShowDatePicker(true)}>
+                  <TouchableOpacity
+                    activeOpacity={0.85}
+                    onPress={() => setShowDatePicker(true)}
+                  >
                     <View style={styles.modalInput}>
                       <Text style={styles.expirationText}>
                         {expirationDate.toDateString()}
@@ -944,7 +1159,7 @@ setShowSellPassword(false);
                     <DateTimePicker
                       value={expirationDate}
                       mode="date"
-                      display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                      display={Platform.OS === "ios" ? "spinner" : "default"}
                       minimumDate={new Date(Date.now() + 7 * 86400000)}
                       onChange={(_, selectedDate) => {
                         setShowDatePicker(false);
@@ -953,35 +1168,38 @@ setShowSellPassword(false);
                     />
                   )}
 
-               
-                <Text style={styles.modalFieldLabel}>Enter PIN or password</Text>
-                    <View style={styles.pinInputWrap}>
-                      <TextInput
-                        placeholder="Enter PIN or password"
-                        value={sellPinOrPassword}
-                        onChangeText={setSellPinOrPassword}
-                        secureTextEntry={!showSellPassword}
-                        style={styles.modalInput}
-                        placeholderTextColor="#9CA3AF"
+                  <Text style={styles.modalFieldLabel}>
+                    Enter PIN or password
+                  </Text>
+                  <View style={styles.pinInputWrap}>
+                    <TextInput
+                      placeholder="Enter PIN or password"
+                      value={sellPinOrPassword}
+                      onChangeText={setSellPinOrPassword}
+                      secureTextEntry={!showSellPassword}
+                      style={styles.modalInput}
+                      placeholderTextColor="#9CA3AF"
+                    />
+
+                    <Pressable
+                      onPress={() => setShowSellPassword((prev) => !prev)}
+                      style={styles.pinEyeButton}
+                    >
+                      <Ionicons
+                        name={
+                          showSellPassword ? "eye-outline" : "eye-off-outline"
+                        }
+                        size={20}
+                        color="#6B7280"
                       />
-
-                      <Pressable
-                        onPress={() => setShowSellPassword((prev) => !prev)}
-                        style={styles.pinEyeButton}
-                      >
-                        <Ionicons
-                          name={showSellPassword ? 'eye-outline' : 'eye-off-outline'}
-                          size={20}
-                          color="#6B7280"
-                        />
-                      </Pressable>
-                    </View>
-
+                    </Pressable>
+                  </View>
 
                   <View style={styles.modalActionRow}>
- 
                     <Pressable
-                      onPress={() => setSellState((prev) => ({ ...prev, mode: 'menu' }))}
+                      onPress={() =>
+                        setSellState((prev) => ({ ...prev, mode: "menu" }))
+                      }
                       style={styles.modalBackBtn}
                     >
                       <Text style={styles.modalBackBtnText}>Back</Text>
@@ -1012,11 +1230,42 @@ setShowSellPassword(false);
 export default InvestmentsScreen;
 
 const styles = StyleSheet.create({
+  centerState: {
+    flex: 1,
+    padding: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#ECECEC",
+  },
+
+  loadingText: {
+    fontSize: 16,
+    color: theme.colors.textSecondary,
+  },
+
+  errorText: {
+    fontSize: 16,
+    color: theme.colors.danger,
+    textAlign: "center",
+    marginBottom: 16,
+  },
+
+  emptyState: {
+    paddingVertical: 40,
+    alignItems: "center",
+  },
+
+  emptyText: {
+    fontSize: 16,
+    color: theme.colors.textSecondary,
+    textAlign: "center",
+  },
+
   container: {
     flex: 1,
     paddingHorizontal: 16,
     paddingTop: 12,
-    backgroundColor: '#ECECEC',
+    backgroundColor: "#ECECEC",
   },
 
   listContent: {
@@ -1024,20 +1273,20 @@ const styles = StyleSheet.create({
   },
 
   card: {
-    backgroundColor: '#F7F7F7',
+    backgroundColor: "#F7F7F7",
     borderWidth: 1,
-    borderColor: '#EAEAEA',
+    borderColor: "#EAEAEA",
     padding: 14,
     borderRadius: 28,
     marginBottom: 18,
   },
 
   mediaWrap: {
-    position: 'relative',
+    position: "relative",
   },
 
   carouselContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginVertical: 1,
   },
 
@@ -1046,10 +1295,10 @@ const styles = StyleSheet.create({
   },
 
   carouselImage: {
-    width: '100%',
+    width: "100%",
     height: 220,
     borderRadius: 22,
-    backgroundColor: '#E8E8E8',
+    backgroundColor: "#E8E8E8",
   },
 
   paginationStyle: {
@@ -1061,7 +1310,7 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     marginHorizontal: 3,
-    backgroundColor: 'rgba(255,255,255,0.55)',
+    backgroundColor: "rgba(255,255,255,0.55)",
   },
 
   swiperActiveDot: {
@@ -1069,13 +1318,13 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 999,
     marginHorizontal: 3,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
   },
 
   objectName: {
-    fontWeight: '600',
+    fontWeight: "600",
     fontSize: 20,
-    color: '#1F1F1F',
+    color: "#1F1F1F",
     marginTop: 14,
   },
 
@@ -1084,15 +1333,15 @@ const styles = StyleSheet.create({
   },
 
   infoCard: {
-    backgroundColor: '#F3F3F3',
+    backgroundColor: "#F3F3F3",
     borderRadius: 16,
     padding: 12,
     marginBottom: 12,
   },
 
   locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 12,
   },
 
@@ -1100,76 +1349,76 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#E8E8E8',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#E8E8E8",
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: 10,
   },
 
   locationRowTitle: {
     fontSize: 13,
     lineHeight: 18,
-    color: '#2C2C2C',
-    fontWeight: '500',
+    color: "#2C2C2C",
+    fontWeight: "500",
   },
 
   locationRowSub: {
     marginTop: 2,
     fontSize: 12,
-    color: '#9A9A9A',
+    color: "#9A9A9A",
   },
 
   mapPreviewWrap: {
-    position: 'relative',
+    position: "relative",
     borderRadius: 14,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
 
   mapPreviewImage: {
-    width: '100%',
+    width: "100%",
     height: 110,
     borderRadius: 14,
   },
 
   mapButtonOverlay: {
-    position: 'absolute',
+    position: "absolute",
     right: 10,
     bottom: 10,
     width: 42,
     height: 42,
-    resizeMode: 'contain',
+    resizeMode: "contain",
   },
 
   yieldRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
 
   metricCircle: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#E8E8E8',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#E8E8E8",
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   yieldTitle: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#222',
+    fontWeight: "600",
+    color: "#222",
   },
 
   yieldSubtext: {
     marginTop: 2,
     fontSize: 12,
-    color: '#9A9A9A',
+    color: "#9A9A9A",
   },
 
   docRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F3F3F3',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F3F3F3",
     borderRadius: 16,
     padding: 12,
     marginBottom: 10,
@@ -1183,16 +1432,16 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#E7E7E7',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#E7E7E7",
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: 10,
   },
 
   docIconImage: {
     width: 28,
     height: 28,
-    resizeMode: 'contain',
+    resizeMode: "contain",
     marginRight: 10,
   },
 
@@ -1202,29 +1451,29 @@ const styles = StyleSheet.create({
 
   docTitle: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#222',
+    fontWeight: "600",
+    color: "#222",
   },
 
   docSubtext: {
     marginTop: 2,
     fontSize: 12,
-    color: '#9A9A9A',
+    color: "#9A9A9A",
   },
 
   statusCard: {
-    backgroundColor: '#F3F3F3',
+    backgroundColor: "#F3F3F3",
     borderRadius: 16,
     padding: 12,
     marginBottom: 12,
   },
 
   inlineStatusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 12,
-    backgroundColor: '#ECFDF5',
-    alignSelf: 'flex-start',
+    backgroundColor: "#ECFDF5",
+    alignSelf: "flex-start",
     borderRadius: 14,
     paddingVertical: 6,
     paddingHorizontal: 10,
@@ -1239,38 +1488,38 @@ const styles = StyleSheet.create({
 
   inlineStatusBadgeText: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 
   timelineRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     gap: 12,
   },
 
   timelineCol: {
     flex: 1,
-    backgroundColor: '#EDEDED',
+    backgroundColor: "#EDEDED",
     borderRadius: 14,
     paddingVertical: 12,
     paddingHorizontal: 12,
-    alignItems: 'center',
+    alignItems: "center",
   },
 
   timelineLabel: {
     fontSize: 12,
-    color: '#8A8A8A',
+    color: "#8A8A8A",
   },
 
   timelineValue: {
     marginTop: 6,
     fontSize: 16,
-    fontWeight: '700',
-    color: '#10B981',
+    fontWeight: "700",
+    color: "#10B981",
   },
 
   aboutCard: {
-    backgroundColor: '#F3F3F3',
+    backgroundColor: "#F3F3F3",
     borderRadius: 16,
     padding: 12,
     marginBottom: 12,
@@ -1278,33 +1527,33 @@ const styles = StyleSheet.create({
 
   aboutTitle: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#1E1E1E',
+    fontWeight: "700",
+    color: "#1E1E1E",
     marginBottom: 8,
   },
 
   aboutText: {
     fontSize: 13,
     lineHeight: 19,
-    color: '#555',
+    color: "#555",
   },
 
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#1E1E1E',
+    fontWeight: "700",
+    color: "#1E1E1E",
     marginBottom: 12,
   },
 
   shareSummaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
 
   shareSummaryLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
     paddingRight: 10,
   },
@@ -1314,60 +1563,60 @@ const styles = StyleSheet.create({
     height: 52,
     borderRadius: 26,
     marginRight: 10,
-    backgroundColor: '#DDE3EA',
+    backgroundColor: "#DDE3EA",
   },
 
   shareObjectName: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#1F1F1F',
+    fontWeight: "600",
+    color: "#1F1F1F",
   },
 
   shareMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginTop: 6,
-    flexWrap: 'wrap',
+    flexWrap: "wrap",
   },
 
   shareMetaText: {
     marginLeft: 5,
     fontSize: 13,
-    color: '#A3A3A3',
-    fontWeight: '500',
+    color: "#A3A3A3",
+    fontWeight: "500",
   },
 
   metaDot: {
     marginHorizontal: 6,
-    color: '#A3A3A3',
+    color: "#A3A3A3",
   },
 
   shareSummaryRight: {
-    alignItems: 'flex-end',
+    alignItems: "flex-end",
   },
 
   shareValue: {
     fontSize: 15,
-    fontWeight: '700',
-    color: '#1F1F1F',
+    fontWeight: "700",
+    color: "#1F1F1F",
   },
 
   shareProfit: {
     marginTop: 6,
     fontSize: 13,
-    fontWeight: '600',
-    color: '#10B981',
+    fontWeight: "600",
+    color: "#10B981",
   },
 
   shareLoss: {
     marginTop: 6,
     fontSize: 13,
-    fontWeight: '600',
-    color: '#EF4444',
+    fontWeight: "600",
+    color: "#EF4444",
   },
 
   cardButtonsRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginTop: 14,
   },
 
@@ -1382,99 +1631,99 @@ const styles = StyleSheet.create({
 
   toggleExpandBtn: {
     marginTop: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   toggleExpandText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
+    fontWeight: "600",
+    color: "#111827",
   },
 
   modalView: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.8)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0,0,0,0.8)",
+    justifyContent: "center",
+    alignItems: "center",
   },
 
   modalImage: {
-    width: '90%',
-    height: '70%',
-    resizeMode: 'contain',
+    width: "90%",
+    height: "70%",
+    resizeMode: "contain",
   },
 
   imageFallback: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   imageFallbackText: {
-    color: '#777',
-    fontWeight: '600',
+    color: "#777",
+    fontWeight: "600",
   },
 
   videoSlide: {
-    backgroundColor: '#000',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#000",
+    justifyContent: "center",
+    alignItems: "center",
   },
 
   videoSlideText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: "800",
   },
 
   sellOverlay: {
     flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.35)",
   },
 
   sellSheet: {
-    backgroundColor: '#F7F7F7',
+    backgroundColor: "#F7F7F7",
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     paddingHorizontal: 16,
     paddingTop: 10,
     paddingBottom: 20,
-    maxHeight: '85%',
+    maxHeight: "85%",
   },
 
-sheetHandle: {
-  width: 64,
-  height: 6,
-  borderRadius: 999,
-  backgroundColor: '#C4C4C4',
-  alignSelf: 'center',
-},
+  sheetHandle: {
+    width: 64,
+    height: 6,
+    borderRadius: 999,
+    backgroundColor: "#C4C4C4",
+    alignSelf: "center",
+  },
 
   sellTitle: {
     fontSize: 24,
-    fontWeight: '700',
-    color: '#171717',
-    textAlign: 'center',
+    fontWeight: "700",
+    color: "#171717",
+    textAlign: "center",
     marginBottom: 14,
   },
 
   sellDivider: {
     height: 1,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: "#E5E7EB",
     marginBottom: 18,
   },
 
   sellHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 22,
   },
 
   sellHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
     paddingRight: 10,
   },
@@ -1484,35 +1733,35 @@ sheetHandle: {
     height: 52,
     borderRadius: 26,
     marginRight: 10,
-    backgroundColor: '#DDE3EA',
+    backgroundColor: "#DDE3EA",
   },
 
   sellPropertyName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1F1F1F',
+    fontWeight: "600",
+    color: "#1F1F1F",
     marginBottom: 4,
   },
 
   sellHeaderRight: {
-    alignItems: 'flex-end',
+    alignItems: "flex-end",
   },
 
   sellHeaderValue: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#1F1F1F',
+    fontWeight: "700",
+    color: "#1F1F1F",
   },
 
   sellQuestion: {
     fontSize: 22,
-    fontWeight: '700',
-    color: '#171717',
+    fontWeight: "700",
+    color: "#171717",
     marginBottom: 18,
   },
 
   sellOptionCard: {
-    backgroundColor: '#EFEFEF',
+    backgroundColor: "#EFEFEF",
     borderRadius: 22,
     padding: 16,
     marginBottom: 18,
@@ -1520,40 +1769,40 @@ sheetHandle: {
 
   sellOptionTitle: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#171717',
+    fontWeight: "700",
+    color: "#171717",
   },
 
   sellOptionSubtitle: {
     marginTop: 6,
     fontSize: 14,
-    color: '#A1A1A1',
+    color: "#A1A1A1",
     marginBottom: 18,
   },
 
   sellPriceBlock: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
     marginBottom: 18,
   },
 
   sellPriceLabel: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#171717',
+    fontWeight: "700",
+    color: "#171717",
   },
 
   sellPriceSub: {
     marginTop: 6,
     fontSize: 14,
-    color: '#A1A1A1',
+    color: "#A1A1A1",
   },
 
   sellPriceValue: {
     fontSize: 24,
-    fontWeight: '800',
-    color: '#10B981',
+    fontWeight: "800",
+    color: "#10B981",
   },
 
   modalPrimaryBtn: {
@@ -1565,57 +1814,57 @@ sheetHandle: {
 
   modalFieldLabel: {
     fontSize: 12,
-    color: '#8A8A8A',
+    color: "#8A8A8A",
     marginBottom: 6,
     marginTop: 2,
   },
 
   modalInput: {
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: "#E5E7EB",
     paddingHorizontal: 12,
     paddingVertical: 12,
     marginBottom: 12,
     borderRadius: 12,
-    backgroundColor: '#F8F8F8',
+    backgroundColor: "#F8F8F8",
     paddingRight: 44,
   },
 
   expirationText: {
     fontSize: 15,
-    color: '#1F1F1F',
+    color: "#1F1F1F",
   },
 
   inputWarning: {
-    borderColor: '#ff9900',
-    backgroundColor: '#fff6e5',
+    borderColor: "#ff9900",
+    backgroundColor: "#fff6e5",
   },
 
   warningText: {
-    color: '#cc6600',
+    color: "#cc6600",
     marginBottom: 8,
-    fontStyle: 'italic',
+    fontStyle: "italic",
     fontSize: 13,
   },
 
   modalActionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginTop: 8,
   },
 
   modalBackBtn: {
     width: 88,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     height: 46,
     marginRight: 10,
   },
 
   modalBackBtnText: {
-    color: '#3F3F46',
+    color: "#3F3F46",
     fontSize: 15,
-    fontWeight: '500',
+    fontWeight: "500",
   },
 
   modalSubmitBtn: {
@@ -1627,57 +1876,57 @@ sheetHandle: {
   },
 
   pinInputWrap: {
-  position: 'relative',
-},
+    position: "relative",
+  },
 
-pinEyeButton: {
-  position: 'absolute',
-  right: 12,
-  top: 14,
-  width: 28,
-  height: 28,
-  alignItems: 'center',
-  justifyContent: 'center',
-},
-sheetHeader: {
-  position: 'relative',
-  alignItems: 'center',
-  justifyContent: 'center',
-  marginBottom: 18,
-  height: 32,
-},
+  pinEyeButton: {
+    position: "absolute",
+    right: 12,
+    top: 14,
+    width: 28,
+    height: 28,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sheetHeader: {
+    position: "relative",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 18,
+    height: 32,
+  },
 
-sheetHandlePlaceholder: {
-  position: 'absolute',
-  left: 0,
-  width: 44,
-  height: 44,
-},
+  sheetHandlePlaceholder: {
+    position: "absolute",
+    left: 0,
+    width: 44,
+    height: 44,
+  },
 
-sheetCloseButton: {
-  position: 'absolute',
-  right: 0,
-  top: -6,
-  width: 44,
-  height: 44,
-  borderRadius: 22,
-  alignItems: 'center',
-  justifyContent: 'center',
-  backgroundColor: '#ECECEC',
-},
+  sheetCloseButton: {
+    position: "absolute",
+    right: 0,
+    top: -6,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#ECECEC",
+  },
 
-modalCancelFullBtn: {
-  height: 46,
-  borderRadius: 14,
-  alignItems: 'center',
-  justifyContent: 'center',
-  backgroundColor: '#E5E7EB',
-  marginBottom: 4,
-},
+  modalCancelFullBtn: {
+    height: 46,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#E5E7EB",
+    marginBottom: 4,
+  },
 
-modalCancelFullText: {
-  fontSize: 15,
-  fontWeight: '700',
-  color: '#374151',
-},
+  modalCancelFullText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#374151",
+  },
 });
