@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
 import api from '../api';
 import theme from '../constants/theme';
 import { LineChart } from 'react-native-chart-kit';
+import { useQuery } from '@tanstack/react-query';
 
 import growthIcon from '../assets/images/Vector.png';
 import rentalIcon from '../assets/images/rental.png';
@@ -32,6 +33,20 @@ type ChartPoint = {
   date: string;
   total: number;
 };
+
+
+// История выплат хранится в React Query кеше.
+// Экран больше не управляет loading/refreshing вручную.
+async function fetchRentIncomeHistory(): Promise<LogEntry[]> {
+  const res = await api.get('/users/me/rent-income-history', {
+    silentLoading: true,
+    silentError: true,
+    errorContext: 'Failed to load rental income history',
+    errorTitle: 'Rental Income',
+  } as any);
+
+  return Array.isArray(res.data) ? res.data : [];
+}
 
 function money(n: number) {
   return `$${n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
@@ -75,31 +90,22 @@ function filterHistoryByRange(
 }
 
 export default function MyRentIncomeScreen() {
-  const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const {
+    data: logs = [],
+    isLoading,
+    isFetching,
+    isError,
+    error,
+    refetch,
+  } = useQuery<LogEntry[]>({
+    queryKey: ['rentIncomeHistory'],
+    queryFn: fetchRentIncomeHistory,
+    staleTime: 60_000,
+    gcTime: 10 * 60_000,
+    retry: 1,
+  });
+
   const [chartRange, setChartRange] = useState<'3m' | '6m' | '1y' | 'all'>('1y');
-
-  const load = async () => {
-    try {
-      const res = await api.get('/users/me/rent-income-history');
-      setLogs(Array.isArray(res.data) ? res.data : []);
-    } catch {
-      setLogs([]);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  useEffect(() => {
-    load();
-  }, []);
-
-  const onRefresh = () => {
-    setRefreshing(true);
-    load();
-  };
 
   const totalEarned = useMemo(() => {
     return logs.reduce((sum, item) => sum + (item.amount || 0), 0);
@@ -170,10 +176,32 @@ export default function MyRentIncomeScreen() {
   const chartWidth =
     Dimensions.get('window').width - theme.spacing.lg * 2 - theme.spacing.md * 2;
 
-  if (loading) {
+  if (isLoading) {
     return (
       <View style={styles.loaderWrap}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
+
+
+  if (isError) {
+    return (
+      <View style={styles.errorWrap}>
+        <Text style={styles.errorTitle}>Failed to load rental income</Text>
+        <Text style={styles.errorText}>
+          Check your connection and try again.
+        </Text>
+
+        <Pressable
+          style={styles.retryButton}
+          onPress={() => {
+            console.error(error);
+            refetch();
+          }}
+        >
+          <Text style={styles.retryButtonText}>Try again</Text>
+        </Pressable>
       </View>
     );
   }
@@ -183,7 +211,11 @@ export default function MyRentIncomeScreen() {
       style={styles.container}
       contentContainerStyle={{ paddingBottom: theme.spacing.xl }}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        <RefreshControl
+          refreshing={isFetching && !isLoading}
+          onRefresh={refetch}
+          tintColor={theme.colors.primary}
+        />
       }
       showsVerticalScrollIndicator={false}
     >
@@ -390,6 +422,47 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+
+
+  errorWrap: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: theme.spacing.xl,
+  },
+
+  errorTitle: {
+    fontSize: theme.typography.sizes.lg,
+    fontWeight: '800',
+    color: theme.colors.text,
+    textAlign: 'center',
+  },
+
+  errorText: {
+    marginTop: 6,
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.textSecondary,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+
+  retryButton: {
+    marginTop: theme.spacing.lg,
+    minWidth: 120,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: theme.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 18,
+  },
+
+  retryButtonText: {
+    fontSize: theme.typography.sizes.sm,
+    fontWeight: '700',
+    color: theme.colors.white,
   },
 
   header: {

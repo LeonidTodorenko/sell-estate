@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
@@ -8,10 +8,12 @@ import {
   Image,
   Alert,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
 import theme from '../constants/theme';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 // одна иконка для всех
 import bellIcon from '../assets/images/history14.png';
@@ -60,52 +62,87 @@ function formatTime(dateString: string) {
   });
 }
 
+async function fetchInbox(): Promise<Message[]> {
+  const stored = await AsyncStorage.getItem('user');
+  if (!stored) return [];
+
+  const user = JSON.parse(stored);
+  const userId = user?.userId ?? user?.id;
+  if (!userId) return [];
+
+  const res = await api.get(`/messages/inbox/${userId}`, {
+    silentLoading: true,
+    silentError: true,
+    errorContext: 'Failed to get inbox',
+    errorTitle: 'Inbox',
+  } as any);
+
+  return Array.isArray(res.data) ? res.data : [];
+}
+
 const InboxScreen = () => {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    const loadMessages = async () => {
-      try {
-        setLoading(true);
+  const {
+    data: messages = [],
+    isLoading,
+    isFetching,
+    isError,
+    error,
+    refetch,
+  } = useQuery<Message[]>({
+    queryKey: ['inbox'],
+    queryFn: fetchInbox,
+    staleTime: 30_000,
+    gcTime: 10 * 60_000,
+    retry: 1,
+  });
 
-        const stored = await AsyncStorage.getItem('user');
-        if (!stored) return;
+  const markAsReadMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await api.post(`/messages/${id}/mark-read`, undefined, {
+        silentLoading: true,
+        silentError: true,
+      } as any);
 
-        const user = JSON.parse(stored);
+      return id;
+    },
 
-        const res = await api.get(`/messages/inbox/${user.userId}`);
-        setMessages(Array.isArray(res.data) ? res.data : []);
-      } catch (error: any) {
-        let message = 'Failed to get inbox';
+    onMutate: async (id: string) => {
+      await queryClient.cancelQueries({ queryKey: ['inbox'] });
 
-        if (error.response?.data) {
-          message = JSON.stringify(error.response.data);
-        } else if (error.message) {
-          message = error.message;
-        }
+      const previousMessages =
+        queryClient.getQueryData<Message[]>(['inbox']) ?? [];
 
-        Alert.alert('Error', message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadMessages();
-  }, []);
-
-  const markAsRead = async (id: string) => {
-    try {
-      await api.post(`/messages/${id}/mark-read`);
-      setMessages((prev) =>
-        prev.map((m) => (m.id === id ? { ...m, isRead: true } : m))
+      queryClient.setQueryData<Message[]>(['inbox'], (current = []) =>
+        current.map((message) =>
+          message.id === id ? { ...message, isRead: true } : message
+        )
       );
-    } catch {}
-  };
+
+      return { previousMessages };
+    },
+
+    onError: (_error, _id, context) => {
+      if (context?.previousMessages) {
+        queryClient.setQueryData(['inbox'], context.previousMessages);
+      }
+    },
+
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['inbox'] });
+      queryClient.invalidateQueries({ queryKey: ['unreadMessages'] });
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      queryClient.invalidateQueries({ queryKey: ['home'] });
+    },
+  });
 
   const handlePress = (msg: Message) => {
     Alert.alert(msg.title, msg.content);
-    if (!msg.isRead) markAsRead(msg.id);
+
+    if (!msg.isRead && !markAsReadMutation.isPending) {
+      markAsReadMutation.mutate(msg.id);
+    }
   };
 
   // 🔥 группировка
@@ -131,60 +168,85 @@ const InboxScreen = () => {
     }));
   }, [messages]);
 
+  if (isLoading) {
+    return (
+      <View style={styles.loader}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
+
+  if (isError) {
+    return (
+      <View style={styles.errorWrap}>
+        <Text style={styles.errorTitle}>Failed to load notifications</Text>
+
+        <Pressable
+          style={styles.retryButton}
+          onPress={() => {
+            console.error(error);
+            refetch();
+          }}
+        >
+          <Text style={styles.retryButtonText}>Try again</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.screen}>
-      {loading ? (
-        <View style={styles.loader}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-        </View>
-      ) : (
-        <SectionList
-          sections={sections}
-          keyExtractor={(item) => item.id}
-          stickySectionHeadersEnabled={false}
-          contentContainerStyle={styles.list}
-          showsVerticalScrollIndicator={false}
-          renderSectionHeader={({ section }) => (
-            <Text style={styles.section}>{section.title}</Text>
-          )}
-          renderItem={({ item, index, section }) => (
-            <Pressable onPress={() => handlePress(item)} style={styles.row}>
-              {/* LEFT */}
-              <View style={styles.left}>
-                <View style={styles.iconCircle}>
-                  <Image source={bellIcon} style={styles.icon} />
-                </View>
-
-                <View style={styles.textBlock}>
-                  <Text style={styles.title}>{item.title}</Text>
-                  <Text style={styles.subtitle} numberOfLines={2}>
-                    {item.content}
-                  </Text>
-                </View>
+      <SectionList
+        sections={sections}
+        keyExtractor={(item) => item.id}
+        stickySectionHeadersEnabled={false}
+        contentContainerStyle={styles.list}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isFetching && !isLoading}
+            onRefresh={refetch}
+            tintColor={theme.colors.primary}
+          />
+        }
+        renderSectionHeader={({ section }) => (
+          <Text style={styles.section}>{section.title}</Text>
+        )}
+        renderItem={({ item, index, section }) => (
+          <Pressable onPress={() => handlePress(item)} style={styles.row}>
+            {/* LEFT */}
+            <View style={styles.left}>
+              <View style={styles.iconCircle}>
+                <Image source={bellIcon} style={styles.icon} />
               </View>
 
-              {/* RIGHT */}
-              <View style={styles.right}>
-                {!item.isRead && <View style={styles.dot} />}
-
-                <Text style={styles.time}>
-                  {formatTime(item.createdAt)}
+              <View style={styles.textBlock}>
+                <Text style={styles.title}>{item.title}</Text>
+                <Text style={styles.subtitle} numberOfLines={2}>
+                  {item.content}
                 </Text>
               </View>
-
-              {/* divider */}
-              {index !== section.data.length - 1 && (
-                <View style={styles.divider} />
-              )}
-            </Pressable>
-          )}
-          ListEmptyComponent={
-            <View style={styles.empty}>
-              <Text style={styles.emptyText}>No notifications yet</Text>
             </View>
-          }
-        />
-      )}
+
+            {/* RIGHT */}
+            <View style={styles.right}>
+              {!item.isRead && <View style={styles.dot} />}
+
+              <Text style={styles.time}>{formatTime(item.createdAt)}</Text>
+            </View>
+
+            {/* divider */}
+            {index !== section.data.length - 1 && (
+              <View style={styles.divider} />
+            )}
+          </Pressable>
+        )}
+        ListEmptyComponent={
+          <View style={styles.empty}>
+            <Text style={styles.emptyText}>No notifications yet</Text>
+          </View>
+        }
+      />
     </View>
   );
 };
@@ -198,6 +260,7 @@ const styles = StyleSheet.create({
   },
 
   list: {
+    flexGrow: 1,
     paddingHorizontal: 16,
     paddingBottom: 40,
   },
@@ -284,9 +347,43 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+
+  errorWrap: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    backgroundColor: '#FFFFFF',
+  },
+
+  errorTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.colors.text,
+    textAlign: 'center',
+  },
+
+  retryButton: {
+    marginTop: 16,
+    minWidth: 120,
+    height: 44,
+    paddingHorizontal: 18,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.primary,
+  },
+
+  retryButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 
   empty: {
+    flex: 1,
     paddingTop: 80,
     alignItems: 'center',
   },

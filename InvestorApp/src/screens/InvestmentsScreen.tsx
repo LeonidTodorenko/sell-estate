@@ -29,6 +29,7 @@ import { RootStackParamList } from "../navigation/AppNavigator";
 import Swiper from "react-native-swiper";
 import theme from "../constants/theme";
 import BlueButton from "../components/BlueButton";
+import ImageGalleryModal from "../components/ImageGalleryModal";
 import DateTimePicker from "@react-native-community/datetimepicker";
 
 import Ionicons from "react-native-vector-icons/Ionicons";
@@ -130,7 +131,7 @@ type InvestmentCardProps = {
   property?: Property | null;
   expanded: boolean;
   onToggleExpand: () => void;
-  onOpenImage: (uri: string) => void;
+  onOpenImage: (images: string[], initialIndex: number) => void;
   onOpenSell: (investment: Investment, property?: Property | null) => void;
   navigation: NativeStackNavigationProp<RootStackParamList>;
 };
@@ -182,6 +183,11 @@ const InvestmentCard: React.FC<InvestmentCardProps> = ({
   }, [property]);
 
   const totalSlides = slides.length;
+  const imageSlides = useMemo(
+    () => slides.filter((slide) => slide.kind === "image"),
+    [slides],
+  );
+
   const location = property?.location || "Dubai Hills Estate / Dubai, UAE";
   const profit = investment.totalShareValue - investment.totalInvested;
   const yieldText =
@@ -239,7 +245,18 @@ To airport: 25 minutes`;
                   key={slide.id}
                   activeOpacity={0.9}
                   onPress={() => {
-                    if (slide.kind === "image") onOpenImage(slide.uri);
+                    if (slide.kind !== "image") {
+                      return;
+                    }
+
+                    const initialIndex = imageSlides.findIndex(
+                      (imageSlide) => imageSlide.id === slide.id,
+                    );
+
+                    onOpenImage(
+                      imageSlides.map((imageSlide) => imageSlide.uri),
+                      Math.max(initialIndex, 0),
+                    );
                   }}
                 >
                   {slide.kind === "image" ? (
@@ -554,8 +571,9 @@ const InvestmentsScreen = () => {
     null,
   );
 
-  const [modalVisible, setModalVisible] = useState(false);
-  const [modalImage, setModalImage] = useState<string | null>(null);
+  const [galleryVisible, setGalleryVisible] = useState(false);
+  const [galleryImages, setGalleryImages] = useState<string[]>([]);
+  const [galleryIndex, setGalleryIndex] = useState(0);
 
   const [sellState, setSellState] = useState<SellModalState>({
     visible: false,
@@ -628,10 +646,27 @@ const InvestmentsScreen = () => {
   const investments = data?.investments ?? [];
   const propertiesMap = data?.propertiesMap ?? {};
 
-  const openImage = (uri: string) => {
-    setModalImage(uri);
-    setModalVisible(true);
-  };
+  const openImage = useCallback(
+    (images: string[], initialIndex: number) => {
+      if (images.length === 0) {
+        return;
+      }
+
+      const safeInitialIndex = Math.min(
+        Math.max(initialIndex, 0),
+        images.length - 1,
+      );
+
+      setGalleryImages(images);
+      setGalleryIndex(safeInitialIndex);
+      setGalleryVisible(true);
+    },
+    [],
+  );
+
+  const closeGallery = useCallback(() => {
+    setGalleryVisible(false);
+  }, []);
 
   const loadGroupedInvestmentForProperty = useCallback(
     async (
@@ -896,17 +931,13 @@ const InvestmentsScreen = () => {
         )}
       />
 
-      <Modal
-        visible={modalVisible}
-        transparent
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalView}>
-          {modalImage && (
-            <Image source={{ uri: modalImage }} style={styles.modalImage} />
-          )}
-        </View>
-      </Modal>
+      <ImageGalleryModal
+        visible={galleryVisible}
+        images={galleryImages}
+        imageIndex={galleryIndex}
+        onImageIndexChange={setGalleryIndex}
+        onRequestClose={closeGallery}
+      />
 
       <Modal
         visible={sellState.visible}
@@ -1641,18 +1672,6 @@ const styles = StyleSheet.create({
     color: "#111827",
   },
 
-  modalView: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.8)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  modalImage: {
-    width: "90%",
-    height: "70%",
-    resizeMode: "contain",
-  },
 
   imageFallback: {
     alignItems: "center",

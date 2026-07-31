@@ -33,6 +33,7 @@ import Video from 'react-native-video';
 
 import { fetchPropertiesWithExtras, Property } from '../services/properties';
 import BlueButton from '../components/BlueButton';
+import ImageGalleryModal from '../components/ImageGalleryModal';
 
 import mapSampleImage from '../assets/images/map-sample.png';
 import buttonMapImage from '../assets/images/button-map.png';
@@ -85,7 +86,7 @@ type PropertyCardProps = {
   item: Property;
   navigation: NativeStackNavigationProp<RootStackParamList>;
   userMap: UserMap;
-  openImage: (uri: string) => void;
+  openImage: (images: string[], initialIndex: number) => void;
   openVideo: (url: string) => void;
   expanded: boolean;
   onToggleExpand: () => void;
@@ -153,6 +154,11 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
   }, [item.images, item.media]);
 
   const total = slides.length;
+  const imageSlides = useMemo(
+    () => slides.filter((slide) => slide.kind === 'image'),
+    [slides],
+  );
+
 
   // function openVideo(uri: string) {
   //   throw new Error('Function not implemented.');
@@ -221,7 +227,14 @@ const presentationPdfName = item.presentationPdfName?.trim() || 'Object Presenta
                   activeOpacity={0.9}
                   onPress={() => {
                     if (s.kind === 'image') {
-                      openImage(s.uri);
+                      const initialIndex = imageSlides.findIndex(
+                        (imageSlide) => imageSlide.id === s.id,
+                      );
+
+                      openImage(
+                        imageSlides.map((imageSlide) => imageSlide.uri),
+                        Math.max(initialIndex, 0),
+                      );
                     } else {
                       openVideo(normalizeUrl(s.uri));
                     }
@@ -515,9 +528,9 @@ const PropertyListScreen = () => {
   const [buffering, setBuffering] = useState(false);
   //const [properties, setProperties] = useState<Property[]>([]);
   //const [userMap, setUserMap] = useState<UserMap>({});
-  const [modalVisible, setModalVisible] = useState(false);
-  const [modalImage, setModalImage] = useState<string | null>(null);
-  //const [imageIndex, setImageIndex] = useState(0);
+  const [galleryVisible, setGalleryVisible] = useState(false);
+  const [galleryImages, setGalleryImages] = useState<string[]>([]);
+  const [galleryIndex, setGalleryIndex] = useState(0);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { isGuest } = useContext(AuthContext);
   const [videoModalVisible, setVideoModalVisible] = useState(false);
@@ -555,10 +568,27 @@ useEffect(() => {
     setBuffering(false);
   }, []);
 
-  const openImage = (uri: string) => {
-    setModalImage(uri);
-    setModalVisible(true);
-  };
+  const openImage = useCallback(
+    (images: string[], initialIndex: number) => {
+      if (images.length === 0) {
+        return;
+      }
+
+      const safeInitialIndex = Math.min(
+        Math.max(initialIndex, 0),
+        images.length - 1,
+      );
+
+      setGalleryImages(images);
+      setGalleryIndex(safeInitialIndex);
+      setGalleryVisible(true);
+    },
+    [],
+  );
+
+  const closeGallery = useCallback(() => {
+    setGalleryVisible(false);
+  }, []);
 
   const openVideo = (url: string) => {
     //Alert.alert('URI', url);
@@ -704,32 +734,14 @@ useEffect(() => {
         )}
       />
 
-     <Modal
-        visible={modalVisible}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => {
-          setModalVisible(false);
-          setModalImage(null);
-        }}
-      >
-        <View style={styles.modalView}>
-          <TouchableOpacity
-            onPress={() => {
-              setModalVisible(false);
-              setModalImage(null);
-            }}
-            style={styles.imageCloseButton}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.imageCloseText}>✕</Text>
-          </TouchableOpacity>
 
-          {modalImage && (
-            <Image source={{ uri: modalImage }} style={styles.modalImage} />
-          )}
-        </View>
-      </Modal>
+      <ImageGalleryModal
+        visible={galleryVisible}
+        images={galleryImages}
+        imageIndex={galleryIndex}
+        onImageIndexChange={setGalleryIndex}
+        onRequestClose={closeGallery}
+      />
 
       <Modal
         visible={videoModalVisible}
@@ -1158,18 +1170,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
 
-  modalView: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.8)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  modalImage: {
-    width: '90%',
-    height: '70%',
-    resizeMode: 'contain',
-  },
 
   row: {
     flexDirection: 'row',
@@ -1289,25 +1289,6 @@ const styles = StyleSheet.create({
   elevation: 0,
   borderRadius: 12,
   marginBottom: 0,
-},
-imageCloseButton: {
-  position: 'absolute',
-  top: Platform.OS === 'ios' ? 56 : 36,
-  right: 20,
-  zIndex: 9999,
-  width: 44,
-  height: 44,
-  borderRadius: 22,
-  backgroundColor: 'rgba(0,0,0,0.65)',
-  alignItems: 'center',
-  justifyContent: 'center',
-},
-
-imageCloseText: {
-  color: '#FFFFFF',
-  fontSize: 24,
-  fontWeight: '700',
-  lineHeight: 26,
 },
 });
 
