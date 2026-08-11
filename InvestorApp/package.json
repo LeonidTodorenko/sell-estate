@@ -31,6 +31,7 @@
     "react-native-dropdown-picker": "^5.4.6",
     "react-native-gesture-handler": "^3.1.0",
     "react-native-gifted-charts": "^1.4.76",
+    "react-native-haptic-feedback": "^3.0.0",
     "react-native-image-picker": "^8.2.0",
     "react-native-image-viewing": "^0.2.2",
     "react-native-keyboard-aware-scroll-view": "^0.9.5",

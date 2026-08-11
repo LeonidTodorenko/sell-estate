@@ -7,6 +7,7 @@ import { useLoading } from '../contexts/LoadingContext';
 import StyledInput from '../components/StyledInput';
 import BlueButton from '../components/BlueButton';
 import theme from '../constants/theme';
+import Haptics from '../services/HapticsService';
 
 //import { Buffer } from 'buffer';
 
@@ -57,9 +58,11 @@ const EditProfileScreen = () => {
         address,
        // avatarBase64,
       });
+      Haptics.success();
       Alert.alert('Success', 'Profile updated');
     } catch (err) {
       console.error(err);
+      Haptics.error();
       Alert.alert('Error', 'Failed to update profile');
     }
   };
@@ -77,6 +80,7 @@ const EditProfileScreen = () => {
     const type = asset.type || 'image/jpeg';
   
     if (!asset.base64) {
+      Haptics.error();
       Alert.alert('Error', 'Failed to extract image data');
       return;
     }
@@ -89,9 +93,11 @@ const EditProfileScreen = () => {
         await api.post(`/users/${user.id}/upload-avatar`, {
           base64Image: base64Data,
         });
+        Haptics.success();
         Alert.alert('Success', 'Avatar uploaded');
       } catch (err) {
         console.error(err);
+        Haptics.error();
         Alert.alert('Error', 'Failed to upload avatar');
       }
     }

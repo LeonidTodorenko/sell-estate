@@ -15,6 +15,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import theme from '../constants/theme';
+import AnimatedCard from '../components/AnimatedCard';
+import ErrorState from '../components/ErrorState';
 import { useNavigation } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 
@@ -256,6 +258,7 @@ export default function UserTransactionsScreen() {
     data: transactions = [],
     isLoading,
     isFetching,
+    isError,
     refetch,
   } = useQuery({
     queryKey: ['transactions', fromDate?.toISOString(), toDate?.toISOString()],
@@ -308,6 +311,17 @@ export default function UserTransactionsScreen() {
     setFromDate(null);
     setToDate(null);
   };
+
+  if (isError && transactions.length === 0) {
+    return (
+      <ErrorState
+        title="Unable to load transactions"
+        description="Please check your connection and try again."
+        onRetry={() => refetch()}
+        isRetrying={isFetching}
+      />
+    );
+  }
 
   return (
     <View style={styles.screen}>
@@ -399,6 +413,7 @@ export default function UserTransactionsScreen() {
               const icon = getIcon(item.type);
 
               return (
+                <AnimatedCard delay={Math.min(index, 5) * 55}>
                 <View style={styles.itemRow}>
                   <View style={styles.itemLeft}>
                     <View style={styles.iconCircle}>
@@ -432,6 +447,7 @@ export default function UserTransactionsScreen() {
                     <View style={styles.itemDivider} />
                   )}
                 </View>
+                </AnimatedCard>
               );
             }}
             ListEmptyComponent={

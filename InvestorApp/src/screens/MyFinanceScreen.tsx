@@ -21,8 +21,9 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { LineChart  } from 'react-native-gifted-charts';
 import api from '../api';
 import theme from '../constants/theme';
+import AnimatedCard from '../components/AnimatedCard';
+import ErrorState from '../components/ErrorState';
 import { RootStackParamList } from '../navigation/AppNavigator';
-import { handleApiError } from '../utils/apiError';
 import { useQuery } from '@tanstack/react-query';
 
 interface HistoryPoint {
@@ -341,7 +342,6 @@ const MyFinanceScreen = () => {
     isLoading,
     isFetching,
     isError,
-    error,
     refetch,
   } = useQuery<AssetStats | null>({
     queryKey: ['finance', 'assets-summary'],
@@ -437,22 +437,14 @@ const MyFinanceScreen = () => {
     );
   }
 
-  if (isError) {
+  if (isError && !stats) {
     return (
-      <View style={styles.loadingWrap}>
-        <Text style={styles.emptyText}>Failed to load finance data</Text>
-
-        <Pressable
-          style={styles.retryButton}
-          onPress={() => {
-            // Показываем централизованную ошибку только после явного действия пользователя.
-            handleApiError(error, 'Failed to load finance data');
-            refetch();
-          }}
-        >
-          <Text style={styles.retryButtonText}>Try again</Text>
-        </Pressable>
-      </View>
+      <ErrorState
+        title="Unable to load finance data"
+        description="Please check your connection and try again."
+        onRetry={() => refetch()}
+        isRetrying={isFetching}
+      />
     );
   }
 
@@ -483,6 +475,7 @@ const MyFinanceScreen = () => {
           />
         }
       >
+        <AnimatedCard delay={0}>
         <View style={styles.headerShell}>
           <View style={styles.headerRow}>
             <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -494,7 +487,9 @@ const MyFinanceScreen = () => {
             <View style={styles.headerRightPlaceholder} />
           </View>
         </View>
+        </AnimatedCard>
 
+        <AnimatedCard delay={80}>
         <StatCard
           title="Overall Growth"
           currentValue={overallSummary.currentValue}
@@ -558,7 +553,9 @@ const MyFinanceScreen = () => {
             )}
           </View>
         </StatCard>
+        </AnimatedCard>
 
+        <AnimatedCard delay={160}>
         <StatCard
           title="Rental income"
           currentValue={rentalSummary.currentValue}
@@ -628,7 +625,9 @@ const MyFinanceScreen = () => {
   )}
 </View>
         </StatCard>
+        </AnimatedCard>
 
+        <AnimatedCard delay={240}>
         <StatCard
           title="Property Value Growth"
           currentValue={propertySummary.currentValue}
@@ -692,6 +691,7 @@ const MyFinanceScreen = () => {
             )}
           </View>
         </StatCard>
+        </AnimatedCard>
       </ScrollView>
 
       <Modal

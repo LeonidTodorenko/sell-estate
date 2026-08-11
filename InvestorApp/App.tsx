@@ -1,8 +1,18 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { SafeAreaView, StatusBar, StyleSheet, View } from 'react-native';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import {
+  SafeAreaView,
+  StatusBar,
+  StyleSheet,
+  View,
+} from 'react-native';
+import {
+  QueryClient,
+  QueryClientProvider,
+} from '@tanstack/react-query';
 import messaging from '@react-native-firebase/messaging';
-import notifee, { AndroidImportance } from '@notifee/react-native';
+import notifee, {
+  AndroidImportance,
+} from '@notifee/react-native';
 
 import AppNavigator from './src/navigation/AppNavigator';
 import AppErrorBoundary from './src/components/AppErrorBoundary';
@@ -20,15 +30,10 @@ const queryClient = new QueryClient({
       retry: 1,
       refetchOnReconnect: true,
       refetchOnWindowFocus: true,
-
-      // При отсутствии сети React Query использует существующий кэш.
-      // Запрос будет продолжен или повторён после восстановления соединения.
       networkMode: 'online',
     },
 
     mutations: {
-      // Пока не ставим финансовые и другие мутации в offline-очередь.
-      // Без интернета они корректно завершатся ошибкой.
       networkMode: 'online',
       retry: 0,
     },
@@ -36,11 +41,9 @@ const queryClient = new QueryClient({
 });
 
 export default function App() {
-  // Изменение ключа полностью перемонтирует дерево приложения после ошибки.
   const [appKey, setAppKey] = useState(0);
 
   const restartAppTree = useCallback(() => {
-    // Не оставляем потенциально повреждённые данные React Query после ошибки.
     queryClient.clear();
     setAppKey(value => value + 1);
   }, []);
@@ -58,30 +61,42 @@ export default function App() {
           importance: AndroidImportance.HIGH,
         });
       } catch (error) {
-        // ErrorBoundary не ловит ошибки из async useEffect,
-        // поэтому обязательно обрабатываем их здесь.
-        console.error('[App] Notification setup failed:', error);
+        console.error(
+          '[App] Notification setup failed:',
+          error,
+        );
       }
     };
 
     void setup();
 
-    const unsubscribe = messaging().onMessage(async remoteMessage => {
-      try {
-        console.log('Push received in foreground:', remoteMessage);
+    const unsubscribe = messaging().onMessage(
+      async remoteMessage => {
+        try {
+          console.log(
+            'Push received in foreground:',
+            remoteMessage,
+          );
 
-        await notifee.displayNotification({
-          title: remoteMessage.notification?.title || 'New Notification',
-          body: remoteMessage.notification?.body || '',
-          android: {
-            channelId: 'default',
-            smallIcon: 'ic_notification',
-          },
-        });
-      } catch (error) {
-        console.error('[App] Failed to display notification:', error);
-      }
-    });
+          await notifee.displayNotification({
+            title:
+              remoteMessage.notification?.title ||
+              'New Notification',
+            body:
+              remoteMessage.notification?.body || '',
+            android: {
+              channelId: 'default',
+              smallIcon: 'ic_notification',
+            },
+          });
+        } catch (error) {
+          console.error(
+            '[App] Failed to display notification:',
+            error,
+          );
+        }
+      },
+    );
 
     return unsubscribe;
   }, []);

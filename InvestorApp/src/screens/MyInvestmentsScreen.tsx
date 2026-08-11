@@ -12,6 +12,8 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../api';
 import BlueButton from '../components/BlueButton';
 import ScreenLoader from '../components/ScreenLoader';
+import AnimatedCard from '../components/AnimatedCard';
+import ErrorState from '../components/ErrorState';
 import theme from '../constants/theme';
 
 interface Investment {
@@ -103,14 +105,12 @@ const MyInvestmentsScreen = () => {
 
   if (isError && investments.length === 0) {
     return (
-      <View style={styles.centerState}>
-        <Text style={styles.errorText}>Failed to load investments.</Text>
-
-        <BlueButton
-          title="Try Again"
-          onPress={() => refetch()}
-        />
-      </View>
+      <ErrorState
+        title="Unable to load investments"
+        description="We couldn't retrieve your investments right now."
+        onRetry={() => refetch()}
+        isRetrying={isFetching}
+      />
     );
   }
 
@@ -161,13 +161,15 @@ const MyInvestmentsScreen = () => {
         keyExtractor={(item) => item.id}
         refreshing={isFetching && !isLoading}
         onRefresh={refetch}
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
+          <AnimatedCard delay={Math.min(index, 5) * 70}>
           <View style={styles.card}>
             <Text>Property ID: {item.propertyId}</Text>
             <Text>Shares: {item.shares}</Text>
             <Text>Invested: {item.investedAmount.toFixed(2)} USD</Text>
             <Text>Date: {new Date(item.createdAt).toLocaleDateString()}</Text>
           </View>
+          </AnimatedCard>
         )}
         ListEmptyComponent={
           <Text style={styles.emptyText}>
@@ -221,21 +223,6 @@ const styles = StyleSheet.create({
 
   filterGroup: {
     marginBottom: 12,
-  },
-
-  centerState: {
-    flex: 1,
-    padding: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: theme.colors.background,
-  },
-
-  errorText: {
-    fontSize: 16,
-    color: theme.colors.danger,
-    textAlign: 'center',
-    marginBottom: 16,
   },
 
   emptyText: {

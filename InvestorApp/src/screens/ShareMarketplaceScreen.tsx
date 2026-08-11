@@ -23,11 +23,14 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/AppNavigator";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import BlueButton from "../components/BlueButton";
+import AnimatedCard from "../components/AnimatedCard";
+import ErrorState from "../components/ErrorState";
 import theme from "../constants/theme";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import { fetchPropertiesWithExtras, Property } from "../services/properties";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import Haptics from "../services/HapticsService";
 
 import historyIcon from "../assets/images/history2_icon.png";
 
@@ -287,6 +290,7 @@ const ShareMarketplaceScreen = () => {
         );
       } catch (error) {
         console.error("Failed to read user session", error);
+        Haptics.error();
         setUserId(null);
       } finally {
         setSessionLoading(false);
@@ -387,6 +391,7 @@ const ShareMarketplaceScreen = () => {
 
   const openBidModal = (offer: ShareOffer) => {
     if (offer.sellerId === userId) {
+      Haptics.warning();
       Alert.alert("Validation", "You cannot place a bid on your own listing");
       return;
     }
@@ -401,6 +406,7 @@ const ShareMarketplaceScreen = () => {
 
   const openBuyModal = (offer: ShareOffer) => {
     if (offer.sellerId === userId) {
+      Haptics.warning();
       Alert.alert("Validation", "You cannot buy your own listing");
       return;
     }
@@ -493,11 +499,13 @@ const ShareMarketplaceScreen = () => {
         pinOrPassword: bidPinOrPassword,
       });
 
+      Haptics.success();
       Alert.alert("Success", "Bid placed");
       setBidModalVisible(false);
       await refreshOfferBids(currentOffer.id);
     } catch (error: any) {
       console.error(error.response?.data);
+      Haptics.error();
       Alert.alert(
         "Error",
         error?.response?.data?.message ||
@@ -521,11 +529,13 @@ const ShareMarketplaceScreen = () => {
         pinOrPassword: buyPinOrPassword,
       });
 
+      Haptics.success();
       Alert.alert("Success", "Purchase completed");
       setBuyModalVisible(false);
       await invalidateMarketplaceRelatedQueries();
     } catch (error: any) {
       console.error(error.response?.data);
+      Haptics.error();
       Alert.alert(
         "Error",
         error?.response?.data?.message ||
@@ -546,6 +556,7 @@ const ShareMarketplaceScreen = () => {
       await api.post(`/share-offers/${currentOffer.id}/cancel`, {
         pinOrPassword: cancelPinOrPassword,
       });
+      Haptics.success();
       Alert.alert("Success", "Offer canceled");
       setCancelModalVisible(false);
       await invalidateMarketplaceRelatedQueries();
@@ -557,6 +568,7 @@ const ShareMarketplaceScreen = () => {
       } else if (error.message) {
         message = error.message;
       }
+      Haptics.error();
       Alert.alert("Error", message);
     }
   };
@@ -583,6 +595,7 @@ const ShareMarketplaceScreen = () => {
         pinOrPassword: extendPinOrPassword,
       });
 
+      Haptics.success();
       Alert.alert("Success", "Offer extended");
       setExtendModalVisible(false);
       await invalidateMarketplaceRelatedQueries();
@@ -593,11 +606,12 @@ const ShareMarketplaceScreen = () => {
       } else if (error?.response?.data) {
         message = JSON.stringify(error.response.data);
       }
+      Haptics.error();
       Alert.alert("Error", message);
     }
   };
 
-  const renderOfferCard = ({ item }: { item: ShareOffer }) => {
+  const renderOfferCard = ({ item, index }: { item: ShareOffer; index: number }) => {
     const propertyInfo = propertiesMap[item.propertyId];
     const preview = propertyInfo?.preview;
     const location = propertyInfo?.location || "Dubai";
@@ -608,6 +622,7 @@ const ShareMarketplaceScreen = () => {
     const isMyListing = item.sellerId === userId;
 
     return (
+      <AnimatedCard delay={Math.min(index, 5) * 70}>
       <View style={styles.card}>
         <View style={styles.cardTopRow}>
           <View style={styles.cardTopLeft}>
@@ -790,6 +805,7 @@ const ShareMarketplaceScreen = () => {
           </View>
         )}
       </View>
+      </AnimatedCard>
     );
   };
 
@@ -803,10 +819,12 @@ const ShareMarketplaceScreen = () => {
 
   if (isError && !data) {
     return (
-      <View style={styles.centerState}>
-        <Text style={styles.errorStateText}>Failed to load marketplace.</Text>
-        <BlueButton title="Try Again" onPress={() => refetch()} />
-      </View>
+      <ErrorState
+        title="Unable to load marketplace"
+        description="Please check your connection and try again."
+        onRetry={() => refetch()}
+        isRetrying={isFetching}
+      />
     );
   }
 
@@ -1159,13 +1177,6 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     color: theme.colors.textSecondary,
-  },
-
-  errorStateText: {
-    fontSize: 16,
-    color: theme.colors.danger,
-    textAlign: "center",
-    marginBottom: 16,
   },
 
   headerRow: {

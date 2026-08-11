@@ -19,6 +19,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import theme from '../constants/theme';
 import { LineChart } from 'react-native-chart-kit';
 import ScreenLoader from '../components/ScreenLoader';
+import AnimatedCard from '../components/AnimatedCard';
+import ErrorState from '../components/ErrorState';
 
 import inboxIcon from '../assets/images/inbox_icon.png';
 import historyIcon from '../assets/images/history_icon.png';
@@ -485,6 +487,7 @@ const {
   data: homeData,
   isLoading,
   isFetching,
+  isError,
   refetch,
 } = useQuery({
   queryKey: ['home'],
@@ -686,6 +689,17 @@ const clubInfo = homeData?.clubInfo ?? null;
   return <ScreenLoader />;
 }
 
+  if (isError && !homeData) {
+    return (
+      <ErrorState
+        title="Unable to load home data"
+        description="Please check your connection and try again."
+        onRetry={() => refetch()}
+        isRetrying={isFetching}
+      />
+    );
+  }
+
   return (
     <ScrollView
       style={styles.container}
@@ -693,7 +707,8 @@ const clubInfo = homeData?.clubInfo ?? null;
       refreshControl={<RefreshControl refreshing={isFetching && !isLoading} onRefresh={onRefresh} />}
       showsVerticalScrollIndicator={false}
     >
-      <View style={styles.heroBlock}>
+      <AnimatedCard delay={0}>
+        <View style={styles.heroBlock}>
         <View style={styles.headerRow}>
           <View style={styles.headerLeftWrap}>
           <View style={styles.clubBadgeCircle}>
@@ -806,9 +821,11 @@ const clubInfo = homeData?.clubInfo ?? null;
 
         </View>
       </View>
+      </AnimatedCard>
 
       <View style={{ height: theme.spacing.xl }} />
 
+      <AnimatedCard delay={80}>
  <SectionHeader
   title="Active Listings"
   onSeeAll={() => navigation.navigate('ShareMarketplaces')}
@@ -833,9 +850,11 @@ const clubInfo = homeData?.clubInfo ?? null;
     <Text style={styles.emptyText}>No active listings yet</Text>
   </View>
 )}
+      </AnimatedCard>
 
       <View style={{ height: theme.spacing.xl }} />
 
+      <AnimatedCard delay={160}>
       <SectionHeader
         title="My Investment"
         onSeeAll={() => navigation.navigate('Investments')}
@@ -865,9 +884,11 @@ const clubInfo = homeData?.clubInfo ?? null;
           <Text style={styles.emptyText}>No investments yet</Text>
         </View>
       )}
+      </AnimatedCard>
 
       <View style={{ height: theme.spacing.xl }} />
 
+      <AnimatedCard delay={240}>
       <SectionHeader
         title="Portfolio dynamics"
         onSeeAll={() => navigation.navigate('MyFinance')}
@@ -959,6 +980,7 @@ const clubInfo = homeData?.clubInfo ?? null;
     </Pressable>
   </View>
 </View>
+      </AnimatedCard>
 
       <View style={{ height: theme.spacing.md }} />
 

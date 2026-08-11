@@ -10,10 +10,13 @@ import {
   Pressable,
   Dimensions,
 } from 'react-native';
+import { useQuery } from '@tanstack/react-query';
+import { LineChart } from 'react-native-chart-kit';
+
 import api from '../api';
 import theme from '../constants/theme';
-import { LineChart } from 'react-native-chart-kit';
-import { useQuery } from '@tanstack/react-query';
+import AnimatedCard from '../components/AnimatedCard';
+import ErrorState from '../components/ErrorState';
 
 import growthIcon from '../assets/images/Vector.png';
 import rentalIcon from '../assets/images/rental.png';
@@ -34,7 +37,6 @@ type ChartPoint = {
   total: number;
 };
 
-
 // История выплат хранится в React Query кеше.
 // Экран больше не управляет loading/refreshing вручную.
 async function fetchRentIncomeHistory(): Promise<LogEntry[]> {
@@ -49,44 +51,65 @@ async function fetchRentIncomeHistory(): Promise<LogEntry[]> {
 }
 
 function money(n: number) {
-  return `$${n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
+  return `$${n
+    .toFixed(2)
+    .replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
 }
 
 function formatDateTime(dateStr: string) {
-  const d = new Date(dateStr);
+  const date = new Date(dateStr);
+
   return (
-    d.toLocaleDateString() +
+    date.toLocaleDateString() +
     ' • ' +
-    d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    date.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    })
   );
 }
 
 function getMonthLabel(dateStr: string) {
-  const d = new Date(dateStr);
-  return d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  const date = new Date(dateStr);
+
+  return date.toLocaleDateString(undefined, {
+    month: 'long',
+    year: 'numeric',
+  });
 }
 
 function formatChartLabel(dateStr: string) {
-  const d = new Date(dateStr);
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  return `${dd}.${mm}`;
+  const date = new Date(dateStr);
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+
+  return `${day}.${month}`;
 }
 
 function filterHistoryByRange(
   points: ChartPoint[],
-  range: '3m' | '6m' | '1y' | 'all'
+  range: '3m' | '6m' | '1y' | 'all',
 ) {
-  if (!points.length || range === 'all') return points;
+  if (!points.length || range === 'all') {
+    return points;
+  }
 
   const now = new Date();
   const from = new Date(now);
 
-  if (range === '3m') from.setMonth(now.getMonth() - 3);
-  if (range === '6m') from.setMonth(now.getMonth() - 6);
-  if (range === '1y') from.setFullYear(now.getFullYear() - 1);
+  if (range === '3m') {
+    from.setMonth(now.getMonth() - 3);
+  }
 
-  return points.filter((p) => new Date(p.date) >= from);
+  if (range === '6m') {
+    from.setMonth(now.getMonth() - 6);
+  }
+
+  if (range === '1y') {
+    from.setFullYear(now.getFullYear() - 1);
+  }
+
+  return points.filter(point => new Date(point.date) >= from);
 }
 
 export default function MyRentIncomeScreen() {
@@ -95,7 +118,6 @@ export default function MyRentIncomeScreen() {
     isLoading,
     isFetching,
     isError,
-    error,
     refetch,
   } = useQuery<LogEntry[]>({
     queryKey: ['rentIncomeHistory'],
@@ -105,18 +127,27 @@ export default function MyRentIncomeScreen() {
     retry: 1,
   });
 
-  const [chartRange, setChartRange] = useState<'3m' | '6m' | '1y' | 'all'>('1y');
+  const [chartRange, setChartRange] = useState<
+    '3m' | '6m' | '1y' | 'all'
+  >('1y');
 
   const totalEarned = useMemo(() => {
-    return logs.reduce((sum, item) => sum + (item.amount || 0), 0);
+    return logs.reduce(
+      (sum, item) => sum + (item.amount || 0),
+      0,
+    );
   }, [logs]);
 
   const groupedLogs = useMemo<GroupedLogs[]>(() => {
     const groups: Record<string, LogEntry[]> = {};
 
-    logs.forEach((item) => {
+    logs.forEach(item => {
       const key = getMonthLabel(item.timestamp);
-      if (!groups[key]) groups[key] = [];
+
+      if (!groups[key]) {
+        groups[key] = [];
+      }
+
       groups[key].push(item);
     });
 
@@ -127,22 +158,32 @@ export default function MyRentIncomeScreen() {
   }, [logs]);
 
   const chartHistory = useMemo<ChartPoint[]>(() => {
-    if (!logs.length) return [];
+    if (!logs.length) {
+      return [];
+    }
 
     const sorted = [...logs].sort(
-      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+      (a, b) =>
+        new Date(a.timestamp).getTime() -
+        new Date(b.timestamp).getTime(),
     );
 
     const byDate: Record<string, number> = {};
 
-    sorted.forEach((item) => {
-      const dateKey = new Date(item.timestamp).toISOString().slice(0, 10);
-      byDate[dateKey] = (byDate[dateKey] ?? 0) + item.amount;
+    sorted.forEach(item => {
+      const dateKey = new Date(item.timestamp)
+        .toISOString()
+        .slice(0, 10);
+
+      byDate[dateKey] =
+        (byDate[dateKey] ?? 0) + item.amount;
     });
 
     let running = 0;
+
     return Object.entries(byDate).map(([date, value]) => {
       running += value;
+
       return {
         date,
         total: Math.round(running * 100) / 100,
@@ -151,8 +192,14 @@ export default function MyRentIncomeScreen() {
   }, [logs]);
 
   const chartData = useMemo(() => {
-    const filteredHistory = filterHistoryByRange(chartHistory, chartRange);
-    if (!filteredHistory.length) return null;
+    const filteredHistory = filterHistoryByRange(
+      chartHistory,
+      chartRange,
+    );
+
+    if (!filteredHistory.length) {
+      return null;
+    }
 
     const maxPoints = 6;
 
@@ -160,250 +207,352 @@ export default function MyRentIncomeScreen() {
       filteredHistory.length <= maxPoints
         ? filteredHistory
         : filteredHistory
-            .filter((_, idx) => idx % Math.ceil(filteredHistory.length / maxPoints) === 0)
+            .filter(
+              (_, index) =>
+                index %
+                  Math.ceil(
+                    filteredHistory.length / maxPoints,
+                  ) ===
+                0,
+            )
             .slice(0, maxPoints);
 
+    // LineChart иногда некорректно отображает только одну точку.
     if (shortened.length === 1) {
       shortened = [...shortened];
     }
 
     return {
-      labels: shortened.map((p) => formatChartLabel(p.date)),
-      datasets: [{ data: shortened.map((p) => p.total) }],
+      labels: shortened.map(point =>
+        formatChartLabel(point.date),
+      ),
+      datasets: [
+        {
+          data: shortened.map(point => point.total),
+        },
+      ],
     };
   }, [chartHistory, chartRange]);
 
   const chartWidth =
-    Dimensions.get('window').width - theme.spacing.lg * 2 - theme.spacing.md * 2;
+    Dimensions.get('window').width -
+    theme.spacing.lg * 2 -
+    theme.spacing.md * 2;
 
   if (isLoading) {
     return (
       <View style={styles.loaderWrap}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <ActivityIndicator
+          size="large"
+          color={theme.colors.primary}
+        />
       </View>
     );
   }
 
-
-  if (isError) {
+  if (isError && logs.length === 0) {
     return (
-      <View style={styles.errorWrap}>
-        <Text style={styles.errorTitle}>Failed to load rental income</Text>
-        <Text style={styles.errorText}>
-          Check your connection and try again.
-        </Text>
-
-        <Pressable
-          style={styles.retryButton}
-          onPress={() => {
-            console.error(error);
-            refetch();
-          }}
-        >
-          <Text style={styles.retryButtonText}>Try again</Text>
-        </Pressable>
-      </View>
+      <ErrorState
+        title="Unable to load rental income"
+        description="Please check your connection and try again."
+        onRetry={() => refetch()}
+        isRetrying={isFetching}
+      />
     );
   }
 
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={{ paddingBottom: theme.spacing.xl }}
+      contentContainerStyle={styles.scrollContent}
       refreshControl={
         <RefreshControl
           refreshing={isFetching && !isLoading}
           onRefresh={refetch}
           tintColor={theme.colors.primary}
+          colors={[theme.colors.primary]}
         />
       }
       showsVerticalScrollIndicator={false}
     >
-      <View style={styles.header}>
-        <Text style={styles.title}>Rental Income</Text>
-        <Text style={styles.subtitle}>
-          Track income generated from your rental properties
-        </Text>
-      </View>
+      {/* Заголовок появляется первым */}
+      <AnimatedCard delay={0}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Rental Income</Text>
 
-      <View style={styles.summaryCard}>
-        <View style={styles.summaryTopRow}>
-          <View style={styles.summaryTitleWrap}>
-            <Text style={styles.summaryCaption}>Total earned</Text>
-            <Text style={styles.summaryAmount}>{money(totalEarned)}</Text>
-          </View>
-
-          <View style={styles.summaryIconCircle}>
-            <Image source={growthIcon} style={styles.summaryIcon} resizeMode="contain" />
-          </View>
-        </View>
-
-        <View style={styles.summaryBottomRow}>
-          <View style={styles.summaryStat}>
-            <Text style={styles.summaryStatValue}>{logs.length}</Text>
-            <Text style={styles.summaryStatLabel}>Payments</Text>
-          </View>
-
-          <View style={styles.summaryDivider} />
-
-          <View style={styles.summaryStat}>
-            <Text style={styles.summaryStatValue}>
-              {logs.length ? money(totalEarned / logs.length) : '$0.00'}
-            </Text>
-            <Text style={styles.summaryStatLabel}>Average payout</Text>
-          </View>
-        </View>
-      </View>
-
-      <View style={styles.chartCard}>
-        <View style={styles.chartTopRow}>
-          <View>
-            <Text style={styles.chartCardTitle}>Rental income growth</Text>
-            <Text style={styles.chartCardAmount}>{money(totalEarned)}</Text>
-          </View>
-
-          <Text style={styles.chartIncomeHint}>Cumulative income</Text>
-        </View>
-
-        {chartData ? (
-          <LineChart
-            data={chartData}
-            width={chartWidth}
-            height={220}
-            yAxisSuffix=" $"
-            withInnerLines={false}
-            withOuterLines={false}
-            withVerticalLines={false}
-            fromZero={true}
-            chartConfig={{
-              backgroundColor: theme.colors.surface,
-              backgroundGradientFrom: theme.colors.surface,
-              backgroundGradientTo: theme.colors.surface,
-              decimalPlaces: 0,
-              color: (opacity = 1) => `rgba(17, 163, 106, ${opacity})`,
-              labelColor: () => theme.colors.textSecondary,
-              propsForDots: {
-                r: '3',
-                strokeWidth: '1',
-                stroke: theme.colors.primary,
-              },
-            }}
-            bezier
-            style={styles.chart}
-          />
-        ) : (
-          <View style={styles.chartEmptyWrap}>
-            <Text style={styles.emptyText}>No chart data for selected period</Text>
-          </View>
-        )}
-
-        <View style={styles.chartTabsRow}>
-          <Pressable
-            onPress={() => setChartRange('3m')}
-            style={[styles.chartTab, chartRange === '3m' && styles.chartTabActive]}
-          >
-            <Text
-              style={[
-                styles.chartTabText,
-                chartRange === '3m' && styles.chartTabTextActive,
-              ]}
-            >
-              3 month
-            </Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => setChartRange('6m')}
-            style={[styles.chartTab, chartRange === '6m' && styles.chartTabActive]}
-          >
-            <Text
-              style={[
-                styles.chartTabText,
-                chartRange === '6m' && styles.chartTabTextActive,
-              ]}
-            >
-              6 month
-            </Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => setChartRange('1y')}
-            style={[styles.chartTab, chartRange === '1y' && styles.chartTabActive]}
-          >
-            <Text
-              style={[
-                styles.chartTabText,
-                chartRange === '1y' && styles.chartTabTextActive,
-              ]}
-            >
-              1 year
-            </Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => setChartRange('all')}
-            style={[styles.chartTab, chartRange === 'all' && styles.chartTabActive]}
-          >
-            <Text
-              style={[
-                styles.chartTabText,
-                chartRange === 'all' && styles.chartTabTextActive,
-              ]}
-            >
-              All
-            </Text>
-          </Pressable>
-        </View>
-      </View>
-
-      {logs.length === 0 ? (
-        <View style={styles.emptyCard}>
-          <Image source={rentalIcon} style={styles.emptyIcon} resizeMode="contain" />
-          <Text style={styles.emptyTitle}>No rental income yet</Text>
-          <Text style={styles.emptyText}>
-            Once rental payouts are made, they will appear here.
+          <Text style={styles.subtitle}>
+            Track income generated from your rental properties
           </Text>
         </View>
-      ) : (
-        groupedLogs.map((group) => (
-          <View key={group.monthLabel} style={styles.monthSection}>
-            <Text style={styles.monthTitle}>{group.monthLabel}</Text>
+      </AnimatedCard>
 
-            <View style={styles.monthCard}>
-              {group.items.map((log, index) => {
-                const isLast = index === group.items.length - 1;
+      {/* Основная карточка появляется второй */}
+      <AnimatedCard delay={80}>
+        <View style={styles.summaryCard}>
+          <View style={styles.summaryTopRow}>
+            <View style={styles.summaryTitleWrap}>
+              <Text style={styles.summaryCaption}>
+                Total earned
+              </Text>
 
-                return (
-                  <View key={`${log.timestamp}-${index}`} style={styles.itemRow}>
-                    <View style={styles.itemLeft}>
-                      <View style={styles.itemIconWrap}>
-                        <Image
-                          source={rentalIcon}
-                          style={styles.itemIcon}
-                          resizeMode="contain"
-                        />
-                      </View>
+              <Text style={styles.summaryAmount}>
+                {money(totalEarned)}
+              </Text>
+            </View>
 
-                      <View style={styles.itemTextWrap}>
-                        <Text style={styles.propertyTitle} numberOfLines={1}>
-                          {log.title}
-                        </Text>
-                        <Text style={styles.dateText}>
-                          {formatDateTime(log.timestamp)}
-                        </Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.itemRight}>
-                      <Text style={styles.amountText}>+ {money(log.amount)}</Text>
-                    </View>
-
-                    {!isLast && <View style={styles.itemDivider} />}
-                  </View>
-                );
-              })}
+            <View style={styles.summaryIconCircle}>
+              <Image
+                source={growthIcon}
+                style={styles.summaryIcon}
+                resizeMode="contain"
+              />
             </View>
           </View>
+
+          <View style={styles.summaryBottomRow}>
+            <View style={styles.summaryStat}>
+              <Text style={styles.summaryStatValue}>
+                {logs.length}
+              </Text>
+
+              <Text style={styles.summaryStatLabel}>
+                Payments
+              </Text>
+            </View>
+
+            <View style={styles.summaryDivider} />
+
+            <View style={styles.summaryStat}>
+              <Text style={styles.summaryStatValue}>
+                {logs.length
+                  ? money(totalEarned / logs.length)
+                  : '$0.00'}
+              </Text>
+
+              <Text style={styles.summaryStatLabel}>
+                Average payout
+              </Text>
+            </View>
+          </View>
+        </View>
+      </AnimatedCard>
+
+      {/* График появляется третьим */}
+      <AnimatedCard delay={160}>
+        <View style={styles.chartCard}>
+          <View style={styles.chartTopRow}>
+            <View>
+              <Text style={styles.chartCardTitle}>
+                Rental income growth
+              </Text>
+
+              <Text style={styles.chartCardAmount}>
+                {money(totalEarned)}
+              </Text>
+            </View>
+
+            <Text style={styles.chartIncomeHint}>
+              Cumulative income
+            </Text>
+          </View>
+
+          {chartData ? (
+            <LineChart
+              data={chartData}
+              width={chartWidth}
+              height={220}
+              yAxisSuffix=" $"
+              withInnerLines={false}
+              withOuterLines={false}
+              withVerticalLines={false}
+              fromZero
+              chartConfig={{
+                backgroundColor: theme.colors.surface,
+                backgroundGradientFrom:
+                  theme.colors.surface,
+                backgroundGradientTo:
+                  theme.colors.surface,
+                decimalPlaces: 0,
+                color: (opacity = 1) =>
+                  `rgba(17, 163, 106, ${opacity})`,
+                labelColor: () =>
+                  theme.colors.textSecondary,
+                propsForDots: {
+                  r: '3',
+                  strokeWidth: '1',
+                  stroke: theme.colors.primary,
+                },
+              }}
+              bezier
+              style={styles.chart}
+            />
+          ) : (
+            <View style={styles.chartEmptyWrap}>
+              <Text style={styles.emptyText}>
+                No chart data for selected period
+              </Text>
+            </View>
+          )}
+
+          <View style={styles.chartTabsRow}>
+            <Pressable
+              onPress={() => setChartRange('3m')}
+              style={[
+                styles.chartTab,
+                chartRange === '3m' &&
+                  styles.chartTabActive,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.chartTabText,
+                  chartRange === '3m' &&
+                    styles.chartTabTextActive,
+                ]}
+              >
+                3 month
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => setChartRange('6m')}
+              style={[
+                styles.chartTab,
+                chartRange === '6m' &&
+                  styles.chartTabActive,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.chartTabText,
+                  chartRange === '6m' &&
+                    styles.chartTabTextActive,
+                ]}
+              >
+                6 month
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => setChartRange('1y')}
+              style={[
+                styles.chartTab,
+                chartRange === '1y' &&
+                  styles.chartTabActive,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.chartTabText,
+                  chartRange === '1y' &&
+                    styles.chartTabTextActive,
+                ]}
+              >
+                1 year
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => setChartRange('all')}
+              style={[
+                styles.chartTab,
+                chartRange === 'all' &&
+                  styles.chartTabActive,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.chartTabText,
+                  chartRange === 'all' &&
+                    styles.chartTabTextActive,
+                ]}
+              >
+                All
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </AnimatedCard>
+
+      {/* Пустое состояние или история появляются последними */}
+      {logs.length === 0 ? (
+        <AnimatedCard delay={240}>
+          <View style={styles.emptyCard}>
+            <Image
+              source={rentalIcon}
+              style={styles.emptyIcon}
+              resizeMode="contain"
+            />
+
+            <Text style={styles.emptyTitle}>
+              No rental income yet
+            </Text>
+
+            <Text style={styles.emptyText}>
+              Once rental payouts are made, they will appear
+              here.
+            </Text>
+          </View>
+        </AnimatedCard>
+      ) : (
+        groupedLogs.map((group, groupIndex) => (
+          <AnimatedCard
+            key={group.monthLabel}
+            delay={240 + Math.min(groupIndex, 5) * 60}
+          >
+            <View style={styles.monthSection}>
+              <Text style={styles.monthTitle}>
+                {group.monthLabel}
+              </Text>
+
+              <View style={styles.monthCard}>
+                {group.items.map((log, index) => {
+                  const isLast =
+                    index === group.items.length - 1;
+
+                  return (
+                    <View
+                      key={`${log.timestamp}-${index}`}
+                      style={styles.itemRow}
+                    >
+                      <View style={styles.itemLeft}>
+                        <View style={styles.itemIconWrap}>
+                          <Image
+                            source={rentalIcon}
+                            style={styles.itemIcon}
+                            resizeMode="contain"
+                          />
+                        </View>
+
+                        <View style={styles.itemTextWrap}>
+                          <Text
+                            style={styles.propertyTitle}
+                            numberOfLines={1}
+                          >
+                            {log.title}
+                          </Text>
+
+                          <Text style={styles.dateText}>
+                            {formatDateTime(log.timestamp)}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.itemRight}>
+                        <Text style={styles.amountText}>
+                          + {money(log.amount)}
+                        </Text>
+                      </View>
+
+                      {!isLast && (
+                        <View style={styles.itemDivider} />
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          </AnimatedCard>
         ))
       )}
     </ScrollView>
@@ -417,52 +566,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.lg,
   },
 
+  scrollContent: {
+    paddingBottom: theme.spacing.xl,
+  },
+
   loaderWrap: {
     flex: 1,
     backgroundColor: theme.colors.background,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-
-
-  errorWrap: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: theme.spacing.xl,
-  },
-
-  errorTitle: {
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: '800',
-    color: theme.colors.text,
-    textAlign: 'center',
-  },
-
-  errorText: {
-    marginTop: 6,
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.textSecondary,
-    fontWeight: '500',
-    textAlign: 'center',
-  },
-
-  retryButton: {
-    marginTop: theme.spacing.lg,
-    minWidth: 120,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: theme.colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 18,
-  },
-
-  retryButtonText: {
-    fontSize: theme.typography.sizes.sm,
-    fontWeight: '700',
-    color: theme.colors.white,
   },
 
   header: {
@@ -571,7 +683,10 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOpacity: 0.05,
     shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
     elevation: 2,
   },
 
@@ -664,7 +779,10 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOpacity: 0.05,
     shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
     elevation: 2,
   },
 

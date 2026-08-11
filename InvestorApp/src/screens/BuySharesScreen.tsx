@@ -18,6 +18,7 @@ import StyledInput from '../components/StyledInput';
 import theme from '../constants/theme';
 import BlueButton from '../components/BlueButton';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import Haptics from '../services/HapticsService';
 
 type BuyRouteProp = RouteProp<RootStackParamList, 'BuyShares'>;
 
@@ -221,6 +222,7 @@ const BuySharesScreen = () => {
       } as any);
     },
     onSuccess: async (_response, variables) => {
+      Haptics.success();
       setSuccessShares(variables.requestedShares);
       setSuccessAmount(variables.requestedAmount);
       setSuccessVisible(true);
@@ -238,6 +240,7 @@ const BuySharesScreen = () => {
       ]);
     },
     onError: (mutationError: any) => {
+      Haptics.error();
       const responseData = mutationError?.response?.data;
       const message =
         responseData?.message ||
@@ -256,6 +259,7 @@ const BuySharesScreen = () => {
     try {
       const stored = await AsyncStorage.getItem('user');
       if (!stored) {
+        Haptics.error();
         Alert.alert('Error', 'No user found');
         return;
       }
@@ -264,6 +268,7 @@ const BuySharesScreen = () => {
       const userId = user?.userId ?? user?.id ?? user?.user?.id;
 
       if (!userId) {
+        Haptics.error();
         Alert.alert('Error', 'User identifier was not found');
         return;
       }
@@ -276,6 +281,7 @@ const BuySharesScreen = () => {
         pinOrPassword,
       });
     } catch (sessionError: any) {
+      Haptics.error();
       Alert.alert(
         'Error',
         sessionError?.message || 'Failed to read the current user session',
@@ -321,6 +327,7 @@ const BuySharesScreen = () => {
     const requestedAmount = sharePrice * requestedShares;
 
     if (isFirstStep) {
+      Haptics.warning();
       Alert.alert(
         'Warning',
         'You submit an investment request - it will be reviewed and confirmed later. The funds are temporarily debited.',

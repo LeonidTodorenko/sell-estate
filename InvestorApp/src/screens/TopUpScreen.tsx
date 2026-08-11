@@ -5,6 +5,7 @@ import api from '../api';
 import StyledInput from '../components/StyledInput';
 import BlueButton from '../components/BlueButton';
 import theme from '../constants/theme';
+import Haptics from '../services/HapticsService';
 
 const TopUpScreen = () => {
   const [amount, setAmount] = useState('');
@@ -13,30 +14,37 @@ const TopUpScreen = () => {
   const handleTopUp = async () => {
     const parsed = parseFloat(amount);
     if (isNaN(parsed) || parsed <= 0) {
+      Haptics.warning();
       return Alert.alert('Invalid', 'Enter a valid amount');
     }
 
     if (!pinOrPassword) {
+      Haptics.warning();
       return Alert.alert('Missing', 'Enter your PIN or password');
     }
 
-    const stored = await AsyncStorage.getItem('user');
-    if (!stored) return Alert.alert('Error', 'User not found');
-
-    const user = JSON.parse(stored);
-
     try {
+      const stored = await AsyncStorage.getItem('user');
+      if (!stored) {
+        Haptics.error();
+        return Alert.alert('Error', 'User not found');
+      }
+
+      const user = JSON.parse(stored);
+
       await api.post('/users/wallet/topup', {
         userId: user.userId,
         amount: parsed,
         pinOrPassword,
       });
 
+      Haptics.success();
       Alert.alert('Success', 'Balance topped up');
       setAmount('');
       setPinOrPassword('');
     } catch (err) {
       console.error(err);
+      Haptics.error();
       Alert.alert('Error', 'Top-up failed');
     }
   };

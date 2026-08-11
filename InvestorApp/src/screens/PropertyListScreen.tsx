@@ -34,6 +34,8 @@ import Video from 'react-native-video';
 import { fetchPropertiesWithExtras, Property } from '../services/properties';
 import BlueButton from '../components/BlueButton';
 import ImageGalleryModal from '../components/ImageGalleryModal';
+import AnimatedCard from '../components/AnimatedCard';
+import ErrorState from '../components/ErrorState';
 
 import mapSampleImage from '../assets/images/map-sample.png';
 import buttonMapImage from '../assets/images/button-map.png';
@@ -539,7 +541,9 @@ const PropertyListScreen = () => {
   const {
   data: properties = [],
   isLoading,
-  //refetch,
+  isFetching,
+  isError,
+  refetch,
 } = useQuery({
   queryKey: ['properties', 'withExtras'],
   queryFn: () => fetchPropertiesWithExtras(20),
@@ -708,6 +712,17 @@ useEffect(() => {
     return <ScreenLoader />;
 }
 
+  if (isError && properties.length === 0) {
+    return (
+      <ErrorState
+        title="Unable to load properties"
+        description="Please check your connection and try again."
+        onRetry={() => refetch()}
+        isRetrying={isFetching}
+      />
+    );
+  }
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Available Properties</Text>
@@ -717,8 +732,9 @@ useEffect(() => {
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => (
-          <PropertyCard
+        renderItem={({ item, index }) => (
+          <AnimatedCard delay={Math.min(index, 5) * 70}>
+            <PropertyCard
             item={item}
             navigation={navigation}
             userMap={userMap}
@@ -730,7 +746,8 @@ useEffect(() => {
             LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
             setExpandedPropertyId((prev) => (prev === item.id ? null : item.id));
           }}
-          />
+            />
+          </AnimatedCard>
         )}
       />
 

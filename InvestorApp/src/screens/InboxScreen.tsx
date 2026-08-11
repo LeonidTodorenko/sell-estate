@@ -13,6 +13,8 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
 import theme from '../constants/theme';
+import AnimatedCard from '../components/AnimatedCard';
+import ErrorState from '../components/ErrorState';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 // одна иконка для всех
@@ -88,7 +90,6 @@ const InboxScreen = () => {
     isLoading,
     isFetching,
     isError,
-    error,
     refetch,
   } = useQuery<Message[]>({
     queryKey: ['inbox'],
@@ -176,21 +177,14 @@ const InboxScreen = () => {
     );
   }
 
-  if (isError) {
+  if (isError && messages.length === 0) {
     return (
-      <View style={styles.errorWrap}>
-        <Text style={styles.errorTitle}>Failed to load notifications</Text>
-
-        <Pressable
-          style={styles.retryButton}
-          onPress={() => {
-            console.error(error);
-            refetch();
-          }}
-        >
-          <Text style={styles.retryButtonText}>Try again</Text>
-        </Pressable>
-      </View>
+      <ErrorState
+        title="Unable to load notifications"
+        description="Please check your connection and try again."
+        onRetry={() => refetch()}
+        isRetrying={isFetching}
+      />
     );
   }
 
@@ -213,6 +207,7 @@ const InboxScreen = () => {
           <Text style={styles.section}>{section.title}</Text>
         )}
         renderItem={({ item, index, section }) => (
+          <AnimatedCard delay={Math.min(index, 5) * 55}>
           <Pressable onPress={() => handlePress(item)} style={styles.row}>
             {/* LEFT */}
             <View style={styles.left}>
@@ -240,6 +235,7 @@ const InboxScreen = () => {
               <View style={styles.divider} />
             )}
           </Pressable>
+          </AnimatedCard>
         )}
         ListEmptyComponent={
           <View style={styles.empty}>
@@ -348,38 +344,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-  },
-
-  errorWrap: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    backgroundColor: '#FFFFFF',
-  },
-
-  errorTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: theme.colors.text,
-    textAlign: 'center',
-  },
-
-  retryButton: {
-    marginTop: 16,
-    minWidth: 120,
-    height: 44,
-    paddingHorizontal: 18,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.colors.primary,
-  },
-
-  retryButtonText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#FFFFFF',
   },
 
   empty: {

@@ -16,6 +16,7 @@ import StyledInput from '../components/StyledInput';
 import BlueButton from '../components/BlueButton';
 import theme from '../constants/theme';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import Haptics from '../services/HapticsService';
 
 type CardItem = {
   id: string;
@@ -101,16 +102,19 @@ const WithdrawScreen = () => {
 
   const handleWithdraw = async () => {
     if (!parsedAmount || parsedAmount <= 0) {
+      Haptics.warning();
       Alert.alert('Validation', 'Enter withdrawal amount');
       return;
     }
 
     if (parsedAmount > DUMMY_AVAILABLE_AMOUNT) {
+      Haptics.warning();
       Alert.alert('Validation', 'Amount exceeds available balance');
       return;
     }
 
     if (!selectedCardId) {
+      Haptics.warning();
       Alert.alert('Validation', 'Select payment method');
       return;
     }
@@ -120,6 +124,7 @@ const WithdrawScreen = () => {
 
       const stored = await AsyncStorage.getItem('user');
       if (!stored) {
+        Haptics.error();
         Alert.alert('Session error', 'User not found');
         return;
       }
@@ -131,10 +136,12 @@ const WithdrawScreen = () => {
         amount: parsedAmount,
       });
 
+      Haptics.success();
       Alert.alert('Success', 'Withdrawal request submitted');
       navigation.goBack();
     } catch (error) {
       console.error(error);
+      Haptics.error();
       Alert.alert('Error', 'Failed to submit withdrawal');
     } finally {
       setSubmitting(false);
