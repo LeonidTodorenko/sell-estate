@@ -23,13 +23,15 @@ export default function GateScreen({ navigation }: Props) {
         const stored = await loadSession();
 
         // Нет сессии → на логин
-        if (!stored?.accessToken || !stored?.refreshToken) {
+        if (!stored?.accessToken) {
           return safeExit();
         }
  
 
        // попробуем рефреш (может access уже протух)
-        const refreshed = await tryRefresh().catch(() => null);
+        const refreshed = stored.refreshToken
+          ? await tryRefresh().catch(() => null)
+          : null;
         const effective = refreshed ? { ...stored, ...refreshed } : stored;
 
         if (!effective?.accessToken) {
@@ -51,13 +53,16 @@ export default function GateScreen({ navigation }: Props) {
           return safeExit();
         }
 
-        const me = await ensureUserInSession(); 
+        const me = await ensureUserInSession();
+        const isDemo = stored.isDemo === true || stored.user?.isDemo === true || me?.isDemo === true;
+        const demoCode = stored.demoCode ?? stored.user?.demoCode ?? me?.demoCode ?? null;
+        const sessionUser = { ...stored.user, ...me, isDemo, demoCode };
 
         // 5) Перезаписываем сессию на диске с новыми токенами и user
-        await saveSession({ ...effective, user: me });
+        await saveSession({ ...effective, isDemo, demoCode, user: sessionUser });
 
         // 6) Синхронизируем legacy-хранилище полноценным объектом (с user)
-        await writeLegacyUser({ ...effective, user: me });
+        await writeLegacyUser({ ...effective, isDemo, demoCode, user: sessionUser });
 
             
        // Токен рабочий — фиксируем сессию и летим по роли
@@ -69,7 +74,7 @@ export default function GateScreen({ navigation }: Props) {
         //await writeLegacyUser(effective);
 
         //const role = effective.user?.role ?? effective.user?.Role ?? 'user';
-        const role = getRoleFromUserAndToken(me, effective.accessToken);
+        const role = getRoleFromUserAndToken(sessionUser, effective.accessToken);
         navigation.reset({
           index: 0,
           routes: [{ name: role === 'admin' ? 'AdminDashboards' : 'Home' } as any],

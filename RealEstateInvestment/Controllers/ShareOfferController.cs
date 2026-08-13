@@ -30,6 +30,7 @@ namespace RealEstateInvestment.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateOffer([FromBody] CreateShareOfferRequest request)
         {
+            if (User.IsDemo()) return await CreateDemoOffer(request);
 
             var seller = await _context.Users.FindAsync(request.SellerId);
 
@@ -111,6 +112,7 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("user/{id}/grouped")]
         public async Task<IActionResult> GetGroupedInvestments(Guid id)
         {
+            if (User.IsDemo()) return await GetDemoGroupedInvestments();
             try
             {
                 var grouped = await _context.Investments
@@ -145,6 +147,7 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("active")]
         public async Task<IActionResult> GetActiveOffers()
         {
+            if (User.IsDemo()) return await GetDemoActiveOffers();
             var offers = await _context.ShareOffers
                 .Where(o => o.IsActive && o.ExpirationDate > DateTime.UtcNow)
                 .Include(o => o.Property)
@@ -170,6 +173,7 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("user/{userId}/active")]
         public async Task<IActionResult> GetUserActiveOffers(Guid userId)
         {
+            if (User.IsDemo()) return await GetDemoUserActiveOffers();
             var offers = await _context.ShareOffers
                 .Where(o => o.SellerId == userId && o.IsActive && o.ExpirationDate > DateTime.UtcNow)
                 .Select(o => new
@@ -187,6 +191,8 @@ namespace RealEstateInvestment.Controllers
         [HttpPost("sell-to-platform")]
         public async Task<IActionResult> SellToPlatform([FromBody] SellToPlatformRequest request)
         {
+            if (User.IsDemo())
+                return BadRequest(new { message = "Platform buyback is disabled in demo mode because no isolated demo platform wallet/ownership account exists" });
             var investments = await _context.Investments
                 .Include(i => i.Property)
                 .Include(i => i.User)
@@ -306,6 +312,7 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("user/{id}/with-property")]
         public async Task<IActionResult> GetInvestmentsWithProperty(Guid id)
         {
+            if (User.IsDemo()) return await GetDemoInvestmentsWithProperty();
             var result = await _context.Investments
                 .Where(i => i.UserId == id)
                 .Include(i => i.Property)
@@ -333,6 +340,7 @@ namespace RealEstateInvestment.Controllers
         [HttpPost("{id}/buy")]
         public async Task<IActionResult> BuyShares(Guid id, [FromBody] BuySharesRequest req)
         {
+            if (User.IsDemo()) return await BuyDemoShares(id, req);
             Guid buyerId = req.BuyerId;
             int sharesToBuy = req.SharesToBuy;
 
@@ -576,6 +584,7 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("transactions")]
         public async Task<IActionResult> GetRecentTransactions([FromQuery] Guid? propertyId, [FromQuery] DateTime? startDate, [FromQuery] DateTime? endDate)
         {
+            if (User.IsDemo()) return await GetDemoTransactions(propertyId, startDate, endDate);
             var query = _context.ShareTransactions
                 .Include(t => t.Property)
                 .AsQueryable();
@@ -616,6 +625,7 @@ namespace RealEstateInvestment.Controllers
         [HttpPost("{id}/cancel")]
         public async Task<IActionResult> CancelOffer(Guid id, [FromBody] CancelOfferRequest req)
         {
+            if (User.IsDemo()) return await CancelDemoOffer(id, req);
             var offer = await _context.ShareOffers.FindAsync(id);
             if (offer == null || !offer.IsActive)
                 return NotFound("Offer not found or already inactive");
@@ -715,6 +725,7 @@ namespace RealEstateInvestment.Controllers
         [HttpPost("{id}/extend-to")]
         public async Task<IActionResult> ExtendOfferTo(Guid id, [FromBody] ExtendOfferRequest req)
         {
+            if (User.IsDemo()) return await ExtendDemoOffer(id, req);
             var offer = await _context.ShareOffers.FindAsync(id);
             if (offer == null) return NotFound("Offer not found");
 
@@ -777,6 +788,7 @@ namespace RealEstateInvestment.Controllers
         [HttpPost("{id}/bid")]
         public async Task<IActionResult> PlaceBid(Guid id, [FromBody] PlaceBidRequest request)
         {
+            if (User.IsDemo()) return await PlaceDemoBid(id, request);
             var offer = await _context.ShareOffers.FindAsync(id);
             if (offer == null || !offer.IsActive || offer.ExpirationDate < DateTime.UtcNow)
                 return BadRequest("Offer is not available");
@@ -872,6 +884,7 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("{id}/bids")]
         public async Task<IActionResult> GetBidsForOffer(Guid id)
         {
+            if (User.IsDemo()) return await GetDemoBids(id);
             var bids = await _context.ShareOfferBids
                 .Where(b => b.OfferId == id)
                 .OrderByDescending(b => b.CreatedAt)
@@ -892,6 +905,14 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("{userId}/club-info")]
         public async Task<IActionResult> GetClubInfo(Guid userId)
         {
+            if (User.IsDemo())
+            {
+                var assets = await CalculateDemoTotalAssets(User.GetUserId());
+                var demoStatus = UserFeeHelper.GetStatus(assets);
+                var (demoBaseFee, demoWithReferralFee) = UserFeeHelper.GetUserFeePercents(demoStatus);
+                var (rewardPercent, rewardYears) = UserFeeHelper.GetReferrerRewardByTotal(assets);
+                return Ok(new { totalAssets = Math.Round(assets, 2), status = demoStatus.ToString(), baseFee = demoBaseFee, withReferralFee = demoWithReferralFee, canInvite = false, referrerRewardPercent = rewardPercent, referrerRewardYears = rewardYears });
+            }
             var user = await _context.Users.FindAsync(userId);
             if (user == null)
                 return NotFound(new { message = "User not found" });
@@ -922,6 +943,250 @@ namespace RealEstateInvestment.Controllers
             });
         }
 
+
+        private async Task<IActionResult> CreateDemoOffer(CreateShareOfferRequest request)
+        {
+            var userId = User.GetUserId();
+            var seller = await GetActiveDemoUser(userId);
+            if (seller == null) return Unauthorized(new { message = "Demo account is inactive, expired, or missing" });
+            if (request.PinOrPassword != seller.PinCode) return BadRequest("Invalid PIN");
+            if (request.SharesForSale <= 0 || request.StartPricePerShare <= 0 || request.ExpirationDate <= DateTime.UtcNow)
+                return BadRequest("Invalid offer parameters");
+            if (!await _context.Properties.AsNoTracking().AnyAsync(x => x.Id == request.PropertyId))
+                return BadRequest("Property not found");
+
+            await using var tx = await _context.Database.BeginTransactionAsync();
+            var investments = await _context.DemoInvestments
+                .Where(x => x.DemoUserId == userId && x.PropertyId == request.PropertyId && x.Shares > 0)
+                .OrderBy(x => x.CreatedAt).ToListAsync();
+            if (investments.Sum(x => x.Shares) < request.SharesForSale)
+                return BadRequest("Not enough shares to sell");
+
+            var remaining = request.SharesForSale;
+            var locked = 0m;
+            foreach (var investment in investments)
+            {
+                if (remaining == 0) break;
+                var count = Math.Min(remaining, investment.Shares);
+                var basis = investment.Shares == 0 ? 0 : investment.InvestedAmount / investment.Shares;
+                investment.Shares -= count;
+                investment.InvestedAmount -= basis * count;
+                locked += basis * count;
+                remaining -= count;
+            }
+
+            var offer = new DemoShareOffer
+            {
+                DemoSellerId = userId, PropertyId = request.PropertyId,
+                DemoInvestmentId = investments.Count == 1 ? investments[0].Id : null,
+                SharesForSale = request.SharesForSale, LockedInvestedAmount = locked,
+                StartPricePerShare = request.StartPricePerShare, BuyoutPricePerShare = request.BuyoutPricePerShare,
+                ExpirationDate = request.ExpirationDate, CreatedAt = DateTime.UtcNow, IsActive = true
+            };
+            _context.DemoShareOffers.Add(offer);
+            AddDemoLog(userId, "CreateOffer", $"Property={request.PropertyId}; Shares={request.SharesForSale}; Locked={locked:F2}");
+            seller.LastActiveAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            await tx.CommitAsync();
+            return Ok(new { offer.Id, SellerId = offer.DemoSellerId, offer.PropertyId, offer.SharesForSale, offer.StartPricePerShare, offer.BuyoutPricePerShare, offer.ExpirationDate, offer.CreatedAt, offer.IsActive, offer.LockedInvestedAmount });
+        }
+
+        private async Task<IActionResult> GetDemoGroupedInvestments()
+        {
+            var userId = User.GetUserId();
+            var rows = await _context.DemoInvestments.AsNoTracking().Where(x => x.DemoUserId == userId && x.Shares > 0)
+                .GroupBy(x => x.PropertyId).Select(g => new
+                {
+                    PropertyId = g.Key, Shares = g.Sum(x => x.Shares), TotalInvested = g.Sum(x => x.InvestedAmount),
+                    averagePrice = g.Sum(x => x.Shares) == 0 ? 0 : g.Sum(x => x.InvestedAmount) / g.Sum(x => x.Shares),
+                    PropertyTitle = g.Select(x => x.Property.Title).FirstOrDefault(),
+                    BuybackPricePerShare = g.Select(x => x.Property.BuybackPricePerShare).FirstOrDefault()
+                }).ToListAsync();
+            return Ok(rows);
+        }
+
+        private async Task<IActionResult> GetDemoActiveOffers()
+        {
+            var now = DateTime.UtcNow;
+            var rows = await _context.DemoShareOffers.AsNoTracking()
+                .Where(x => x.IsActive && x.ExpirationDate > now)
+                .Select(x => new { x.Id, SellerId = x.DemoSellerId, x.PropertyId, x.SharesForSale, x.BuyoutPricePerShare, x.StartPricePerShare, x.ExpirationDate, x.IsActive, x.CreatedAt, PropertyTitle = x.Property.Title })
+                .ToListAsync();
+            return Ok(rows);
+        }
+
+        private async Task<IActionResult> GetDemoUserActiveOffers()
+        {
+            var userId = User.GetUserId();
+            var now = DateTime.UtcNow;
+            var rows = await _context.DemoShareOffers.AsNoTracking().Where(x => x.DemoSellerId == userId && x.IsActive && x.ExpirationDate > now)
+                .Select(x => new { x.BuyoutPricePerShare, x.StartPricePerShare, x.ExpirationDate }).ToListAsync();
+            return Ok(rows);
+        }
+
+        private async Task<IActionResult> GetDemoInvestmentsWithProperty()
+        {
+            var userId = User.GetUserId();
+            var rows = await _context.DemoInvestments.AsNoTracking().Where(x => x.DemoUserId == userId)
+                .Select(x => new { x.Id, x.PropertyId, x.Shares, x.InvestedAmount, PropertyTitle = x.Property.Title, BuybackPricePerShare = x.Property.BuybackPricePerShare }).ToListAsync();
+            return Ok(rows);
+        }
+
+        private async Task<IActionResult> BuyDemoShares(Guid offerId, BuySharesRequest request)
+        {
+            var buyerId = User.GetUserId();
+            await using var tx = await _context.Database.BeginTransactionAsync();
+            var offer = await _context.DemoShareOffers.Include(x => x.Property).FirstOrDefaultAsync(x => x.Id == offerId);
+            if (offer == null || !offer.IsActive || offer.ExpirationDate <= DateTime.UtcNow)
+                return NotFound("Offer not found or inactive");
+            if (offer.DemoSellerId == buyerId) return BadRequest("You cannot buy your own offer");
+            if (request.SharesToBuy <= 0 || request.SharesToBuy != offer.SharesForSale)
+                return BadRequest("You must buy the entire lot.");
+            if (!offer.BuyoutPricePerShare.HasValue || offer.BuyoutPricePerShare <= 0)
+                return BadRequest("Invalid offer price");
+            var buyer = await GetActiveDemoUser(buyerId);
+            var seller = await GetActiveDemoUser(offer.DemoSellerId);
+            if (buyer == null || seller == null) return BadRequest("Buyer or seller not found");
+            if (request.PinOrPassword != buyer.PinCode) return BadRequest("Invalid PIN");
+            var total = offer.SharesForSale * offer.BuyoutPricePerShare.Value;
+            if (buyer.WalletBalance < total) return BadRequest("Insufficient balance");
+
+            var profit = total - offer.LockedInvestedAmount;
+            var fee = 0m;
+            if (profit > 0)
+            {
+                var assets = await CalculateDemoTotalAssets(seller.Id);
+                var (baseFee, _) = UserFeeHelper.GetUserFeePercents(UserFeeHelper.GetStatus(assets));
+                fee = Math.Max(0, Math.Round(profit * baseFee, 2));
+            }
+            buyer.WalletBalance -= total;
+            seller.WalletBalance += total - fee; // demo club fee is intentionally sandbox-only and not credited to production superuser
+            offer.SharesForSale = 0;
+            offer.IsActive = false;
+            var investment = await _context.DemoInvestments.FirstOrDefaultAsync(x => x.DemoUserId == buyerId && x.PropertyId == offer.PropertyId);
+            if (investment == null)
+                _context.DemoInvestments.Add(new DemoInvestment { DemoUserId = buyerId, PropertyId = offer.PropertyId, Shares = request.SharesToBuy, InvestedAmount = total, CreatedAt = DateTime.UtcNow });
+            else { investment.Shares += request.SharesToBuy; investment.InvestedAmount += total; }
+            _context.DemoShareTransactions.Add(new DemoShareTransaction { DemoBuyerId = buyerId, DemoSellerId = seller.Id, PropertyId = offer.PropertyId, Shares = request.SharesToBuy, PricePerShare = offer.BuyoutPricePerShare.Value });
+            AddDemoUserTransaction(buyerId, TransactionType.ShareMarketBuy, total, request.SharesToBuy, offer.Property, "Demo share market buy");
+            AddDemoUserTransaction(seller.Id, TransactionType.ShareMarketSell, total, request.SharesToBuy, offer.Property, $"Demo share market sell; fee={fee:F2}");
+            AddDemoLog(buyerId, "BuyShare", $"Offer={offerId}; Total={total:F2}; Fee={fee:F2}");
+            buyer.LastActiveAt = seller.LastActiveAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            await tx.CommitAsync();
+            return Ok("Shares purchased successfully.");
+        }
+
+        private async Task<IActionResult> GetDemoTransactions(Guid? propertyId, DateTime? startDate, DateTime? endDate)
+        {
+            var userId = User.GetUserId();
+            var query = _context.DemoShareTransactions.AsNoTracking().Where(x => x.DemoBuyerId == userId || x.DemoSellerId == userId);
+            if (propertyId.HasValue) query = query.Where(x => x.PropertyId == propertyId);
+            if (startDate.HasValue) query = query.Where(x => x.Timestamp >= startDate);
+            if (endDate.HasValue) query = query.Where(x => x.Timestamp <= endDate);
+            var rows = await query.OrderByDescending(x => x.Timestamp).Take(200)
+                .Select(x => new { x.Timestamp, x.Shares, x.PricePerShare, x.PropertyId, PropertyTitle = x.Property.Title, BuyerId = x.DemoBuyerId, SellerId = x.DemoSellerId }).ToListAsync();
+            return Ok(rows);
+        }
+
+        private async Task<IActionResult> CancelDemoOffer(Guid offerId, CancelOfferRequest request)
+        {
+            var userId = User.GetUserId();
+            await using var tx = await _context.Database.BeginTransactionAsync();
+            var offer = await _context.DemoShareOffers.FirstOrDefaultAsync(x => x.Id == offerId && x.DemoSellerId == userId);
+            if (offer == null || !offer.IsActive) return NotFound("Offer not found or already inactive");
+            var seller = await GetActiveDemoUser(userId);
+            if (seller == null) return Unauthorized();
+            if (request.PinOrPassword != seller.PinCode) return BadRequest("Invalid PIN");
+            var setting = await _context.SystemSettings.AsNoTracking().FirstOrDefaultAsync(x => x.Key == "CancelListingFee");
+            var fee = setting != null && decimal.TryParse(setting.Value, out var parsed) ? parsed : 0m;
+            if (seller.WalletBalance < fee) return BadRequest($"Insufficient funds for cancellation fee: {fee} USD");
+            seller.WalletBalance -= fee;
+            var investment = await _context.DemoInvestments.FirstOrDefaultAsync(x => x.DemoUserId == userId && x.PropertyId == offer.PropertyId);
+            if (investment == null)
+                _context.DemoInvestments.Add(new DemoInvestment { DemoUserId = userId, PropertyId = offer.PropertyId, Shares = offer.SharesForSale, InvestedAmount = offer.LockedInvestedAmount });
+            else { investment.Shares += offer.SharesForSale; investment.InvestedAmount += offer.LockedInvestedAmount; }
+            offer.IsActive = false;
+            AddDemoLog(userId, "CancelOffer", $"Offer={offerId}; Fee={fee:F2}");
+            seller.LastActiveAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            await tx.CommitAsync();
+            return Ok($"Offer canceled with {fee} USD cancellation fee.");
+        }
+
+        private async Task<IActionResult> ExtendDemoOffer(Guid offerId, ExtendOfferRequest request)
+        {
+            var userId = User.GetUserId();
+            var offer = await _context.DemoShareOffers.FirstOrDefaultAsync(x => x.Id == offerId && x.DemoSellerId == userId);
+            if (offer == null) return NotFound("Offer not found");
+            if (!offer.IsActive) return BadRequest("Offer is inactive");
+            var seller = await GetActiveDemoUser(userId);
+            if (seller == null) return Unauthorized();
+            if (request.PinOrPassword != seller.PinCode) return BadRequest("Invalid PIN");
+            if (request.NewDate <= DateTime.UtcNow || request.NewDate <= offer.ExpirationDate)
+                return BadRequest("New expiration must be after current expiration date");
+            offer.ExpirationDate = request.NewDate;
+            seller.LastActiveAt = DateTime.UtcNow;
+            AddDemoLog(userId, "ExtendOffer", $"Offer={offerId}; Date={request.NewDate:O}");
+            await _context.SaveChangesAsync();
+            return Ok();
+        }
+
+        private async Task<IActionResult> PlaceDemoBid(Guid offerId, PlaceBidRequest request)
+        {
+            var bidderId = User.GetUserId();
+            await using var tx = await _context.Database.BeginTransactionAsync();
+            var offer = await _context.DemoShareOffers.FirstOrDefaultAsync(x => x.Id == offerId);
+            if (offer == null || !offer.IsActive || offer.ExpirationDate <= DateTime.UtcNow) return BadRequest("Offer is not available");
+            if (offer.DemoSellerId == bidderId) return BadRequest("You cannot bid on your own offer");
+            var bidder = await GetActiveDemoUser(bidderId);
+            if (bidder == null) return Unauthorized();
+            if (request.PinOrPassword != bidder.PinCode) return BadRequest("Invalid PIN");
+            if (request.BidPricePerShare <= 0 || request.BidPricePerShare < offer.StartPricePerShare) return BadRequest("Invalid bid price");
+            if (request.Shares <= 0 || request.Shares > offer.SharesForSale) return BadRequest("Invalid number of shares");
+            if (bidder.WalletBalance < request.BidPricePerShare * request.Shares) return BadRequest("Insufficient balance");
+            var bid = new DemoShareOfferBid { DemoOfferId = offerId, DemoBidderId = bidderId, BidPricePerShare = request.BidPricePerShare, Shares = request.Shares, CreatedAt = DateTime.UtcNow };
+            _context.DemoShareOfferBids.Add(bid);
+            bidder.LastActiveAt = DateTime.UtcNow;
+            AddDemoLog(bidderId, "PlaceBid", $"Offer={offerId}; Price={request.BidPricePerShare}; Shares={request.Shares}");
+            await _context.SaveChangesAsync();
+            await tx.CommitAsync();
+            return Ok(new { bid.Id, OfferId = bid.DemoOfferId, BidderId = bid.DemoBidderId, bid.BidPricePerShare, bid.Shares, bid.CreatedAt });
+        }
+
+        private async Task<IActionResult> GetDemoBids(Guid offerId)
+        {
+            var userId = User.GetUserId();
+            var offer = await _context.DemoShareOffers.AsNoTracking().FirstOrDefaultAsync(x => x.Id == offerId);
+            if (offer == null)
+                return NotFound("Offer not found");
+            var bids = await _context.DemoShareOfferBids.AsNoTracking().Where(x => x.DemoOfferId == offerId).OrderByDescending(x => x.CreatedAt)
+                .Select(x => new { x.Id, OfferId = x.DemoOfferId, BidderId = x.DemoBidderId, x.BidPricePerShare, x.CreatedAt, x.Shares }).ToListAsync();
+            return Ok(bids);
+        }
+
+        private async Task<DemoUser?> GetActiveDemoUser(Guid id) => await _context.DemoUsers
+            .FirstOrDefaultAsync(x => x.Id == id && !x.IsTemplate && x.IsActive && x.ExpiresAt > DateTime.UtcNow);
+
+        private void AddDemoLog(Guid userId, string action, string details) => _context.DemoActionLogs.Add(new DemoActionLog { DemoUserId = userId, Action = action, Details = details });
+
+        private void AddDemoUserTransaction(Guid userId, TransactionType type, decimal amount, int shares, Property property, string notes) =>
+            _context.DemoUserTransactions.Add(new DemoUserTransaction { DemoUserId = userId, Type = type, Amount = amount, Shares = shares, PropertyId = property.Id, PropertyTitle = property.Title, Timestamp = DateTime.UtcNow, Notes = notes });
+
+        private async Task<decimal> CalculateDemoTotalAssets(Guid userId)
+        {
+            var wallet = await _context.DemoUsers.Where(x => x.Id == userId).Select(x => (decimal?)x.WalletBalance).FirstOrDefaultAsync() ?? 0;
+            var investments = await _context.DemoInvestments.Where(x => x.DemoUserId == userId && x.Shares > 0)
+                .Select(x => new { x.Shares, x.Property.Price, x.Property.TotalShares }).ToListAsync();
+            var applications = await _context.DemoInvestmentApplications.Where(x => x.DemoUserId == userId && x.Status == "pending")
+                .Select(x => new { x.RequestedShares, x.Property.Price, x.Property.TotalShares }).ToListAsync();
+            var offers = await _context.DemoShareOffers.Where(x => x.DemoSellerId == userId && x.IsActive)
+                .Select(x => new { x.SharesForSale, x.Property.Price, x.Property.TotalShares }).ToListAsync();
+            return wallet
+                + investments.Sum(x => x.TotalShares == 0 ? 0 : x.Price / x.TotalShares * x.Shares)
+                + applications.Sum(x => x.TotalShares == 0 ? 0 : x.Price / x.TotalShares * x.RequestedShares)
+                + offers.Sum(x => x.TotalShares == 0 ? 0 : x.Price / x.TotalShares * x.SharesForSale);
+        }
 
         // Локальный расчёт totalAssets для продавца
         private async Task<decimal> CalculateTotalAssets(Guid userId)

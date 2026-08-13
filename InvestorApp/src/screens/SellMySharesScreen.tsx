@@ -28,6 +28,7 @@ const SellMySharesScreen = () => {
 
   const [investments, setInvestments] = useState<GroupedInvestment[]>([]);
   const [userId, setUserId] = useState<string>('');
+  const [isDemo, setIsDemo] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState<GroupedInvestment | null>(null);
   const [inputShares, setInputShares] = useState('');
@@ -48,6 +49,7 @@ const SellMySharesScreen = () => {
       const stored = await AsyncStorage.getItem('user');
       if (!stored) return;
       const user = JSON.parse(stored);
+      setIsDemo(user.isDemo === true || user.user?.isDemo === true);
       setUserId(user.userId);
       await fetchBuybackPrices(user.userId);
     };
@@ -56,6 +58,10 @@ const SellMySharesScreen = () => {
 
   const handleSellToPlatform = async (inv: GroupedInvestment) => {
     if (!userId) return;
+    if (isDemo) {
+      Alert.alert('Demo Mode', 'Platform buyback is not simulated. You can list shares on the demo marketplace instead.');
+      return;
+    }
 
     Alert.alert(
       'Confirm Sale',

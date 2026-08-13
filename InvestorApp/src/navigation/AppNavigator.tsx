@@ -14,6 +14,7 @@ import MyPropertiesScreen from '../screens/MyPropertiesScreen';
 import MyWithdrawalsScreen from '../screens/MyWithdrawalsScreen';
 import AdminWithdrawalsScreen from '../screens/AdminWithdrawalsScreen';
 import AdminDashboardScreen from '../screens/AdminDashboardScreen';
+import AdminDemoAccountsScreen from '../screens/AdminDemoAccountsScreen';
 import AdminUsersScreen from '../screens/AdminUsersScreen';
 import AdminInvestmentsScreen from '../screens/AdminInvestmentsScreen';
 import AdminKycScreen from '../screens/AdminKycScreen';
@@ -51,6 +52,7 @@ import RentHistoryScreen from '../screens/RentHistoryScreen';
 import MyRentIncomeScreen from '../screens/MyRentIncomeScreen';
 import MainHomeScreen from '../screens/HomeScreen';
 import InviteFriendScreen from '../screens/InviteFriendScreen';
+import MonthlyReportsScreen from '../screens/MonthlyReportsScreen';
 
 import GateScreen from '../screens/GateScreen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -91,6 +93,7 @@ export type RootStackParamList = {
   MyWithdrawals: undefined;
   AdminWithdrawals: undefined;
   AdminDashboards: undefined;
+  AdminDemoAccounts: undefined;
   AdminUsers: undefined;
   AdminInvestments: undefined;
   AdminKyc: undefined;
@@ -137,6 +140,7 @@ Settings: undefined;
    AdminFinanceFlows: undefined;
   AdminFinanceMonth: { ym: string };
   InviteFriend: undefined;
+  MonthlyReports: undefined;
     UsersLists: undefined;
     AddCard: undefined;
   UserEdit: {
@@ -165,7 +169,8 @@ const HIDE_BAR_ROUTES = new Set<string>([
   // все админские:
   'AdminDashboards','AdminUsers','AdminInvestments','AdminKyc','AdminStats',
   'AdminProperties','AdminWithdrawals','AdminLogs','AdminMessages',
-  'AdminKycUpload','AdminSystemSettings','SuperUser','AdminChat','UsersLists','UserEdit','AdminFinanceFlows']);
+  'AdminKycUpload','AdminSystemSettings','SuperUser','AdminChat','UsersLists','UserEdit','AdminFinanceFlows',
+  'AdminDemoAccounts']);
 
 
 export default function AppNavigator() {
@@ -226,6 +231,7 @@ export default function AppNavigator() {
         <Stack.Screen name="MyWithdrawals" component={MyWithdrawalsScreen} options={{ title: 'My Withdrawals' }} />
         <Stack.Screen name="AdminWithdrawals" component={AdminWithdrawalsScreen} options={{ title: 'Withdrawal Admin' }} />
         <Stack.Screen name="AdminDashboards" component={AdminDashboardScreen} options={{ title: 'Dashboard Admin' }} />
+        <Stack.Screen name="AdminDemoAccounts" component={AdminDemoAccountsScreen} options={{ title: 'Admin: Demo Sandbox' }} />
         <Stack.Screen name="AdminUsers" component={AdminUsersScreen} options={{ title: 'Admin: Users' }} />
         <Stack.Screen name="AdminInvestments" component={AdminInvestmentsScreen} options={{ title: 'Admin: Investments' }} />
         <Stack.Screen name="AdminKyc" component={AdminKycScreen} options={{ title: 'Admin: KYC' }} />
@@ -263,6 +269,7 @@ export default function AppNavigator() {
         <Stack.Screen name="MyRentIncome" component={MyRentIncomeScreen} options={{ title: 'Rental Income ' }} />
         <Stack.Screen name="Home" component={MainHomeScreen} options={{ title: 'Home ' }} />
         <Stack.Screen name="InviteFriend" component={InviteFriendScreen} options={{ title: 'Invite a Friend' }} />
+        <Stack.Screen name="MonthlyReports" component={MonthlyReportsScreen} options={{ title: 'Monthly Reports' }} />
         <Stack.Screen name="UserEdit" component={UserEditScreen} options={{ title: 'User Edit' }} />
          <Stack.Screen name="UsersLists" component={UsersListScreen} options={{ title: 'Users List' }} />
          <Stack.Screen name="AdminFinanceFlows" component={AdminFinanceFlowsScreen} options={{ title: 'Finance Flows' }} />

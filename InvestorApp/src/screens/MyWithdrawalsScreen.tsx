@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
 import theme from '../constants/theme';
 import { loadSession } from '../services/sessionStorage';
@@ -14,6 +13,7 @@ interface Withdrawal {
 
 const MyWithdrawalsScreen = () => {
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
+  const [isDemo, setIsDemo] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -21,6 +21,7 @@ const MyWithdrawalsScreen = () => {
        const session = await loadSession();
         if (!session?.user?.id && !session?.user?.userId) return;
         const userId = session.user.id ?? session.user.userId;
+        setIsDemo(session.isDemo === true || session.user?.isDemo === true);
       // todo заменить везде
       // const stored = await AsyncStorage.getItem('user');
       // if (!stored) return;
@@ -35,6 +36,7 @@ const MyWithdrawalsScreen = () => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>My Withdrawal Requests</Text>
+      {isDemo && <Text style={styles.demoNotice}>Demo withdrawals are simulated instantly; they never enter the production approval queue.</Text>}
       <FlatList
         data={withdrawals}
         keyExtractor={(item) => item.id}
@@ -61,6 +63,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     marginBottom: 10,
   },
+  demoNotice: { backgroundColor: '#E8F7F0', color: '#087A4B', padding: 12, borderRadius: 10, marginBottom: 14 },
 });
 
 export default MyWithdrawalsScreen;

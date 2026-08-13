@@ -21,6 +21,7 @@ import { LineChart } from 'react-native-chart-kit';
 import ScreenLoader from '../components/ScreenLoader';
 import AnimatedCard from '../components/AnimatedCard';
 import ErrorState from '../components/ErrorState';
+import DemoModeBanner from '../components/DemoModeBanner';
 
 import inboxIcon from '../assets/images/inbox_icon.png';
 import historyIcon from '../assets/images/history_icon.png';
@@ -127,6 +128,8 @@ type HomeData = {
   investmentImagesMap: Record<string, PropertyImage[]>;
   stats: AssetStats | null;
   clubInfo: ClubInfo | null;
+  isDemo: boolean;
+  demoCode: string | null;
 };
 
 function money(n: number) {
@@ -467,6 +470,8 @@ async function fetchHomeData(): Promise<HomeData | null> {
     investmentImagesMap,
     stats: statsRes?.data ?? null,
     clubInfo: clubInfoRes?.data ?? null,
+    isDemo: u.isDemo === true || u.user?.isDemo === true,
+    demoCode: u.demoCode ?? u.user?.demoCode ?? null,
   };
 }
 
@@ -707,6 +712,7 @@ const clubInfo = homeData?.clubInfo ?? null;
       refreshControl={<RefreshControl refreshing={isFetching && !isLoading} onRefresh={onRefresh} />}
       showsVerticalScrollIndicator={false}
     >
+      <DemoModeBanner isDemo={homeData?.isDemo} demoCode={homeData?.demoCode} />
       <AnimatedCard delay={0}>
         <View style={styles.heroBlock}>
         <View style={styles.headerRow}>

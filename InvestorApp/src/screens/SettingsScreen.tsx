@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -16,7 +16,7 @@ import { RootStackParamList } from '../navigation/AppNavigator';
 
 import { Alert } from 'react-native';
 import api from '../api';
-import { clearSession } from '../services/sessionStorage';
+import { clearSession, loadSession } from '../services/sessionStorage';
 
 import rightIcon from '../assets/images/kyc_right_m.png';
 import bellIcon from '../assets/images/setting_Button_icon_bell.png';
@@ -27,8 +27,17 @@ const SettingsScreen = () => {
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [isDemo, setIsDemo] = useState(false);
+
+  useEffect(() => {
+    loadSession().then(s => setIsDemo(s?.isDemo === true || s?.user?.isDemo === true));
+  }, []);
 
   const handleDeleteAccount = () => {
+  if (isDemo) {
+    Alert.alert('Demo Mode', 'Demo accounts are managed by an administrator and cannot be deleted from the app.');
+    return;
+  }
   Alert.alert(
     'Delete account',
     'Are you sure you want to delete your account? Your access will be disabled. Documents related to your shares and remaining funds will be reviewed by our manager, who will contact you.',
@@ -125,7 +134,7 @@ const SettingsScreen = () => {
         Delete Account
       </Text>
       <Text style={styles.deleteSubtitle}>
-        Permanently disable your account
+        {isDemo ? 'Managed by the Demo Sandbox administrator' : 'Permanently disable your account'}
       </Text>
     </View>
   </View>

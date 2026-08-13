@@ -204,6 +204,13 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("{id}")]
         public async Task<IActionResult> GetUserById(Guid id)
         {
+            if (User.IsDemo())
+            {
+                var demoUserId = User.GetUserId();
+                if (demoUserId == Guid.Empty) return Unauthorized();
+                var demo = await _context.DemoUsers.AsNoTracking().FirstOrDefaultAsync(x => x.Id == demoUserId && x.IsActive && !x.IsTemplate);
+                return demo == null ? NotFound(new { message = "User not found" }) : Ok(demo);
+            }
             var user = await _context.Users.FindAsync(id);
             if (user == null)
                 return NotFound(new { message = "User not found" });
@@ -214,6 +221,53 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("{userId}/total-assets")]
         public async Task<IActionResult> GetTotalAssets(Guid userId)
         {
+            if (User.IsDemo())
+            {
+                userId = User.ResolveRequestedUserId(userId);
+                if (userId == Guid.Empty) return Unauthorized();
+
+                var demoUser = await _context.DemoUsers.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+                if (demoUser == null) return NotFound(new { message = "User not found" });
+
+                var investments = await (from i in _context.DemoInvestments
+                                         join p in _context.Properties on i.PropertyId equals p.Id
+                                         where i.DemoUserId == userId && i.Shares > 0
+                                         select new { i.Shares, p.Price, p.TotalShares, p.MonthlyRentalIncome }).ToListAsync();
+                var demoInvestmentValue = investments.Sum(x => x.TotalShares > 0 ? x.Price / x.TotalShares * x.Shares : 0m);
+                var demoRentalIncome = investments.Sum(x => x.MonthlyRentalIncome > 0 && x.TotalShares > 0
+                    ? x.MonthlyRentalIncome / x.TotalShares * x.Shares : 0m);
+
+                var pending = await (from a in _context.DemoInvestmentApplications
+                                     join p in _context.Properties on a.PropertyId equals p.Id
+                                     where a.DemoUserId == userId && a.Status == "pending"
+                                     select new { a.RequestedShares, p.Price, p.TotalShares }).ToListAsync();
+                var demoPendingApplicationsValue = pending.Sum(x => x.TotalShares > 0 ? x.Price / x.TotalShares * x.RequestedShares : 0m);
+
+                var market = await (from o in _context.DemoShareOffers
+                                    join p in _context.Properties on o.PropertyId equals p.Id
+                                    where o.DemoSellerId == userId && o.IsActive
+                                    select new { o.SharesForSale, p.Price, p.TotalShares }).ToListAsync();
+                var demoMarketValue = market.Sum(x => x.TotalShares > 0 ? x.Price / x.TotalShares * x.SharesForSale : 0m);
+                var demoTotalAssets = demoUser.WalletBalance + demoInvestmentValue + demoPendingApplicationsValue + demoMarketValue;
+                var demoStatus = UserFeeHelper.GetStatus(demoTotalAssets);
+                var (demoBaseFee, demoWithRefFee) = UserFeeHelper.GetUserFeePercents(demoStatus);
+
+                return Ok(new
+                {
+                    walletBalance = demoUser.WalletBalance,
+                    investmentValue = demoInvestmentValue,
+                    pendingApplicationsValue = demoPendingApplicationsValue,
+                    marketValue = demoMarketValue,
+                    rentalIncome = demoRentalIncome,
+                    totalAssets = demoTotalAssets,
+                    clubStatus = demoStatus.ToString(),
+                    hasReferrer = false,
+                    clubFeePercent = demoBaseFee,
+                    baseFeePercent = demoBaseFee,
+                    referralFeePercent = demoWithRefFee
+                });
+            }
+
             var user = await _context.Users.FindAsync(userId);
             if (user == null) return NotFound(new { message = "User not found" });
 
@@ -310,6 +364,18 @@ namespace RealEstateInvestment.Controllers
             if (userId == Guid.Empty)
                 return Unauthorized();
 
+            if (User.IsDemo())
+            {
+                var query = _context.DemoRentalIncomes.AsNoTracking()
+                    .Where(x => x.DemoInvestorId == userId);
+                if (from.HasValue) query = query.Where(x => x.PayoutDate >= from.Value);
+                if (to.HasValue) query = query.Where(x => x.PayoutDate <= to.Value);
+
+                return Ok(await query.OrderByDescending(x => x.PayoutDate)
+                    .Select(x => new { title = x.Property.Title, amount = x.Amount, Timestamp = x.PayoutDate })
+                    .ToListAsync());
+            }
+
             var logsQuery = _context.ActionLogs
                 .Where(l => l.UserId == userId && l.Action == "MonthlyRentPayout");
 
@@ -347,6 +413,13 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("{id}/assets-summary")]
         public async Task<IActionResult> GetUserAssetSummary(Guid id)
         {
+            if (User.IsDemo())
+            {
+                id = User.ResolveRequestedUserId(id);
+                if (id == Guid.Empty) return Unauthorized();
+                return await GetDemoAssetSummary(id);
+            }
+
             try
             {
                 var user = await _context.Users.FindAsync(id);
@@ -508,6 +581,20 @@ namespace RealEstateInvestment.Controllers
         [HttpPost("{id}/update-profile")]
         public async Task<IActionResult> UpdateProfile(Guid id, [FromBody] UpdateProfileRequest req)
         {
+            if (User.IsDemo())
+            {
+                var demoUserId = User.GetUserId();
+                if (demoUserId == Guid.Empty) return Unauthorized();
+                var demo = await _context.DemoUsers.FindAsync(demoUserId);
+                if (demo == null || demo.IsTemplate || !demo.IsActive) return NotFound(new { message = "User not found" });
+                demo.FullName = string.IsNullOrWhiteSpace(req.FullName) ? demo.FullName : req.FullName.Trim();
+                demo.PhoneNumber = string.IsNullOrWhiteSpace(req.PhoneNumber) ? null : req.PhoneNumber.Trim();
+                demo.Address = string.IsNullOrWhiteSpace(req.Address) ? null : req.Address.Trim();
+                // Demo e-mail is an admin-issued login credential and is intentionally immutable here.
+                _context.DemoActionLogs.Add(new DemoActionLog { DemoUserId = demoUserId, Action = "UpdateProfile", Details = "Demo profile fields updated" });
+                await _context.SaveChangesAsync();
+                return Ok(new { message = "Profile updated in Demo Mode", simulated = true, email = demo.Email });
+            }
             var user = await _context.Users.FindAsync(id);
             if (user == null)
                 return NotFound(new { message = "User not found" });
@@ -549,6 +636,19 @@ namespace RealEstateInvestment.Controllers
         [HttpPost("{id}/change-password")]
         public async Task<IActionResult> ChangePassword(Guid id, [FromBody] ChangePasswordRequest req)
         {
+            if (User.IsDemo())
+            {
+                var demoUserId = User.GetUserId();
+                if (demoUserId == Guid.Empty) return Unauthorized();
+                var demo = await _context.DemoUsers.FindAsync(demoUserId);
+                if (demo == null || demo.IsTemplate || !demo.IsActive) return NotFound(new { message = "User not found" });
+                if (demo.PasswordHash != req.CurrentPassword) return BadRequest(new { message = "Invalid current password" });
+                if (string.IsNullOrWhiteSpace(req.NewPassword) || req.NewPassword.Length < 6) return BadRequest(new { message = "Password must be at least 6 characters" });
+                demo.PasswordHash = req.NewPassword;
+                _context.DemoActionLogs.Add(new DemoActionLog { DemoUserId = demoUserId, Action = "ChangePassword", Details = "Demo password changed" });
+                await _context.SaveChangesAsync();
+                return Ok(new { message = "Password changed in Demo Mode", simulated = true });
+            }
             var user = await _context.Users.FindAsync(id);
             if (user == null) return NotFound(new { message = "User not found" });
 
@@ -570,6 +670,18 @@ namespace RealEstateInvestment.Controllers
         [HttpPost("{id}/upload-avatar")]
         public async Task<IActionResult> UploadAvatar(Guid id, [FromBody] AvatarRequest request)
         {
+            if (User.IsDemo())
+            {
+                var demoUserId = User.GetUserId();
+                if (demoUserId == Guid.Empty) return Unauthorized();
+                if (string.IsNullOrEmpty(request.Base64Image)) return BadRequest(new { message = "No image provided" });
+                var demo = await _context.DemoUsers.FindAsync(demoUserId);
+                if (demo == null || demo.IsTemplate || !demo.IsActive) return NotFound();
+                demo.AvatarBase64 = request.Base64Image;
+                _context.DemoActionLogs.Add(new DemoActionLog { DemoUserId = demoUserId, Action = "UploadAvatar", Details = "Demo avatar updated" });
+                await _context.SaveChangesAsync();
+                return Ok(new { message = "Avatar updated in Demo Mode", simulated = true });
+            }
             var user = await _context.Users.FindAsync(id);
             if (user == null) return NotFound();
 
@@ -600,6 +712,20 @@ namespace RealEstateInvestment.Controllers
                                                             [FromQuery] DateTime? from,
                                                             [FromQuery] DateTime? to)
         {
+            if (User.IsDemo())
+            {
+                userId = User.ResolveRequestedUserId(userId);
+                if (userId == Guid.Empty) return Unauthorized();
+                var demoQuery = _context.DemoUserTransactions.AsNoTracking().Where(t => t.DemoUserId == userId);
+                if (type.HasValue) demoQuery = demoQuery.Where(t => t.Type == type.Value);
+                if (from.HasValue) demoQuery = demoQuery.Where(t => t.Timestamp >= from.Value);
+                if (to.HasValue) demoQuery = demoQuery.Where(t => t.Timestamp <= to.Value);
+                return Ok(await demoQuery.OrderByDescending(t => t.Timestamp).Select(t => new
+                {
+                    t.Id, t.Type, t.Amount, t.Shares, t.PropertyId, t.PropertyTitle, t.Timestamp, t.Notes
+                }).ToListAsync());
+            }
+
             var query = _context.UserTransactions
                 .Where(t => t.UserId == userId);
 
@@ -628,6 +754,67 @@ namespace RealEstateInvestment.Controllers
                           .ToListAsync();
 
             return Ok(list);
+        }
+
+        private async Task<IActionResult> GetDemoAssetSummary(Guid demoUserId)
+        {
+            var user = await _context.DemoUsers.AsNoTracking().FirstOrDefaultAsync(x => x.Id == demoUserId);
+            if (user == null) return NotFound("User not found");
+
+            var investments = await _context.DemoInvestments.AsNoTracking()
+                .Where(i => i.DemoUserId == demoUserId && i.Shares > 0).Include(i => i.Property).ToListAsync();
+            var investmentValue = investments.Sum(i => i.Property == null || i.Property.TotalShares <= 0
+                ? 0m : i.Shares * (i.Property.Price / i.Property.TotalShares));
+            var transactions = await _context.DemoUserTransactions.AsNoTracking()
+                .Where(t => t.DemoUserId == demoUserId).OrderBy(t => t.Timestamp).ToListAsync();
+            var assetMap = new SortedDictionary<string, decimal>();
+            var equityMap = new SortedDictionary<string, decimal>();
+            var rentMap = new SortedDictionary<string, decimal>();
+            decimal all = 0m, equity = 0m, rent = 0m, totalRent = 0m;
+            foreach (var tx in transactions)
+            {
+                var date = tx.Timestamp.ToString("yyyy-MM-dd");
+                all += tx.Type switch
+                {
+                    TransactionType.Deposit or TransactionType.ShareMarketSell or TransactionType.RentIncome => tx.Amount,
+                    TransactionType.Investment or TransactionType.Withdrawal or TransactionType.Buyback or TransactionType.ShareMarketBuy => -tx.Amount,
+                    _ => 0m
+                };
+                equity += tx.Type switch
+                {
+                    TransactionType.Deposit or TransactionType.ShareMarketSell => tx.Amount,
+                    TransactionType.Investment or TransactionType.Withdrawal or TransactionType.Buyback or TransactionType.ShareMarketBuy => -tx.Amount,
+                    _ => 0m
+                };
+                if (tx.Type == TransactionType.RentIncome) { rent += tx.Amount; totalRent += tx.Amount; }
+                assetMap[date] = Math.Round(all, 2);
+                equityMap[date] = Math.Round(equity, 2);
+                rentMap[date] = Math.Round(rent, 2);
+            }
+            var assetHistory = assetMap.Select(x => new { date = x.Key, total = x.Value }).ToList();
+            var equityHistory = equityMap.Select(x => new { date = x.Key, total = x.Value }).ToList();
+            var rentIncomeHistory = rentMap.Select(x => new { date = x.Key, total = x.Value }).ToList();
+            var combinedHistory = new List<object>();
+            decimal lastEquity = 0m, lastRent = 0m;
+            foreach (var date in new SortedSet<string>(assetMap.Keys.Concat(equityMap.Keys).Concat(rentMap.Keys)))
+            {
+                if (equityMap.TryGetValue(date, out var eq)) lastEquity = eq;
+                if (rentMap.TryGetValue(date, out var ri)) lastRent = ri;
+                combinedHistory.Add(new { date, total = Math.Round(lastEquity + lastRent, 2) });
+            }
+            var totalAssets = Math.Round(user.WalletBalance + investmentValue, 2);
+            var status = UserFeeHelper.GetStatus(totalAssets);
+            var (baseFee, withRefFee) = UserFeeHelper.GetUserFeePercents(status);
+            return Ok(new
+            {
+                walletBalance = user.WalletBalance,
+                investmentValue = Math.Round(investmentValue, 2),
+                totalAssets,
+                rentalIncome = Math.Round(totalRent, 2),
+                assetHistory, equityHistory, rentIncomeHistory, combinedHistory,
+                clubStatus = status.ToString(), hasReferrer = false, clubFeePercent = baseFee,
+                baseFeePercent = baseFee, referralFeePercent = withRefFee
+            });
         }
 
         // google
@@ -1000,6 +1187,9 @@ namespace RealEstateInvestment.Controllers
             var userId = User.GetUserId();
             if (userId == Guid.Empty)
                 return Unauthorized();
+
+            if (User.IsDemo())
+                return BadRequest(new { message = "Demo accounts are managed by an administrator and cannot be deleted from the app." });
 
             var user = await _context.Users.FindAsync(userId);
             if (user == null)

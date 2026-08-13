@@ -42,6 +42,7 @@ namespace RealEstateInvestment.Controllers
         [HttpPost("invite")]
         public async Task<IActionResult> Invite([FromBody] InviteRequest req)
         {
+            if (User.IsDemo()) return BadRequest(new { message = "Referral invitations are read-only in Demo Mode. No invitation was sent." });
             var inviterIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (!Guid.TryParse(inviterIdStr, out var inviterId))
                 return Unauthorized();
@@ -161,6 +162,7 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("my-invites")]
         public async Task<IActionResult> MyInvites()
         {
+            if (User.IsDemo()) return Ok(Array.Empty<object>());
             var inviterId = User.GetUserId();
             if (inviterId == Guid.Empty) return Unauthorized();
 
@@ -187,6 +189,7 @@ namespace RealEstateInvestment.Controllers
         [HttpPost("redeem")]
         public async Task<IActionResult> Redeem([FromBody] RedeemRequest req)
         {
+            if (User.IsDemo()) return BadRequest(new { message = "Referral codes cannot be redeemed in Demo Mode." });
             var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (!Guid.TryParse(userIdStr, out var userId)) return Unauthorized();
 

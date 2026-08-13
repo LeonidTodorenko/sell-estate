@@ -5,9 +5,29 @@ const KEY = 'auth_session';
 
 export type Session = {
   accessToken: string;
-  refreshToken: string;
-  user?: any;  
+  refreshToken?: string | null;
+  user?: any;
+  isDemo?: boolean;
+  demoCode?: string | null;
 };
+
+export function normalizeSession(raw: any): Session {
+  const sourceUser = raw?.user ?? {};
+  const isDemo = raw?.isDemo === true || sourceUser?.isDemo === true;
+  const demoCode = raw?.demoCode ?? sourceUser?.demoCode ?? null;
+
+  return {
+    accessToken: raw?.accessToken ?? raw?.token ?? raw?.jwt,
+    refreshToken: raw?.refreshToken ?? raw?.refresh_token ?? raw?.refresh ?? null,
+    isDemo,
+    demoCode,
+    user: {
+      ...sourceUser,
+      isDemo,
+      demoCode,
+    },
+  };
+}
 
 export async function saveSession(session: Session) {
     const payload = JSON.stringify(session);

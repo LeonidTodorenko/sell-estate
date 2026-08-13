@@ -12,7 +12,6 @@ import {
 import StyledInput from '../components/StyledInput';
 import BlueButton from '../components/BlueButton';
 import api from '../api';
-import theme from '../constants/theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
@@ -129,6 +128,7 @@ export default function InviteFriendScreen() {
   const [sending, setSending] = useState(false);
   const [list, setList] = useState<InviteRow[]>([]);
   const [clubInfo, setClubInfo] = useState<ClubInfo | null>(null);
+  const [isDemo, setIsDemo] = useState(false);
 
   const loadInvites = async () => {
     try {
@@ -157,6 +157,11 @@ export default function InviteFriendScreen() {
   };
 
   const loadAll = async () => {
+    const stored = await AsyncStorage.getItem('user');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      setIsDemo(parsed.isDemo === true || parsed.user?.isDemo === true);
+    }
     await Promise.all([loadInvites(), loadClubInfo()]);
   };
 
@@ -165,6 +170,10 @@ export default function InviteFriendScreen() {
   }, []);
 
   const sendInvite = async () => {
+    if (isDemo) {
+      Alert.alert('Demo Mode', 'Referral invitations are read-only in the sandbox. No email will be sent.');
+      return;
+    }
     if (!email.trim()) {
       Alert.alert('Validation', 'Enter email');
       return;
@@ -276,6 +285,10 @@ export default function InviteFriendScreen() {
           </Text>
         )}
 
+        {isDemo && (
+          <Text style={styles.blockedText}>Demo Mode: referral history is read-only and invitations are not sent.</Text>
+        )}
+
         <StyledInput
           style={styles.input}
           placeholder="Friend’s Email"
@@ -288,7 +301,7 @@ export default function InviteFriendScreen() {
         <BlueButton
           title={sending ? 'Sending...' : 'Send Invite'}
           onPress={sendInvite}
-          disabled={sending || (clubInfo !== null && !clubInfo.canInvite)}
+          disabled={isDemo || sending || (clubInfo !== null && !clubInfo.canInvite)}
           width="full"
           showArrow={false}
           bgColor="#11A36A"

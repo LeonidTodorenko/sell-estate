@@ -34,7 +34,7 @@ import StyledInput from '../components/StyledInput';
 import { getFcmToken } from '../firebase';
 //import BlueBaseButton from '../components/BlueBaseButton';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-import { saveSession } from '../services/sessionStorage';
+import { normalizeSession, saveSession } from '../services/sessionStorage';
 import { API_BASE_URL, setAccessToken, writeLegacyUser, resetForceLogoutFlag } from '../api';
 import { getRoleFromUserAndToken } from '../services/auth';
 import BlueButton from '../components/BlueButton';
@@ -110,6 +110,7 @@ const LoginScreen = ({ navigation }: Props) => {
   const [showLoginPanel, setShowLoginPanel] = useState(false);
 
   const [showPassword, setShowPassword] = useState(false);
+  const [demoLoginIntent, setDemoLoginIntent] = useState(false);
 
   const heroAnim = useRef(new Animated.Value(0)).current;
   const panelAnim = useRef(new Animated.Value(420)).current;
@@ -285,11 +286,12 @@ const isAndroidKeyboardLogin = isAndroid && showLoginPanel && kbShown;
         timeout: 15000,
       });
 
-      const { accessToken, refreshToken, user } = data;
+      const session = normalizeSession(data);
+      const { accessToken, user } = session;
       setAccessToken(accessToken);
       await Promise.all([
-        saveSession({ accessToken, refreshToken, user }),
-        writeLegacyUser(data), // чтобы старые места, читающие AsyncStorage('user'), были счастливы
+        saveSession(session),
+        writeLegacyUser(session), // чтобы старые места, читающие AsyncStorage('user'), были счастливы
       ]);
       resetForceLogoutFlag();
       // todo отключил файрбейз
@@ -359,6 +361,12 @@ const isAndroidKeyboardLogin = isAndroid && showLoginPanel && kbShown;
   };
 
   const handleLogin = () => loginCore({ email, password });
+
+  const handleExploreDemo = () => {
+    setDemoLoginIntent(true);
+    setPassword('');
+    openLoginPanel();
+  };
 
   const handleGuestBrowse = async () => {
   await continueAsGuest();
@@ -552,10 +560,19 @@ const isAndroidKeyboardLogin = isAndroid && showLoginPanel && kbShown;
     isAndroidKeyboardLogin && styles.panelAndroidKeyboard,
   ]}
 >
-              <Text style={styles.panelTitle}>Log In</Text>
+              <Text style={styles.panelTitle}>{demoLoginIntent ? 'Explore Demo' : 'Log In'}</Text>
               <Text style={styles.panelSubtitle}>
-                Enter your email and password to continue
+                {demoLoginIntent
+                  ? 'Use the demo account credentials provided to you. No real funds are used.'
+                  : 'Enter your email and password to continue'}
               </Text>
+
+              {demoLoginIntent && (
+                <View style={styles.demoNotice}>
+                  <Ionicons name="flask-outline" size={18} color="#047857" />
+                  <Text style={styles.demoNoticeText}>Virtual funds and simulated transactions</Text>
+                </View>
+              )}
 
               <StyledInput
                 style={styles.input}
@@ -619,6 +636,11 @@ const isAndroidKeyboardLogin = isAndroid && showLoginPanel && kbShown;
 
                 <Pressable onPress={handleGuestBrowse} style={styles.guestWrap}>
                   <Text style={styles.guestText}>Browse Properties as Guest</Text>
+                </Pressable>
+
+                <Pressable onPress={handleExploreDemo} style={styles.demoEntryWrap}>
+                  <Ionicons name="flask-outline" size={18} color="#047857" />
+                  <Text style={styles.demoEntryText}>Try Demo</Text>
                 </Pressable>
               </View>
 
@@ -713,6 +735,35 @@ guestText: {
   fontSize: 15,
   fontWeight: '700',
   color: '#10B981',
+},
+demoEntryWrap: {
+  marginTop: 14,
+  alignItems: 'center',
+  justifyContent: 'center',
+  flexDirection: 'row',
+  gap: 7,
+},
+demoEntryText: {
+  fontSize: 15,
+  fontWeight: '700',
+  color: '#047857',
+},
+demoNotice: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 8,
+  borderRadius: 12,
+  borderWidth: 1,
+  borderColor: '#A7F3D0',
+  backgroundColor: '#ECFDF5',
+  paddingHorizontal: 12,
+  paddingVertical: 10,
+  marginBottom: 12,
+},
+demoNoticeText: {
+  flex: 1,
+  color: '#047857',
+  fontSize: 13,
 },
  
 loginScroll: {

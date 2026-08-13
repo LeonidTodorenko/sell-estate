@@ -262,6 +262,8 @@ export async function writeLegacyUser(raw: any) {
       role: u?.role ?? raw?.role ?? 'user',
       avatarBase64: u?.avatarBase64 ?? raw?.avatarBase64 ?? null,
       walletBalance: u?.walletBalance ?? raw?.walletBalance ?? 0,
+      isDemo: raw?.isDemo === true || u?.isDemo === true,
+      demoCode: raw?.demoCode ?? u?.demoCode ?? null,
 
       // новое
       accessToken: accessToken,

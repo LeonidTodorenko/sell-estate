@@ -584,6 +584,7 @@ const InvestmentsScreen = () => {
   });
 
   const [userId, setUserId] = useState<string | null>(null);
+  const [isDemo, setIsDemo] = useState(false);
   const [sessionLoading, setSessionLoading] = useState(true);
 
   const [inputShares, setInputShares] = useState("");
@@ -616,6 +617,7 @@ const InvestmentsScreen = () => {
         }
 
         const parsed = JSON.parse(stored);
+        setIsDemo(parsed.isDemo === true || parsed.user?.isDemo === true);
         const resolvedUserId =
           parsed.userId ??
           parsed.id ??
@@ -765,6 +767,10 @@ const InvestmentsScreen = () => {
   };
 
   const handleSellToPlatform = async () => {
+    if (isDemo) {
+      Alert.alert("Demo Mode", "Platform buyback is not simulated. You can list shares on the demo marketplace instead.");
+      return;
+    }
     const grouped = sellState.groupedInvestment;
     if (!grouped || !userId) return;
 

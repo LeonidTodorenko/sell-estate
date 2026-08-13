@@ -64,8 +64,11 @@ namespace RealEstateInvestment.Controllers
         {
             try
             {
-                var user = _context.Users.FirstOrDefault(u => u.Email == request.Email);
-                if (user == null || user.PasswordHash != request.Password)    // todo later hash or jwt
+                var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
+                if (user == null)
+                    return await LoginDemoAsync(request);
+
+                if (user.PasswordHash != request.Password)    // production passwords are currently stored as plain text
                     return Unauthorized(new { message = "Invalid email or password" });
 
                 if (user.IsDeleted == true)
@@ -85,7 +88,12 @@ namespace RealEstateInvestment.Controllers
                 foreach (var t in activeUserTokens) t.RevokedAt = DateTime.UtcNow;
 
 
-                var accessToken = GenerateJwtToken(user, minutes: GetAccessLifetimeMinutes());
+                var accessToken = GenerateJwtToken(
+                    user.Id,
+                    user.Email,
+                    user.Role,
+                    isDemo: false,
+                    minutes: GetAccessLifetimeMinutes());
                 var (refreshPlain, refreshHash) = GenerateRefreshPair();
 
                 // var token = GenerateJwtToken(user);
@@ -133,6 +141,7 @@ namespace RealEstateInvestment.Controllers
                 {
                     accessToken,
                     refreshToken = refreshPlain,
+                    isDemo = false,
                     user = new
                     {
                         id = user.Id,
@@ -140,7 +149,8 @@ namespace RealEstateInvestment.Controllers
                         email = user.Email,
                         role = user.Role,
                         avatarBase64 = user.AvatarBase64,
-                        walletBalance = user.WalletBalance
+                        walletBalance = user.WalletBalance,
+                        isDemo = false
                     }
                 });
             }
@@ -156,6 +166,55 @@ namespace RealEstateInvestment.Controllers
                 return BadRequest(new { message = ex.Message });
             }
 
+        }
+
+        private async Task<IActionResult> LoginDemoAsync(LoginRequest request)
+        {
+            var email = request.Email.Trim().ToLowerInvariant();
+            var demoUser = await _context.DemoUsers.SingleOrDefaultAsync(u => u.Email == email);
+            var now = DateTime.UtcNow;
+
+            if (demoUser == null ||
+                demoUser.IsTemplate ||
+                !demoUser.IsActive ||
+                demoUser.IsBlocked ||
+                demoUser.IsDeleted == true ||
+                (demoUser.ExpiresAt.HasValue && demoUser.ExpiresAt.Value <= now) ||
+                !PasswordHasher.VerifyPassword(request.Password, demoUser.PasswordHash))
+            {
+                return Unauthorized(new { message = "Invalid email or password" });
+            }
+
+            demoUser.LastActiveAt = now;
+            var accessToken = GenerateJwtToken(
+                demoUser.Id,
+                demoUser.Email,
+                demoUser.Role,
+                isDemo: true,
+                minutes: GetAccessLifetimeMinutes(),
+                demoCode: demoUser.DemoCode);
+
+            await _context.SaveChangesAsync();
+
+            // RefreshTokens has a production UserId relationship. Until a dedicated
+            // demo refresh-token store exists, never put demo identities in that table.
+            return Ok(new
+            {
+                accessToken,
+                refreshToken = (string?)null,
+                isDemo = true,
+                user = new
+                {
+                    id = demoUser.Id,
+                    fullName = demoUser.FullName,
+                    email = demoUser.Email,
+                    role = demoUser.Role,
+                    avatarBase64 = demoUser.AvatarBase64,
+                    walletBalance = demoUser.WalletBalance,
+                    isDemo = true,
+                    demoCode = demoUser.DemoCode
+                }
+            });
         }
 
         public class RefreshRequest { public string? RefreshToken { get; set; } }
@@ -216,7 +275,12 @@ namespace RealEstateInvestment.Controllers
             };
             _context.RefreshTokens.Add(newRow);
 
-            var newAccess = GenerateJwtToken(user, minutes: GetAccessLifetimeMinutes());
+            var newAccess = GenerateJwtToken(
+                user.Id,
+                user.Email,
+                user.Role,
+                isDemo: false,
+                minutes: GetAccessLifetimeMinutes());
 
             await _context.SaveChangesAsync();
 
@@ -307,40 +371,27 @@ namespace RealEstateInvestment.Controllers
             return int.TryParse(val, out var d) ? d : 30;
         }
 
-
-        // без минут
-        private string GenerateJwtToken(User user)
+        private string GenerateJwtToken(
+            Guid userId,
+            string? email,
+            string? role,
+            bool isDemo,
+            int minutes,
+            string? demoCode = null)
         {
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-            var claims = new[]
+            var claims = new List<Claim>
             {
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Email, user.Email),
-                new Claim(ClaimTypes.Role, user.Role)
+                new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
+                new Claim(ClaimTypes.Email, email ?? string.Empty),
+                new Claim(ClaimTypes.Role, role ?? "user"),
+                new Claim("isDemo", isDemo ? "true" : "false")
             };
-            var expiresConfig = DateTime.UtcNow.AddMinutes(Convert.ToDouble(_config["Jwt:Expires"]));
-            var token = new JwtSecurityToken(
-                claims: claims,
-                expires: expiresConfig,
-                signingCredentials: creds
-            );
 
-            return new JwtSecurityTokenHandler().WriteToken(token);
-        }
-
-        private string GenerateJwtToken(User user, int minutes)
-        {
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-            var claims = new[]
-            {
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Email, user.Email ?? string.Empty),
-                new Claim(ClaimTypes.Role, user.Role ?? "user")
-            };
+            if (isDemo && !string.IsNullOrWhiteSpace(demoCode))
+                claims.Add(new Claim("demoCode", demoCode));
 
             var token = new JwtSecurityToken(
                 issuer: _config["Jwt:Issuer"],

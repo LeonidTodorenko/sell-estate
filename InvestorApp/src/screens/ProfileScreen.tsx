@@ -18,6 +18,7 @@ import { RootStackParamList } from '../navigation/AppNavigator';
 import theme from '../constants/theme';
 import api, { setAccessToken } from '../api';
 import { clearSession } from '../services/sessionStorage';
+import DemoModeBanner from '../components/DemoModeBanner';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
 
@@ -29,6 +30,8 @@ interface User {
   avatarBase64: string | null;
   id?: string;
   phone?: string | null;
+  isDemo?: boolean;
+  demoCode?: string | null;
 }
 
 interface TotalAssetsResponse {
@@ -118,6 +121,8 @@ function normalizeStoredUser(parsed: any): User {
       parsed.user?.phone ??
       parsed.user?.phoneNumber ??
       null,
+    isDemo: parsed.isDemo === true || parsed.user?.isDemo === true,
+    demoCode: parsed.demoCode ?? parsed.user?.demoCode ?? null,
   };
 }
 
@@ -388,6 +393,7 @@ const ProfileScreen = ({ navigation }: Props) => {
         />
       }
     >
+      <DemoModeBanner isDemo={storedUser.isDemo} demoCode={storedUser.demoCode} />
       <View style={styles.heroBg}>
         <Pressable
           onPress={() => navigation.navigate('EditProfile')}
@@ -497,6 +503,12 @@ const ProfileScreen = ({ navigation }: Props) => {
           title="Rental Income"
           onPress={() => navigation.navigate('MyRentIncome')}
         />
+
+        {storedUser.isDemo && <MenuItem
+          iconSource={chartIcon}
+          title="Monthly Reports"
+          onPress={() => navigation.navigate('MonthlyReports')}
+        />}
 
         <MenuItem
           iconSource={logoutIcon}

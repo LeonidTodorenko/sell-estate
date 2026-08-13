@@ -14,6 +14,7 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Http.Features;
 using RealEstateInvestment.Helpers;
+using RealEstateInvestment.Services.Demo;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -33,12 +34,12 @@ builder.Services.AddAuthentication(options =>
     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
 }).AddJwtBearer(options =>
 {
-    options.RequireHttpsMetadata = false; // todo надо будет включить потом на проде, проверить
+    options.RequireHttpsMetadata = false; // todo РЅР°РґРѕ Р±СѓРґРµС‚ РІРєР»СЋС‡РёС‚СЊ РїРѕС‚РѕРј РЅР° РїСЂРѕРґРµ, РїСЂРѕРІРµСЂРёС‚СЊ
     options.SaveToken = true;
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = false,
-        ValidateAudience = false, //     todo для прода 
+        ValidateAudience = false, //     todo РґР»СЏ РїСЂРѕРґР° 
                                   // ValidateIssuer = true,
                                   // ValidateAudience = true,
                                   // ValidIssuer = jwtIssuer,
@@ -47,7 +48,7 @@ builder.Services.AddAuthentication(options =>
         ValidateIssuerSigningKey = true,
        // ValidIssuer = jwtIssuer,
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
-        ClockSkew = TimeSpan.Zero // без «плюс-5-минут»
+        ClockSkew = TimeSpan.Zero // Р±РµР· В«РїР»СЋСЃ-5-РјРёРЅСѓС‚В»
     };
 });
 
@@ -62,8 +63,8 @@ builder.Services.AddAuthentication(options =>
 //    });
 //});
 
-// CORS (опционально; для мобильного чаще всего можно AllowAnyOrigin)
-// todo проверить
+// CORS (РѕРїС†РёРѕРЅР°Р»СЊРЅРѕ; РґР»СЏ РјРѕР±РёР»СЊРЅРѕРіРѕ С‡Р°С‰Рµ РІСЃРµРіРѕ РјРѕР¶РЅРѕ AllowAnyOrigin)
+// todo РїСЂРѕРІРµСЂРёС‚СЊ
 //builder.Services.AddCors(options =>
 //{
 //    options.AddPolicy("Mobile", policy =>
@@ -99,27 +100,52 @@ builder.Services.AddControllers()
         // test options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
     });
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT authorization header using the Bearer scheme.",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT"
+    });
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
 //builder.Services.AddSwaggerGen(c =>
 //{
 //    c.SwaggerDoc("v1", new OpenApiInfo { Title = "SellEstate API", Version = "v1" });
 
-//    // (A) Устраняем конфликты имён схем (классами с одинаковыми именами)
+//    // (A) РЈСЃС‚СЂР°РЅСЏРµРј РєРѕРЅС„Р»РёРєС‚С‹ РёРјС‘РЅ СЃС…РµРј (РєР»Р°СЃСЃР°РјРё СЃ РѕРґРёРЅР°РєРѕРІС‹РјРё РёРјРµРЅР°РјРё)
 //    c.CustomSchemaIds(t => t.FullName?.Replace("+", "."));
 
-//    // (B) XML-комментарии — только если файл реально существует
+//    // (B) XML-РєРѕРјРјРµРЅС‚Р°СЂРёРё вЂ” С‚РѕР»СЊРєРѕ РµСЃР»Рё С„Р°Р№Р» СЂРµР°Р»СЊРЅРѕ СЃСѓС‰РµСЃС‚РІСѓРµС‚
 //    var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
 //    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
 //    if (File.Exists(xmlPath))
 //        c.IncludeXmlComments(xmlPath, includeControllerXmlComments: true);
 
-//    // (C) Если вдруг есть конфликты по маршрутам — берём первый (чтобы не падало)
+//    // (C) Р•СЃР»Рё РІРґСЂСѓРі РµСЃС‚СЊ РєРѕРЅС„Р»РёРєС‚С‹ РїРѕ РјР°СЂС€СЂСѓС‚Р°Рј вЂ” Р±РµСЂС‘Рј РїРµСЂРІС‹Р№ (С‡С‚РѕР±С‹ РЅРµ РїР°РґР°Р»Рѕ)
 //   c.ResolveConflictingActions(apiDescriptions => apiDescriptions.First());
 
-//    // (D) JWT в Swagger UI (чтобы потом 401/403 не мешал ручным вызовам)
+//    // (D) JWT РІ Swagger UI (С‡С‚РѕР±С‹ РїРѕС‚РѕРј 401/403 РЅРµ РјРµС€Р°Р» СЂСѓС‡РЅС‹Рј РІС‹Р·РѕРІР°Рј)
 //    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
 //    {
-//        Description = "JWT в заголовке: Bearer {token}",
+//        Description = "JWT РІ Р·Р°РіРѕР»РѕРІРєРµ: Bearer {token}",
 //        Name = "Authorization",
 //        In = ParameterLocation.Header,
 //        Type = SecuritySchemeType.Http,
@@ -152,6 +178,10 @@ builder.Services.AddScoped<IAdminAuditReportService, AdminAuditReportService>();
 builder.Services.AddScoped<IOnboardingDocumentService, OnboardingDocumentService>();
 builder.Services.AddHostedService<MonthlyReportsHostedService>();
 builder.Services.AddScoped<IKycContractService, KycContractService>();
+builder.Services.AddScoped<IDemoTemplateSeeder, DemoTemplateSeeder>();
+builder.Services.AddScoped<IDemoAccountFactory, DemoAccountFactory>();
+builder.Services.AddScoped<IDemoMonthlyProcessor, DemoMonthlyProcessor>();
+builder.Services.AddHostedService<DemoMonthlyHostedService>();
 
 static string? CleanSecret(string? value)
 {
@@ -194,7 +224,7 @@ app.UseDeveloperExceptionPage(); //todo remove after debug
 
 //}
 
-// из за того что https становится http
+// РёР· Р·Р° С‚РѕРіРѕ С‡С‚Рѕ https СЃС‚Р°РЅРѕРІРёС‚СЃСЏ http
 app.UseForwardedHeaders(new ForwardedHeadersOptions
 {
     ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
@@ -226,7 +256,7 @@ app.MapControllers();
  
 
 
-// ===== DEBUG: найти дубликаты маршрутов =====
+// ===== DEBUG: РЅР°Р№С‚Рё РґСѓР±Р»РёРєР°С‚С‹ РјР°СЂС€СЂСѓС‚РѕРІ =====
 //var ds = app.Services.GetRequiredService<EndpointDataSource>();
 //var duplicates = ds.Endpoints
 //    .OfType<RouteEndpoint>()
@@ -267,13 +297,13 @@ app.MapControllers();
 //}
 
 
-// Авто-миграция и суперюзер
+// РђРІС‚Рѕ-РјРёРіСЂР°С†РёСЏ Рё СЃСѓРїРµСЂСЋР·РµСЂ
 using (var scope = app.Services.CreateScope())
 {
     var cfg = scope.ServiceProvider.GetRequiredService<IConfiguration>();
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
    
-    var runMigrations = cfg.GetValue<bool>("RunMigrationsOnStartup"); // false на стенде
+    var runMigrations = cfg.GetValue<bool>("RunMigrationsOnStartup"); // false РЅР° СЃС‚РµРЅРґРµ
     if (runMigrations)
     {
       context.Database.Migrate();
@@ -281,9 +311,12 @@ using (var scope = app.Services.CreateScope())
 
     var superUserService = scope.ServiceProvider.GetRequiredService<ISuperUserService>();
     await superUserService.EnsureSuperUserExistsAsync();
+
+    var demoTemplateSeeder = scope.ServiceProvider.GetRequiredService<IDemoTemplateSeeder>();
+    await demoTemplateSeeder.EnsureTemplateExistsAsync();
 }
 
-// Инициализация системных настроек (как у тебя)
+// РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ СЃРёСЃС‚РµРјРЅС‹С… РЅР°СЃС‚СЂРѕРµРє (РєР°Рє Сѓ С‚РµР±СЏ)
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();

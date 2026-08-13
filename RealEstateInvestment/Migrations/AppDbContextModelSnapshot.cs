@@ -74,6 +74,537 @@ namespace RealEstateInvestment.Migrations
                     b.ToTable("ChatMessages");
                 });
 
+            modelBuilder.Entity("RealEstateInvestment.Models.DemoActionLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("DemoUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Details")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DemoUserId");
+
+                    b.HasIndex("Timestamp");
+
+                    b.ToTable("DemoActionLogs");
+                });
+
+            modelBuilder.Entity("RealEstateInvestment.Models.DemoInvestment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("DemoUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("InvestedAmount")
+                        .HasColumnType("numeric");
+
+                    b.Property<Guid>("PropertyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Shares")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DemoUserId");
+
+                    b.HasIndex("PropertyId");
+
+                    b.HasIndex("DemoUserId", "PropertyId");
+
+                    b.ToTable("DemoInvestments");
+                });
+
+            modelBuilder.Entity("RealEstateInvestment.Models.DemoInvestmentApplication", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("ApprovedAmount")
+                        .HasColumnType("numeric");
+
+                    b.Property<int?>("ApprovedShares")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("DemoUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsPriority")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("PropertyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("RequestedAmount")
+                        .HasColumnType("numeric");
+
+                    b.Property<int>("RequestedShares")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("StepNumber")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DemoUserId");
+
+                    b.HasIndex("PropertyId");
+
+                    b.HasIndex("DemoUserId", "Status");
+
+                    b.ToTable("DemoInvestmentApplications");
+                });
+
+            modelBuilder.Entity("RealEstateInvestment.Models.DemoKycDocument", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Base64File")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("DemoUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UploadedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DemoUserId");
+
+                    b.HasIndex("DemoUserId", "Status");
+
+                    b.ToTable("DemoKycDocuments");
+                });
+
+            modelBuilder.Entity("RealEstateInvestment.Models.DemoMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("DemoRecipientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("DemoRecipientId");
+
+                    b.ToTable("DemoMessages");
+                });
+
+            modelBuilder.Entity("RealEstateInvestment.Models.DemoMonthlyReport", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("CapitalChange")
+                        .HasColumnType("numeric");
+
+                    b.Property<Guid>("DemoUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("GeneratedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("InvestmentValue")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("RentalIncome")
+                        .HasColumnType("numeric");
+
+                    b.Property<DateTime>("ReportMonth")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("TotalCapital")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("WalletBalance")
+                        .HasColumnType("numeric");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReportMonth");
+
+                    b.HasIndex("DemoUserId", "ReportMonth")
+                        .IsUnique();
+
+                    b.ToTable("DemoMonthlyReports");
+                });
+
+            modelBuilder.Entity("RealEstateInvestment.Models.DemoRentalIncome", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("numeric");
+
+                    b.Property<Guid>("DemoInvestorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("PayoutDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("PayoutMonth")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("PropertyId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DemoInvestorId");
+
+                    b.HasIndex("PayoutDate");
+
+                    b.HasIndex("PropertyId");
+
+                    b.HasIndex("DemoInvestorId", "PropertyId", "PayoutMonth")
+                        .IsUnique();
+
+                    b.ToTable("DemoRentalIncomes");
+                });
+
+            modelBuilder.Entity("RealEstateInvestment.Models.DemoShareOffer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("BuyoutPricePerShare")
+                        .HasColumnType("numeric");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("DemoInvestmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("DemoSellerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("ExpirationDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal>("LockedInvestedAmount")
+                        .HasColumnType("numeric");
+
+                    b.Property<Guid>("PropertyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("SharesForSale")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("StartPricePerShare")
+                        .HasColumnType("numeric");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DemoInvestmentId");
+
+                    b.HasIndex("DemoSellerId");
+
+                    b.HasIndex("ExpirationDate");
+
+                    b.HasIndex("IsActive");
+
+                    b.HasIndex("PropertyId");
+
+                    b.ToTable("DemoShareOffers");
+                });
+
+            modelBuilder.Entity("RealEstateInvestment.Models.DemoShareOfferBid", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("BidPricePerShare")
+                        .HasColumnType("numeric");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("DemoBidderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("DemoOfferId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Shares")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DemoBidderId");
+
+                    b.HasIndex("DemoOfferId");
+
+                    b.ToTable("DemoShareOfferBids");
+                });
+
+            modelBuilder.Entity("RealEstateInvestment.Models.DemoShareTransaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("DemoBuyerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("DemoSellerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("PricePerShare")
+                        .HasColumnType("numeric");
+
+                    b.Property<Guid>("PropertyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Shares")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DemoBuyerId");
+
+                    b.HasIndex("DemoSellerId");
+
+                    b.HasIndex("PropertyId");
+
+                    b.HasIndex("Timestamp");
+
+                    b.ToTable("DemoShareTransactions");
+                });
+
+            modelBuilder.Entity("RealEstateInvestment.Models.DemoUser", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Address")
+                        .HasColumnType("text");
+
+                    b.Property<string>("AvatarBase64")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ClientNumber")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DemoCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsBlocked")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool?>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsEmailConfirmed")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsTemplate")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("KycContractSentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("KycContractVersion")
+                        .HasColumnType("text");
+
+                    b.Property<string>("KycStatus")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("LastActiveAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<long>("Permissions")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("PhoneNumber")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PinCode")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("SecretWord")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("TermsAcceptedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TermsVersion")
+                        .HasColumnType("text");
+
+                    b.Property<int>("UserRole")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("WalletBalance")
+                        .HasColumnType("numeric");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClientNumber")
+                        .IsUnique();
+
+                    b.HasIndex("DemoCode")
+                        .IsUnique();
+
+                    b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.HasIndex("ExpiresAt");
+
+                    b.HasIndex("IsActive");
+
+                    b.HasIndex("IsTemplate")
+                        .IsUnique()
+                        .HasFilter("\"IsTemplate\" = true");
+
+                    b.ToTable("DemoUsers");
+                });
+
+            modelBuilder.Entity("RealEstateInvestment.Models.DemoUserTransaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("numeric");
+
+                    b.Property<Guid>("DemoUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("PropertyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PropertyTitle")
+                        .HasColumnType("text");
+
+                    b.Property<int?>("Shares")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DemoUserId");
+
+                    b.HasIndex("PropertyId");
+
+                    b.HasIndex("Timestamp");
+
+                    b.HasIndex("DemoUserId", "Timestamp");
+
+                    b.ToTable("DemoUserTransactions");
+                });
+
             modelBuilder.Entity("RealEstateInvestment.Models.EmailConfirmationToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -964,6 +1495,196 @@ namespace RealEstateInvestment.Migrations
                     b.ToTable("WithdrawalRequests");
                 });
 
+            modelBuilder.Entity("RealEstateInvestment.Models.DemoActionLog", b =>
+                {
+                    b.HasOne("RealEstateInvestment.Models.DemoUser", "DemoUser")
+                        .WithMany()
+                        .HasForeignKey("DemoUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("DemoUser");
+                });
+
+            modelBuilder.Entity("RealEstateInvestment.Models.DemoInvestment", b =>
+                {
+                    b.HasOne("RealEstateInvestment.Models.DemoUser", "DemoUser")
+                        .WithMany()
+                        .HasForeignKey("DemoUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RealEstateInvestment.Models.Property", "Property")
+                        .WithMany()
+                        .HasForeignKey("PropertyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("DemoUser");
+
+                    b.Navigation("Property");
+                });
+
+            modelBuilder.Entity("RealEstateInvestment.Models.DemoInvestmentApplication", b =>
+                {
+                    b.HasOne("RealEstateInvestment.Models.DemoUser", "DemoUser")
+                        .WithMany()
+                        .HasForeignKey("DemoUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RealEstateInvestment.Models.Property", "Property")
+                        .WithMany()
+                        .HasForeignKey("PropertyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("DemoUser");
+
+                    b.Navigation("Property");
+                });
+
+            modelBuilder.Entity("RealEstateInvestment.Models.DemoKycDocument", b =>
+                {
+                    b.HasOne("RealEstateInvestment.Models.DemoUser", "DemoUser")
+                        .WithMany()
+                        .HasForeignKey("DemoUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("DemoUser");
+                });
+
+            modelBuilder.Entity("RealEstateInvestment.Models.DemoMessage", b =>
+                {
+                    b.HasOne("RealEstateInvestment.Models.DemoUser", "DemoRecipient")
+                        .WithMany()
+                        .HasForeignKey("DemoRecipientId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("DemoRecipient");
+                });
+
+            modelBuilder.Entity("RealEstateInvestment.Models.DemoMonthlyReport", b =>
+                {
+                    b.HasOne("RealEstateInvestment.Models.DemoUser", "DemoUser")
+                        .WithMany()
+                        .HasForeignKey("DemoUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("DemoUser");
+                });
+
+            modelBuilder.Entity("RealEstateInvestment.Models.DemoRentalIncome", b =>
+                {
+                    b.HasOne("RealEstateInvestment.Models.DemoUser", "DemoInvestor")
+                        .WithMany()
+                        .HasForeignKey("DemoInvestorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RealEstateInvestment.Models.Property", "Property")
+                        .WithMany()
+                        .HasForeignKey("PropertyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("DemoInvestor");
+
+                    b.Navigation("Property");
+                });
+
+            modelBuilder.Entity("RealEstateInvestment.Models.DemoShareOffer", b =>
+                {
+                    b.HasOne("RealEstateInvestment.Models.DemoInvestment", "DemoInvestment")
+                        .WithMany()
+                        .HasForeignKey("DemoInvestmentId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("RealEstateInvestment.Models.DemoUser", "DemoSeller")
+                        .WithMany()
+                        .HasForeignKey("DemoSellerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RealEstateInvestment.Models.Property", "Property")
+                        .WithMany()
+                        .HasForeignKey("PropertyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("DemoInvestment");
+
+                    b.Navigation("DemoSeller");
+
+                    b.Navigation("Property");
+                });
+
+            modelBuilder.Entity("RealEstateInvestment.Models.DemoShareOfferBid", b =>
+                {
+                    b.HasOne("RealEstateInvestment.Models.DemoUser", "DemoBidder")
+                        .WithMany()
+                        .HasForeignKey("DemoBidderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RealEstateInvestment.Models.DemoShareOffer", "DemoOffer")
+                        .WithMany("Bids")
+                        .HasForeignKey("DemoOfferId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("DemoBidder");
+
+                    b.Navigation("DemoOffer");
+                });
+
+            modelBuilder.Entity("RealEstateInvestment.Models.DemoShareTransaction", b =>
+                {
+                    b.HasOne("RealEstateInvestment.Models.DemoUser", "DemoBuyer")
+                        .WithMany()
+                        .HasForeignKey("DemoBuyerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RealEstateInvestment.Models.DemoUser", "DemoSeller")
+                        .WithMany()
+                        .HasForeignKey("DemoSellerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RealEstateInvestment.Models.Property", "Property")
+                        .WithMany()
+                        .HasForeignKey("PropertyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("DemoBuyer");
+
+                    b.Navigation("DemoSeller");
+
+                    b.Navigation("Property");
+                });
+
+            modelBuilder.Entity("RealEstateInvestment.Models.DemoUserTransaction", b =>
+                {
+                    b.HasOne("RealEstateInvestment.Models.DemoUser", "DemoUser")
+                        .WithMany()
+                        .HasForeignKey("DemoUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RealEstateInvestment.Models.Property", "Property")
+                        .WithMany()
+                        .HasForeignKey("PropertyId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("DemoUser");
+
+                    b.Navigation("Property");
+                });
+
             modelBuilder.Entity("RealEstateInvestment.Models.Investment", b =>
                 {
                     b.HasOne("RealEstateInvestment.Models.Property", "Property")
@@ -1045,6 +1766,11 @@ namespace RealEstateInvestment.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("RealEstateInvestment.Models.DemoShareOffer", b =>
+                {
+                    b.Navigation("Bids");
                 });
 
             modelBuilder.Entity("RealEstateInvestment.Models.Property", b =>

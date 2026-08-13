@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RealEstateInvestment.Data;
+using RealEstateInvestment.Helpers;
 using RealEstateInvestment.Models;
 
 namespace RealEstateInvestment.Controllers
@@ -22,6 +23,9 @@ namespace RealEstateInvestment.Controllers
         [Authorize(Roles = "investor")]
         public async Task<IActionResult> SubmitApplication([FromBody] InvestmentApplication req)
         {
+            if (User.IsDemo())
+                return BadRequest(new { message = "Demo purchases must use /api/investments/apply so PIN and sandbox accounting are enforced" });
+
             var user = await _context.Users.FindAsync(req.UserId);
             if (user == null) return NotFound(new { message = "User not found" });
              
@@ -158,6 +162,23 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("user/{userId}")]
         public async Task<IActionResult> GetUserApplications(Guid userId)
         {
+            if (User.IsDemo())
+            {
+                var demoUserId = User.GetUserId();
+                var demoApps = await (
+                    from app in _context.DemoInvestmentApplications.AsNoTracking()
+                    join p in _context.Properties.AsNoTracking() on app.PropertyId equals p.Id
+                    where app.DemoUserId == demoUserId
+                    orderby app.CreatedAt descending
+                    select new
+                    {
+                        app.Id, app.PropertyId, PropertyTitle = p.Title, app.RequestedAmount,
+                        app.RequestedShares, app.ApprovedAmount, app.ApprovedShares, app.Status,
+                        app.IsPriority, app.StepNumber, app.CreatedAt
+                    }).ToListAsync();
+                return Ok(demoApps);
+            }
+
             var apps = await (
                 from app in _context.InvestmentApplications
                 join p in _context.Properties on app.PropertyId equals p.Id

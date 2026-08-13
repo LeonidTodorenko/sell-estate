@@ -14,7 +14,6 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import StyledInput from '../components/StyledInput';
 import BlueButton from '../components/BlueButton';
-import theme from '../constants/theme';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Haptics from '../services/HapticsService';
 
@@ -76,6 +75,25 @@ const WithdrawScreen = () => {
   const [amount, setAmount] = useState('');
   const [selectedCardId, setSelectedCardId] = useState<string>(DUMMY_CARDS[0].id);
   const [submitting, setSubmitting] = useState(false);
+  const [isDemo, setIsDemo] = useState(false);
+  const [availableAmount, setAvailableAmount] = useState(DUMMY_AVAILABLE_AMOUNT);
+
+  React.useEffect(() => {
+    (async () => {
+      const stored = await AsyncStorage.getItem('user');
+      if (!stored) return;
+      const parsed = JSON.parse(stored);
+      const demo = parsed.isDemo === true || parsed.user?.isDemo === true;
+      const uid = parsed.userId ?? parsed.id ?? parsed.user?.id ?? parsed.user?.userId;
+      setIsDemo(demo);
+      if (uid) {
+        try {
+          const { data } = await api.get(`/users/${uid}`, { silentLoading: true } as any);
+          if (Number.isFinite(Number(data?.walletBalance))) setAvailableAmount(Number(data.walletBalance));
+        } catch {}
+      }
+    })();
+  }, []);
 
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -107,7 +125,7 @@ const WithdrawScreen = () => {
       return;
     }
 
-    if (parsedAmount > DUMMY_AVAILABLE_AMOUNT) {
+    if (parsedAmount > availableAmount) {
       Haptics.warning();
       Alert.alert('Validation', 'Amount exceeds available balance');
       return;
@@ -137,7 +155,7 @@ const WithdrawScreen = () => {
       });
 
       Haptics.success();
-      Alert.alert('Success', 'Withdrawal request submitted');
+      Alert.alert(isDemo ? 'Demo withdrawal complete' : 'Success', isDemo ? 'Virtual funds were withdrawn instantly. No bank transfer or production request was created.' : 'Withdrawal request submitted');
       navigation.goBack();
     } catch (error) {
       console.error(error);
@@ -168,6 +186,7 @@ const WithdrawScreen = () => {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
+        {isDemo && <Text style={styles.demoNotice}>Demo Mode: this is an instant simulated withdrawal. No real card is charged and no admin approval is created.</Text>}
         <View style={styles.amountInputWrap}>
           <StyledInput
             style={styles.amountInput}
@@ -183,7 +202,7 @@ const WithdrawScreen = () => {
         </View>
 
         <Text style={styles.availableText}>
-          Available for withdrawal: {formatMoney(DUMMY_AVAILABLE_AMOUNT)}
+          Available for withdrawal: {formatMoney(availableAmount)}
         </Text>
 
         <Text style={styles.sectionTitle}>Payment Method</Text>
@@ -244,6 +263,7 @@ const WithdrawScreen = () => {
 export default WithdrawScreen;
 
 const styles = StyleSheet.create({
+  demoNotice: { backgroundColor: '#E8F7F0', color: '#087A4B', padding: 12, borderRadius: 10, marginBottom: 14, lineHeight: 19 },
   screen: {
     flex: 1,
     backgroundColor: '#ECECEC',

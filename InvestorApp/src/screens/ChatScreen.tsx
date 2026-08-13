@@ -11,7 +11,6 @@ import {
   Platform,
   ActivityIndicator,
   RefreshControl,
-  Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
@@ -38,6 +37,7 @@ const ChatScreen = () => {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [isDemo, setIsDemo] = useState(false);
 
   const insets = useSafeAreaInsets();
   const bottomOffset = BOTTOM_BAR_HEIGHT + Math.max(insets.bottom, 8);
@@ -59,6 +59,8 @@ const ChatScreen = () => {
       }
 
       const user = JSON.parse(stored);
+      const demo = user.isDemo === true || user.user?.isDemo === true;
+      setIsDemo(demo);
       const uid = user.userId ?? user.id ?? user?.user?.id;
       if (!uid) {
         setLoading(false);
@@ -66,6 +68,12 @@ const ChatScreen = () => {
       }
 
       setUserId(uid);
+
+      if (demo) {
+        setMessages([]);
+        setLoading(false);
+        return;
+      }
 
       const adminRes = await api.get('/users/admin-id');
       const aid = adminRes.data?.adminId;
@@ -113,6 +121,10 @@ const ChatScreen = () => {
   }, [loadChat]);
 
   const sendMessage = async () => {
+    if (isDemo) {
+      Alert.alert('Demo Mode', 'Live support chat is disabled in the sandbox. No message will be sent.');
+      return;
+    }
     const text = input.trim();
 
     if (!text || !userId || !adminId) {
@@ -182,6 +194,16 @@ const ChatScreen = () => {
       <View style={[styles.container, styles.center]}>
         <ActivityIndicator color={theme.colors.primary} />
         <Text style={styles.loadingText}>Loading chat…</Text>
+      </View>
+    );
+  }
+
+  if (isDemo) {
+    return (
+      <View style={[styles.container, styles.center, { paddingHorizontal: 28 }]}>
+        <Ionicons name="chatbubble-ellipses-outline" size={48} color={theme.colors.primary} />
+        <Text style={[styles.emptyTitle, { marginTop: 16 }]}>Chat is read-only in Demo Mode</Text>
+        <Text style={styles.emptySubtitle}>Messages are not sent to production support from sandbox accounts.</Text>
       </View>
     );
   }

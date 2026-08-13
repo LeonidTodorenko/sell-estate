@@ -225,6 +225,17 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("investor/{userId}")]
         public async Task<IActionResult> GetInvestorPayouts(Guid userId)
         {
+            if (User.IsDemo())
+            {
+                userId = User.ResolveRequestedUserId(userId);
+                if (userId == Guid.Empty) return Unauthorized();
+                return Ok(await _context.DemoRentalIncomes.AsNoTracking()
+                    .Where(p => p.DemoInvestorId == userId)
+                    .OrderByDescending(p => p.PayoutDate)
+                    .Select(p => new { p.Id, p.PropertyId, InvestorId = p.DemoInvestorId, p.Amount, p.PayoutDate })
+                    .ToListAsync());
+            }
+
             var payouts = await _context.RentalIncomes
                 .Where(p => p.InvestorId == userId)
                 .OrderByDescending(p => p.PayoutDate)

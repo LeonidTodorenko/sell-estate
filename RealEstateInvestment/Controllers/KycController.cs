@@ -4,6 +4,7 @@ using RealEstateInvestment.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using RealEstateInvestment.Services;
+using RealEstateInvestment.Helpers;
 
 namespace RealEstateInvestment.Controllers
 {
@@ -26,6 +27,26 @@ namespace RealEstateInvestment.Controllers
             if (doc == null || doc.UserId == Guid.Empty || string.IsNullOrWhiteSpace(doc.Base64File))
                 return BadRequest(new { message = "Invalid data" });
 
+            if (User.IsDemo())
+            {
+                var demoUserId = User.GetUserId();
+                if (demoUserId == Guid.Empty) return Unauthorized();
+                var demoUser = await _context.DemoUsers.FindAsync(demoUserId);
+                if (demoUser == null || demoUser.IsTemplate || !demoUser.IsActive) return NotFound(new { message = "Demo user not found" });
+
+                _context.DemoKycDocuments.Add(new DemoKycDocument
+                {
+                    DemoUserId = demoUserId,
+                    Type = doc.Type,
+                    Base64File = doc.Base64File,
+                    Status = "pending"
+                });
+                demoUser.KycStatus = "pending";
+                _context.DemoActionLogs.Add(new DemoActionLog { DemoUserId = demoUserId, Action = "UploadKycDocument", Details = $"Virtual KYC upload: {doc.Type}" });
+                await _context.SaveChangesAsync();
+                return Ok(new { message = "Document uploaded in Demo Mode", simulated = true });
+            }
+
             if (string.IsNullOrWhiteSpace(doc.Status))
                 doc.Status = "pending";
 
@@ -45,6 +66,16 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("user/{userId}")]
         public async Task<IActionResult> GetUserDocs(Guid userId)
         {
+            if (User.IsDemo())
+            {
+                var demoUserId = User.GetUserId();
+                if (demoUserId == Guid.Empty) return Unauthorized();
+                var demoDocs = await _context.DemoKycDocuments.AsNoTracking()
+                    .Where(x => x.DemoUserId == demoUserId).OrderByDescending(x => x.UploadedAt)
+                    .Select(x => new { x.Id, userId = x.DemoUserId, x.Type, x.Base64File, x.Status, x.UploadedAt })
+                    .ToListAsync();
+                return Ok(demoDocs);
+            }
             var docs = await _context.KycDocuments
                 .Where(x => x.UserId == userId)
                 .ToListAsync();
@@ -124,6 +155,19 @@ namespace RealEstateInvestment.Controllers
         [HttpPost("{id}/delete")]
         public async Task<IActionResult> Delete(Guid id)
         {
+            if (User.IsDemo())
+            {
+                var demoUserId = User.GetUserId();
+                if (demoUserId == Guid.Empty) return Unauthorized();
+                var demoDoc = await _context.DemoKycDocuments.FirstOrDefaultAsync(x => x.Id == id && x.DemoUserId == demoUserId);
+                if (demoDoc == null) return NotFound();
+                _context.DemoKycDocuments.Remove(demoDoc);
+                var demoUser = await _context.DemoUsers.FindAsync(demoUserId);
+                if (demoUser != null) demoUser.KycStatus = await _context.DemoKycDocuments.AnyAsync(x => x.DemoUserId == demoUserId && x.Id != id) ? "pending" : "not_submitted";
+                _context.DemoActionLogs.Add(new DemoActionLog { DemoUserId = demoUserId, Action = "DeleteKycDocument", Details = $"Virtual KYC document deleted: {id}" });
+                await _context.SaveChangesAsync();
+                return Ok(new { message = "Deleted in Demo Mode", simulated = true });
+            }
             var doc = await _context.KycDocuments.FindAsync(id);
             if (doc == null) return NotFound();
 

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateInvestment.Data;
 using RealEstateInvestment.Enums;
 using RealEstateInvestment.Models;
+using RealEstateInvestment.Helpers;
 
 namespace RealEstateInvestment.Controllers
 {
@@ -23,6 +24,20 @@ namespace RealEstateInvestment.Controllers
         [HttpPost("request")]
         public async Task<IActionResult> RequestWithdrawal([FromBody] WithdrawalRequest request)
         {
+            if (User.IsDemo())
+            {
+                var demoUserId = User.GetUserId();
+                if (demoUserId == Guid.Empty) return Unauthorized();
+                var demo = await _context.DemoUsers.FindAsync(demoUserId);
+                if (demo == null || demo.IsTemplate || !demo.IsActive) return NotFound(new { message = "Demo user not found" });
+                if (request.Amount <= 0 || request.Amount > demo.WalletBalance) return BadRequest(new { message = "Insufficient demo funds" });
+                demo.WalletBalance -= request.Amount;
+                var tx = new DemoUserTransaction { DemoUserId = demoUserId, Type = TransactionType.Withdrawal, Amount = request.Amount, Notes = "Instant simulated withdrawal (Demo Mode)" };
+                _context.DemoUserTransactions.Add(tx);
+                _context.DemoActionLogs.Add(new DemoActionLog { DemoUserId = demoUserId, Action = "VirtualWithdrawal", Details = $"Instant simulated withdrawal: {request.Amount} USD" });
+                await _context.SaveChangesAsync();
+                return Ok(new { message = "Virtual withdrawal completed instantly", simulated = true, status = "simulated", transactionId = tx.Id, balance = demo.WalletBalance });
+            }
             var user = await _context.Users.FindAsync(request.UserId);
             if (user == null) return NotFound(new { message = "User not found" });
 
@@ -126,6 +141,17 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("user/{userId}")]
         public async Task<IActionResult> GetUserWithdrawals(Guid userId)
         {
+            if (User.IsDemo())
+            {
+                var demoUserId = User.GetUserId();
+                if (demoUserId == Guid.Empty) return Unauthorized();
+                var virtualWithdrawals = await _context.DemoUserTransactions.AsNoTracking()
+                    .Where(x => x.DemoUserId == demoUserId && x.Type == TransactionType.Withdrawal)
+                    .OrderByDescending(x => x.Timestamp)
+                    .Select(x => new { x.Id, x.Amount, status = "simulated", createdAt = x.Timestamp, x.Notes })
+                    .ToListAsync();
+                return Ok(virtualWithdrawals);
+            }
             var withdrawals = await _context.WithdrawalRequests
                 .Where(w => w.UserId == userId)
                 .OrderByDescending(w => w.CreatedAt)

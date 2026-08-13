@@ -28,6 +28,7 @@ namespace RealEstateInvestment.Controllers
         [HttpPost("send")]
         public async Task<IActionResult> SendMessage([FromBody] SendChatRequest req)
         {
+            if (User.IsDemo()) return BadRequest(new { message = "Live support chat is disabled in Demo Mode. No message was sent." });
             var senderId = User.GetUserId();
             if (senderId == Guid.Empty) return Unauthorized();
             if (string.IsNullOrWhiteSpace(req.Content)) return BadRequest(new { message = "Empty message" });
@@ -49,6 +50,7 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("conversation/{userId1}/{userId2}")]
         public async Task<IActionResult> GetConversation(Guid userId1, Guid userId2)
         {
+            if (User.IsDemo()) return Ok(Array.Empty<object>());
             var me = User.GetUserId();
             if (me == Guid.Empty) return Unauthorized();
 

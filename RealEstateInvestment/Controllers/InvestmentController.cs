@@ -5,6 +5,7 @@ using Org.BouncyCastle.Asn1.Ocsp;
 using Org.BouncyCastle.Utilities;
 using RealEstateInvestment.Data;
 using RealEstateInvestment.Enums;
+using RealEstateInvestment.Helpers;
 using RealEstateInvestment.Models;
 
 namespace RealEstateInvestment.Controllers
@@ -93,6 +94,9 @@ namespace RealEstateInvestment.Controllers
         [HttpPost("apply")]
         public async Task<IActionResult> ApplicateForInvestment([FromBody] InvestmentApplicationWithPin req)
         {
+            if (User.IsDemo())
+                return await ApplicateForDemoInvestment(req);
+
             if (req.RequestedShares <= 0)
                 return BadRequest(new { message = "RequestedShares must be a positive whole number" });
 
@@ -260,6 +264,96 @@ namespace RealEstateInvestment.Controllers
             return Ok(new { message = "Application submitted" });
         }
 
+        private async Task<IActionResult> ApplicateForDemoInvestment(InvestmentApplicationWithPin req)
+        {
+            var demoUserId = User.GetUserId();
+            if (demoUserId == Guid.Empty)
+                return Unauthorized(new { message = "Demo identity is missing" });
+            if (req.RequestedShares <= 0)
+                return BadRequest(new { message = "RequestedShares must be a positive whole number" });
+
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            var demoUser = await _context.DemoUsers.FirstOrDefaultAsync(x => x.Id == demoUserId && !x.IsTemplate);
+            if (demoUser == null)
+                return NotFound(new { message = "Demo user not found" });
+            if (!demoUser.IsActive ||
+                (demoUser.ExpiresAt.HasValue && demoUser.ExpiresAt.Value <= DateTime.UtcNow))
+                return Unauthorized(new { message = "Demo account is inactive or expired" });
+            if (req.PinOrPassword != demoUser.PinCode)
+                return BadRequest(new { message = "Invalid PIN" });
+
+            var property = await _context.Properties.AsNoTracking()
+                .Include(p => p.PaymentPlans)
+                .FirstOrDefaultAsync(p => p.Id == req.PropertyId);
+            if (property == null) return NotFound(new { message = "Property not found" });
+            if (property.PaymentPlans == null || property.PaymentPlans.Count == 0)
+                return BadRequest(new { message = "No payment plan found" });
+            if (property.TotalShares <= 0)
+                return BadRequest(new { message = "Property share capacity is invalid" });
+
+            var now = DateTime.UtcNow;
+            var steps = property.PaymentPlans.OrderBy(x => x.EventDate).ToList();
+            if (now < steps[0].EventDate)
+                return BadRequest(new { message = "The application date in not started yet, please try again later." });
+
+            var allocated = await _context.DemoInvestments.Where(x => x.PropertyId == property.Id).SumAsync(x => (int?)x.Shares) ?? 0;
+            var pending = await _context.DemoInvestmentApplications
+                .Where(x => x.PropertyId == property.Id && x.Status == "pending")
+                .SumAsync(x => (int?)x.RequestedShares) ?? 0;
+            // Active offers are already removed from DemoInvestments when listed, so add them back
+            // to allocated ownership; they must not create artificial free capacity.
+            var locked = await _context.DemoShareOffers
+                .Where(x => x.PropertyId == property.Id && x.IsActive)
+                .SumAsync(x => (int?)x.SharesForSale) ?? 0;
+            var available = Math.Max(0, property.TotalShares - allocated - pending - locked);
+            if (req.RequestedShares > available)
+                return BadRequest(new { message = "Not enough free shares" });
+
+            var pricePerShare = property.Price / property.TotalShares;
+            var expectedAmount = pricePerShare * req.RequestedShares;
+            if (demoUser.WalletBalance < expectedAmount)
+                return BadRequest(new { message = "Insufficient funds" });
+
+            var activeStep = steps.FirstOrDefault(x => x.EventDate <= now && now <= x.DueDate);
+            var isFirstStep = activeStep != null && activeStep.EventDate == steps[0].EventDate;
+            demoUser.WalletBalance -= expectedAmount;
+
+            if (isFirstStep)
+            {
+                var hasPriority = expectedAmount >= steps[0].Total && !await _context.DemoInvestmentApplications
+                    .AnyAsync(x => x.PropertyId == property.Id && x.Status == "pending" && x.IsPriority);
+                _context.DemoInvestmentApplications.Add(new DemoInvestmentApplication
+                {
+                    DemoUserId = demoUserId, PropertyId = property.Id,
+                    RequestedAmount = expectedAmount, RequestedShares = req.RequestedShares,
+                    StepNumber = req.StepNumber, IsPriority = hasPriority, Status = "pending", CreatedAt = now
+                });
+            }
+            else
+            {
+                var investment = await _context.DemoInvestments.FirstOrDefaultAsync(x => x.DemoUserId == demoUserId && x.PropertyId == property.Id);
+                if (investment == null)
+                    _context.DemoInvestments.Add(new DemoInvestment { DemoUserId = demoUserId, PropertyId = property.Id, Shares = req.RequestedShares, InvestedAmount = expectedAmount, CreatedAt = now });
+                else
+                {
+                    investment.Shares += req.RequestedShares;
+                    investment.InvestedAmount += expectedAmount;
+                }
+            }
+
+            _context.DemoUserTransactions.Add(new DemoUserTransaction
+            {
+                DemoUserId = demoUserId, Type = TransactionType.Investment, Amount = expectedAmount,
+                Shares = req.RequestedShares, PropertyId = property.Id, PropertyTitle = property.Title,
+                Timestamp = now, Notes = isFirstStep ? "Demo investment application" : "Demo investment"
+            });
+            _context.DemoActionLogs.Add(new DemoActionLog { DemoUserId = demoUserId, Action = "ApplicateForInvestment", Details = $"Property={property.Id}; Shares={req.RequestedShares}; Amount={expectedAmount:F2}" });
+            demoUser.LastActiveAt = now;
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+            return Ok(new { message = "Application submitted" });
+        }
+
         // todo move
         public class InvestmentWithPin : Investment
         {
@@ -396,6 +490,16 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("user/{userId}")]
         public async Task<IActionResult> GetUserInvestments(Guid userId)
         {
+            if (User.IsDemo())
+            {
+                userId = User.ResolveRequestedUserId(userId);
+                if (userId == Guid.Empty) return Unauthorized();
+                return Ok(await _context.DemoInvestments.AsNoTracking()
+                    .Where(i => i.DemoUserId == userId)
+                    .Select(i => new { i.Id, UserId = i.DemoUserId, i.PropertyId, i.Shares, i.InvestedAmount, i.CreatedAt })
+                    .ToListAsync());
+            }
+
             var investments = await _context.Investments
                 .Where(i => i.UserId == userId)
                 .ToListAsync();
@@ -476,6 +580,12 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("with-aggregated/{userId}")]
         public async Task<IActionResult> GetUserAggregatedInvestments(Guid userId)
         {
+            if (User.IsDemo())
+            {
+                userId = User.ResolveRequestedUserId(userId);
+                if (userId == Guid.Empty) return Unauthorized();
+                return Ok(await GetDemoAggregatedInvestments(userId));
+            }
 
             var onMarket = await (
                    from o in _context.ShareOffers
@@ -551,6 +661,22 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("with-details/{userId}")]
         public async Task<IActionResult> GetUserInvestmentsWithDetails(Guid userId)
         {
+            if (User.IsDemo())
+            {
+                userId = User.ResolveRequestedUserId(userId);
+                if (userId == Guid.Empty) return Unauthorized();
+                var demoResult = await (from i in _context.DemoInvestments.AsNoTracking()
+                                        join p in _context.Properties.AsNoTracking() on i.PropertyId equals p.Id
+                                        where i.DemoUserId == userId
+                                        select new
+                                        {
+                                            InvestmentId = i.Id, PropertyId = p.Id, PropertyTitle = p.Title,
+                                            i.Shares, i.InvestedAmount, i.CreatedAt,
+                                            Percent = p.Price > 0 ? Math.Round(i.InvestedAmount / p.Price * 100, 2) : 0m
+                                        }).ToListAsync();
+                return Ok(demoResult);
+            }
+
             var result = await (
                 from i in _context.Investments
                 join p in _context.Properties on i.PropertyId equals p.Id
@@ -568,6 +694,50 @@ namespace RealEstateInvestment.Controllers
             ).ToListAsync();
 
             return Ok(result);
+        }
+
+        private async Task<object> GetDemoAggregatedInvestments(Guid demoUserId)
+        {
+            var onMarket = await _context.DemoShareOffers.AsNoTracking()
+                .Where(o => o.DemoSellerId == demoUserId && o.IsActive)
+                .GroupBy(o => o.PropertyId)
+                .Select(g => new { PropertyId = g.Key, MarketShares = g.Sum(x => x.SharesForSale) }).ToListAsync();
+            var confirmed = await (from i in _context.DemoInvestments.AsNoTracking()
+                                   join p in _context.Properties.AsNoTracking() on i.PropertyId equals p.Id
+                                   where i.DemoUserId == demoUserId && i.Shares > 0
+                                   group new { i, p } by new { i.PropertyId, p.Title, p.Price, p.TotalShares, p.MonthlyRentalIncome } into g
+                                   select new
+                                   {
+                                       PropertyId = g.Key.PropertyId, PropertyTitle = g.Key.Title,
+                                       PropertyPrice = g.Key.Price, PropertyTotalShares = g.Key.TotalShares,
+                                       MonthlyRentalIncome = g.Key.MonthlyRentalIncome,
+                                       ConfirmedShares = g.Sum(x => x.i.Shares),
+                                       ConfirmedAmount = g.Sum(x => x.i.InvestedAmount),
+                                       OwnershipPercent = g.Key.Price > 0 ? Math.Round(g.Sum(x => x.i.InvestedAmount) / g.Key.Price * 100, 2) : 0m
+                                   }).ToListAsync();
+            var pending = await _context.DemoInvestmentApplications.AsNoTracking()
+                .Where(a => a.DemoUserId == demoUserId && a.Status == "pending" && a.RequestedShares > 0)
+                .GroupBy(a => a.PropertyId)
+                .Select(g => new { PropertyId = g.Key, PendingShares = g.Sum(x => x.RequestedShares), PendingCount = g.Count() })
+                .ToListAsync();
+
+            return confirmed.Select(c =>
+            {
+                var p = pending.FirstOrDefault(x => x.PropertyId == c.PropertyId);
+                var m = onMarket.FirstOrDefault(x => x.PropertyId == c.PropertyId);
+                var totalShares = c.PropertyTotalShares > 0 ? c.PropertyTotalShares : 1;
+                return new
+                {
+                    c.PropertyId, c.PropertyTitle,
+                    TotalShares = c.ConfirmedShares + (p?.PendingShares ?? 0),
+                    c.ConfirmedShares, ConfirmedApplications = p?.PendingCount ?? 0,
+                    MarketShares = m?.MarketShares ?? 0, TotalInvested = c.ConfirmedAmount,
+                    c.OwnershipPercent,
+                    MonthlyRentalIncome = Math.Round(c.MonthlyRentalIncome / totalShares * c.ConfirmedShares, 2),
+                    TotalShareValue = (c.ConfirmedShares + (p?.PendingShares ?? 0)) *
+                                      (c.PropertyTotalShares > 0 ? c.PropertyPrice / c.PropertyTotalShares : 0m)
+                };
+            }).ToList();
         }
 
         [HttpDelete("{investmentId}")]

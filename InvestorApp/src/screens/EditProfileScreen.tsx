@@ -21,6 +21,7 @@ const EditProfileScreen = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [address, setAddress] = useState('');
   const [avatarBase64, setAvatarBase64] = useState('');
+  const [isDemo, setIsDemo] = useState(false);
 
   useEffect(() => {
     
@@ -30,6 +31,7 @@ const EditProfileScreen = () => {
       const stored = await AsyncStorage.getItem('user');
       if (!stored) return;
       const parsed = JSON.parse(stored);
+      setIsDemo(parsed.isDemo === true || parsed.user?.isDemo === true);
       const response = await api.get(`/users/${parsed.userId}`);
       const data = response.data;
       setUser(data);
@@ -123,7 +125,8 @@ const EditProfileScreen = () => {
       <Text>KYC Status: {user && user.kycStatus}</Text>
       <View style={{ height: 20 }} />
       <StyledInput style={styles.input} placeholder="Full Name" value={fullName} onChangeText={setFullName} />
-      <StyledInput style={styles.input} placeholder="Email" value={email} onChangeText={setEmail} />
+      <StyledInput style={styles.input} placeholder="Email" value={email} onChangeText={setEmail} editable={!isDemo} />
+      {isDemo && <Text style={styles.demoHint}>Demo login email is issued by an administrator and cannot be changed here.</Text>}
       <StyledInput style={styles.input} placeholder="Phone Number" value={phoneNumber} onChangeText={setPhoneNumber} />
       <StyledInput style={styles.input} placeholder="Address" value={address} onChangeText={setAddress} />
 
@@ -153,7 +156,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderWidth: 1,
     borderColor: '#888'
-  }
+  },
+  demoHint: { color: '#087A4B', marginTop: -6, marginBottom: 12, fontSize: 12 }
 });
 
 export default EditProfileScreen;
