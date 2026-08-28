@@ -16,6 +16,7 @@ import theme from '../constants/theme';
 import AnimatedCard from '../components/AnimatedCard';
 import ErrorState from '../components/ErrorState';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import LastUpdated from '../components/LastUpdated';
 
 // одна иконка для всех
 import bellIcon from '../assets/images/history14.png';
@@ -91,6 +92,7 @@ const InboxScreen = () => {
     isFetching,
     isError,
     refetch,
+    dataUpdatedAt,
   } = useQuery<Message[]>({
     queryKey: ['inbox'],
     queryFn: fetchInbox,
@@ -239,9 +241,11 @@ const InboxScreen = () => {
         )}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={styles.emptyText}>No notifications yet</Text>
+            <Text style={styles.emptyTitle}>You're all caught up</Text>
+            <Text style={styles.emptyText}>New notifications will appear here.</Text>
           </View>
         }
+        ListHeaderComponent={<LastUpdated timestamp={dataUpdatedAt} style={styles.updated} />}
       />
     </View>
   );
@@ -356,4 +360,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: theme.colors.textSecondary,
   },
+  emptyTitle: { fontSize: 18, fontWeight: '600', color: theme.colors.text, marginBottom: 6 },
+  updated: { marginTop: 10, textAlign: 'right' },
 });

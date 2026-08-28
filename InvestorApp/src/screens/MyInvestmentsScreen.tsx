@@ -15,6 +15,7 @@ import ScreenLoader from '../components/ScreenLoader';
 import AnimatedCard from '../components/AnimatedCard';
 import ErrorState from '../components/ErrorState';
 import theme from '../constants/theme';
+import { useNavigation } from '@react-navigation/native';
 
 interface Investment {
   id: string;
@@ -38,6 +39,7 @@ async function fetchUserInvestments(userId: string): Promise<Investment[]> {
 }
 
 const MyInvestmentsScreen = () => {
+  const navigation = useNavigation<any>();
   const [userId, setUserId] = useState<string | null>(null);
 
   const [minShares, setMinShares] = useState('');
@@ -172,9 +174,12 @@ const MyInvestmentsScreen = () => {
           </AnimatedCard>
         )}
         ListEmptyComponent={
-          <Text style={styles.emptyText}>
-            No investments match your filters.
-          </Text>
+          <View style={styles.emptyWrap}>
+            <Text style={styles.emptyText}>No investments match your filters.</Text>
+            {investments.length === 0 && (
+              <BlueButton title="Explore properties" onPress={() => navigation.navigate('Properties')} />
+            )}
+          </View>
         }
       />
     </View>
@@ -230,6 +235,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
     color: theme.colors.textSecondary,
   },
+  emptyWrap: { gap: 16, alignItems: 'center', paddingHorizontal: 24 },
 });
 
 export default MyInvestmentsScreen;

@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   SectionList,
-  Alert,
   Pressable,
   ScrollView,
   Image,
@@ -17,7 +16,6 @@ import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import theme from '../constants/theme';
 import AnimatedCard from '../components/AnimatedCard';
 import ErrorState from '../components/ErrorState';
-import { useNavigation } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 
 import icon1 from '../assets/images/history11.png';
@@ -26,7 +24,7 @@ import icon3 from '../assets/images/history13.png';
 import icon4 from '../assets/images/history14.png';
 import icon5 from '../assets/images/history15.png';
 
-interface UserTransaction {
+export interface UserTransaction {
   id: string;
   type: string;
   amount: number;
@@ -39,19 +37,17 @@ interface UserTransaction {
 
 type FilterValue =
   | ''
-  | 'deposit'
-  | 'withdrawal'
-  | 'income'
-  | 'buy'
-  | 'sell';
+  | 'investments'
+  | 'rent'
+  | 'deposits'
+  | 'withdrawals';
 
 const FILTERS: { label: string; value: FilterValue }[] = [
   { label: 'All', value: '' },
-  { label: 'Deposits', value: 'deposit' },
-  { label: 'Withdrawals', value: 'withdrawal' },
-  { label: 'Income', value: 'income' },
-  { label: 'Buys', value: 'buy' },
-  { label: 'Sales', value: 'sell' },
+  { label: 'Investments', value: 'investments' },
+  { label: 'Rent', value: 'rent' },
+  { label: 'Deposits', value: 'deposits' },
+  { label: 'Withdrawals', value: 'withdrawals' },
 ];
 
 type TransactionSection = {
@@ -98,21 +94,15 @@ function formatMoney(amount: number, positive: boolean) {
 function normalizeFilter(tx: UserTransaction): FilterValue {
   const t = String(tx.type || '').toLowerCase();
 
-  if (t === 'deposit') return 'deposit';
-  if (t === 'withdrawal') return 'withdrawal';
+  if (t === 'deposit') return 'deposits';
+  if (t === 'withdrawal') return 'withdrawals';
 
   if (
     t === 'rentincome' ||
     t === 'rent_income' ||
-    t === 'rental_income' ||
-    t === 'referralreward' ||
-    t === 'referral_reward' ||
-    t === 'referralbonus' ||
-    t === 'referral_bonus' ||
-    t === 'clubfeeincome' ||
-    t === 'club_fee_income'
+    t === 'rental_income'
   ) {
-    return 'income';
+    return 'rent';
   }
 
   if (
@@ -122,7 +112,7 @@ function normalizeFilter(tx: UserTransaction): FilterValue {
     t === 'sharemarketbuy' ||
     t.includes('buy')
   ) {
-    return 'buy';
+    return 'investments';
   }
 
   if (
@@ -130,7 +120,7 @@ function normalizeFilter(tx: UserTransaction): FilterValue {
     t === 'sharemarketsell' ||
     t.includes('sell')
   ) {
-    return 'sell';
+    return 'investments';
   }
 
   return '';
@@ -235,7 +225,7 @@ function getIcon(type: string) {
 }
 
 
-async function fetchTransactions(fromDate: Date | null,toDate: Date | null): Promise<UserTransaction[]> {
+export async function fetchTransactions(fromDate: Date | null, toDate: Date | null): Promise<UserTransaction[]> {
   const stored = await AsyncStorage.getItem('user');
   if (!stored) return [];
   const user = JSON.parse(stored);
@@ -252,7 +242,11 @@ async function fetchTransactions(fromDate: Date | null,toDate: Date | null): Pro
 
 
 export default function UserTransactionsScreen() {
-  const navigation = useNavigation<any>();
+  const [activeFilter, setActiveFilter] = useState<FilterValue>('');
+  const [fromDate, setFromDate] = useState<Date | null>(null);
+  const [toDate, setToDate] = useState<Date | null>(null);
+  const [dateMode, setDateMode] = useState<'from' | 'to' | null>(null);
+  const [isDatePickerVisible, setDatePickerVisible] = useState(false);
 
   const {
     data: transactions = [],
@@ -266,12 +260,6 @@ export default function UserTransactionsScreen() {
     staleTime: 60000,
     gcTime: 600000,
   });
-  const [activeFilter, setActiveFilter] = useState<FilterValue>('');
-
-  const [fromDate, setFromDate] = useState<Date | null>(null);
-  const [toDate, setToDate] = useState<Date | null>(null);
-  const [dateMode, setDateMode] = useState<'from' | 'to' | null>(null);
-  const [isDatePickerVisible, setDatePickerVisible] = useState(false);
 
   // Загрузка выполняется React Query.
 

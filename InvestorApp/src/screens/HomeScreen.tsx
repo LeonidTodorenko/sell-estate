@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -22,6 +22,8 @@ import ScreenLoader from '../components/ScreenLoader';
 import AnimatedCard from '../components/AnimatedCard';
 import ErrorState from '../components/ErrorState';
 import DemoModeBanner from '../components/DemoModeBanner';
+import LastUpdated from '../components/LastUpdated';
+import { fetchTransactions, UserTransaction } from './UserTransactionsScreen';
 
 import inboxIcon from '../assets/images/inbox_icon.png';
 import historyIcon from '../assets/images/history_icon.png';
@@ -494,12 +496,27 @@ const {
   isFetching,
   isError,
   refetch,
+  dataUpdatedAt,
 } = useQuery({
   queryKey: ['home'],
   queryFn: fetchHomeData,
   staleTime: 60_000,
   gcTime: 10 * 60_000,
 });
+
+const { data: recentTransactions = [], refetch: refetchTransactions } = useQuery<UserTransaction[]>({
+  queryKey: ['transactions', undefined, undefined],
+  queryFn: () => fetchTransactions(null, null),
+  staleTime: 60_000,
+  gcTime: 10 * 60_000,
+});
+
+const recentActivity = useMemo(
+  () => [...recentTransactions]
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    .slice(0, 5),
+  [recentTransactions],
+);
 
 const userFullName = homeData?.userFullName ?? '';
 const userAvatar = homeData?.userAvatar ?? null;
@@ -627,7 +644,7 @@ const clubInfo = homeData?.clubInfo ?? null;
   // };
 
   const onRefresh = async () => {
-  await refetch();
+  await Promise.all([refetch(), refetchTransactions()]);
 };
 
   const qc = useQueryClient();
@@ -713,6 +730,7 @@ const clubInfo = homeData?.clubInfo ?? null;
       showsVerticalScrollIndicator={false}
     >
       <DemoModeBanner isDemo={homeData?.isDemo} demoCode={homeData?.demoCode} />
+      <LastUpdated timestamp={dataUpdatedAt} style={styles.lastUpdated} />
       <AnimatedCard delay={0}>
         <View style={styles.heroBlock}>
         <View style={styles.headerRow}>
@@ -827,6 +845,44 @@ const clubInfo = homeData?.clubInfo ?? null;
 
         </View>
       </View>
+      </AnimatedCard>
+
+      <View style={{ height: theme.spacing.xl }} />
+
+      <AnimatedCard delay={60}>
+        <SectionHeader
+          title="Recent Activity"
+          onSeeAll={() => navigation.navigate('UserTransactions')}
+        />
+        {recentActivity.length > 0 ? (
+          <Pressable style={styles.activityCard} onPress={() => navigation.navigate('UserTransactions')}>
+            {recentActivity.map((item, index) => {
+              const type = String(item.type || '').toLowerCase();
+              const incoming = item.amount >= 0 && type !== 'investment' && type !== 'withdrawal' && !type.includes('buy');
+              const label = type === 'deposit' ? 'Deposit'
+                : type === 'withdrawal' ? 'Withdrawal'
+                : type.includes('rent') ? 'Rental Income'
+                : type.includes('sell') ? 'Marketplace Sale'
+                : type.includes('buy') || type === 'investment' ? 'Investment'
+                : item.type;
+              return (
+                <View key={item.id} style={[styles.activityRow, index < recentActivity.length - 1 && styles.activityDivider]}>
+                  <View style={styles.activityText}>
+                    <Text style={styles.activityTitle}>{label}</Text>
+                    <Text style={styles.activityMeta} numberOfLines={1}>
+                      {item.propertyTitle || new Date(item.timestamp).toLocaleDateString()}
+                    </Text>
+                  </View>
+                  <Text style={[styles.activityAmount, incoming && styles.activityAmountPositive]}>
+                    {incoming ? '+' : '-'}{money(Math.abs(item.amount))}
+                  </Text>
+                </View>
+              );
+            })}
+          </Pressable>
+        ) : (
+          <View style={styles.emptyCard}><Text style={styles.emptyText}>No recent activity</Text></View>
+        )}
       </AnimatedCard>
 
       <View style={{ height: theme.spacing.xl }} />
@@ -1519,6 +1575,15 @@ clubBadgeFallback: {
     fontSize: theme.typography.sizes.sm,
     fontWeight: '600',
   },
+  lastUpdated: { textAlign: 'right', marginHorizontal: theme.spacing.lg, marginTop: 6 },
+  activityCard: { backgroundColor: '#FFFFFF', borderRadius: 18, paddingHorizontal: 16 },
+  activityRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14 },
+  activityDivider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#E5E7EB' },
+  activityText: { flex: 1, paddingRight: 12 },
+  activityTitle: { color: theme.colors.text, fontSize: 16, fontWeight: '600' },
+  activityMeta: { color: theme.colors.textSecondary, fontSize: 13, marginTop: 3 },
+  activityAmount: { color: theme.colors.text, fontSize: 15, fontWeight: '600' },
+  activityAmountPositive: { color: theme.colors.primary },
 
   imageFallback: {
     alignItems: 'center',

@@ -50,7 +50,12 @@ export default function MonthlyReportsScreen() {
           <View style={styles.row}><Text style={styles.label}>Rental income to date</Text><Text style={styles.value}>{money(report.rentalIncome)}</Text></View>
         </View>;
       })}
-      {!query.isError && query.data?.length === 0 && <Text style={styles.empty}>No monthly reports yet.</Text>}
+      {!query.isError && query.data?.length === 0 && (
+        <View style={styles.emptyCard}>
+          <Text style={styles.emptyTitle}>Your first demo report is on its way</Text>
+          <Text style={styles.empty}>Monthly snapshots appear after a full demo month has been completed.</Text>
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -71,5 +76,7 @@ const styles = StyleSheet.create({
   label: { color: '#8B93A7' },
   value: { color: '#E9ECF3', fontWeight: '600' },
   error: { color: '#EF6A6A', marginBottom: 14 },
-  empty: { color: '#8B93A7', textAlign: 'center', marginTop: 30 },
+  empty: { color: '#8B93A7', textAlign: 'center', marginTop: 8, lineHeight: 20 },
+  emptyCard: { padding: 22, borderRadius: 16, backgroundColor: '#151A26', marginTop: 10 },
+  emptyTitle: { color: '#FFFFFF', fontSize: 17, fontWeight: '700', textAlign: 'center' },
 });

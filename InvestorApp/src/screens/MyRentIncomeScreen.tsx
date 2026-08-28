@@ -11,6 +11,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
+import LastUpdated from '../components/LastUpdated';
 import { LineChart } from 'react-native-chart-kit';
 
 import api from '../api';
@@ -119,6 +120,7 @@ export default function MyRentIncomeScreen() {
     isFetching,
     isError,
     refetch,
+    dataUpdatedAt,
   } = useQuery<LogEntry[]>({
     queryKey: ['rentIncomeHistory'],
     queryFn: fetchRentIncomeHistory,
@@ -283,6 +285,7 @@ export default function MyRentIncomeScreen() {
           <Text style={styles.subtitle}>
             Track income generated from your rental properties
           </Text>
+          <LastUpdated timestamp={dataUpdatedAt} style={styles.updated} />
         </View>
       </AnimatedCard>
 
@@ -594,6 +597,7 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     fontWeight: '500',
   },
+  updated: { marginTop: 6 },
 
   summaryCard: {
     backgroundColor: '#14191D',

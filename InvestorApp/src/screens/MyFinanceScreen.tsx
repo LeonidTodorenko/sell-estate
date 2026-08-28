@@ -17,17 +17,26 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
- 
-import { LineChart  } from 'react-native-gifted-charts';
+import Svg, {
+  Defs,
+  LinearGradient,
+  Stop,
+  Path,
+  Circle,
+  Line,
+  Text as SvgText,
+} from 'react-native-svg';
+
 import api from '../api';
 import theme from '../constants/theme';
 import AnimatedCard from '../components/AnimatedCard';
 import ErrorState from '../components/ErrorState';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { useQuery } from '@tanstack/react-query';
+import LastUpdated from '../components/LastUpdated';
 
 interface HistoryPoint {
-  date: string;   // yyyy-MM-dd
+  date: string;
   total: number;
 }
 
@@ -46,10 +55,6 @@ interface AssetStats {
 type RangeKey = '3m' | '6m' | '1y' | 'all';
 type RentalRangeKey = '6m' | '1y' | 'all' | 'custom';
 
-
-// Данные финансового экрана загружаются одним React Query-запросом.
-// userId берём из AsyncStorage внутри queryFn, чтобы пока не менять
-// текущую архитектуру авторизации приложения.
 async function fetchFinanceStats(): Promise<AssetStats | null> {
   const stored = await AsyncStorage.getItem('user');
 
@@ -65,7 +70,6 @@ async function fetchFinanceStats(): Promise<AssetStats | null> {
   }
 
   const response = await api.get(`/users/${userId}/assets-summary`, {
-    // Экран показывает свой локальный loader, поэтому глобальный overlay не нужен.
     silentLoading: true,
     silentError: true,
     errorContext: 'Failed to load assets-summary',
@@ -82,12 +86,27 @@ function parseDate(dateStr: string) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
 
+function samplePoints(points: HistoryPoint[], maxPoints: number) {
+  if (points.length <= maxPoints) return points;
+
+  const result: HistoryPoint[] = [];
+  const step = (points.length - 1) / (maxPoints - 1);
+
+  for (let i = 0; i < maxPoints; i++) {
+    const index = Math.round(i * step);
+    result.push(points[index]);
+  }
+
+  return result;
+}
+
 function buildSimpleBars(points: HistoryPoint[]) {
   const sampled = samplePoints(points, 28);
   const max = Math.max(...sampled.map(p => p.total), 1);
 
   return sampled.map((p, index) => {
     const d = parseDate(p.date);
+
     const yearLabel =
       index % 7 === 0
         ? d.toLocaleDateString('en-US', { year: 'numeric' })
@@ -98,7 +117,10 @@ function buildSimpleBars(points: HistoryPoint[]) {
       value: Number(p.total.toFixed(2)),
       heightPercent: Math.max(6, (p.total / max) * 100),
       yearLabel,
-      dateLabel: d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+      dateLabel: d.toLocaleDateString('en-US', {
+        month: 'long',
+        year: 'numeric',
+      }),
     };
   });
 }
@@ -108,13 +130,6 @@ function formatMoney(value: number) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
-}
-
-function formatMoneyShort(value: number) {
-  const abs = Math.abs(value);
-  if (abs >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
-  if (abs >= 1_000) return `$${(value / 1_000).toFixed(1)}K`;
-  return `$${value.toFixed(0)}`;
 }
 
 function formatDelta(value: number) {
@@ -131,18 +146,13 @@ function formatShortDate(dateStr: string) {
   const d = parseDate(dateStr);
   const dd = String(d.getDate()).padStart(2, '0');
   const mm = String(d.getMonth() + 1).padStart(2, '0');
-  return `${dd}.${mm}`;
-}
 
-function formatMonthYear(date: Date) {
-  return date.toLocaleDateString('en-US', {
-    month: 'long',
-    year: 'numeric',
-  });
+  return `${dd}.${mm}`;
 }
 
 function formatPickerDate(date: Date | null) {
   if (!date) return 'Select date';
+
   return date.toLocaleDateString('en-GB', {
     day: 'numeric',
     month: 'long',
@@ -162,17 +172,30 @@ function addYears(date: Date, years: number) {
   return d;
 }
 
-function filterHistoryByRange(points: HistoryPoint[], range: RangeKey): HistoryPoint[] {
-  if (!points.length || range === 'all') return points;
+function filterHistoryByRange(
+  points: HistoryPoint[],
+  range: RangeKey,
+): HistoryPoint[] {
+  if (!points.length || range === 'all') {
+    return points;
+  }
 
   const lastDate = parseDate(points[points.length - 1].date);
   let fromDate = new Date(lastDate);
 
-  if (range === '3m') fromDate = addMonths(lastDate, -3);
-  if (range === '6m') fromDate = addMonths(lastDate, -6);
-  if (range === '1y') fromDate = addYears(lastDate, -1);
+  if (range === '3m') {
+    fromDate = addMonths(lastDate, -3);
+  }
 
-  return points.filter((p) => parseDate(p.date) >= fromDate);
+  if (range === '6m') {
+    fromDate = addMonths(lastDate, -6);
+  }
+
+  if (range === '1y') {
+    fromDate = addYears(lastDate, -1);
+  }
+
+  return points.filter(p => parseDate(p.date) >= fromDate);
 }
 
 function filterHistoryByRentalRange(
@@ -181,16 +204,32 @@ function filterHistoryByRentalRange(
   customStart: Date | null,
   customEnd: Date | null,
 ): HistoryPoint[] {
-  if (!points.length) return points;
+  if (!points.length) {
+    return points;
+  }
 
-  if (range === 'all') return points;
+  if (range === 'all') {
+    return points;
+  }
 
   if (range === 'custom') {
-    if (!customStart || !customEnd) return points;
-    const start = new Date(customStart.getFullYear(), customStart.getMonth(), customStart.getDate());
-    const end = new Date(customEnd.getFullYear(), customEnd.getMonth(), customEnd.getDate());
+    if (!customStart || !customEnd) {
+      return points;
+    }
 
-    return points.filter((p) => {
+    const start = new Date(
+      customStart.getFullYear(),
+      customStart.getMonth(),
+      customStart.getDate(),
+    );
+
+    const end = new Date(
+      customEnd.getFullYear(),
+      customEnd.getMonth(),
+      customEnd.getDate(),
+    );
+
+    return points.filter(p => {
       const d = parseDate(p.date);
       return d >= start && d <= end;
     });
@@ -199,10 +238,15 @@ function filterHistoryByRentalRange(
   const lastDate = parseDate(points[points.length - 1].date);
   let fromDate = new Date(lastDate);
 
-  if (range === '6m') fromDate = addMonths(lastDate, -6);
-  if (range === '1y') fromDate = addYears(lastDate, -1);
+  if (range === '6m') {
+    fromDate = addMonths(lastDate, -6);
+  }
 
-  return points.filter((p) => parseDate(p.date) >= fromDate);
+  if (range === '1y') {
+    fromDate = addYears(lastDate, -1);
+  }
+
+  return points.filter(p => parseDate(p.date) >= fromDate);
 }
 
 function buildSummary(points: HistoryPoint[]) {
@@ -226,52 +270,174 @@ function buildSummary(points: HistoryPoint[]) {
   };
 }
 
-function samplePoints(points: HistoryPoint[], maxPoints: number) {
-  if (points.length <= maxPoints) return points;
+type SimpleLineChartProps = {
+  points: HistoryPoint[];
+  height?: number;
+};
 
-  const result: HistoryPoint[] = [];
-  const step = (points.length - 1) / (maxPoints - 1);
+const SimpleLineChart = ({
+  points,
+  height = 220,
+}: SimpleLineChartProps) => {
+  const sampled = useMemo(() => samplePoints(points, 6), [points]);
 
-  for (let i = 0; i < maxPoints; i++) {
-    const index = Math.round(i * step);
-    result.push(points[index]);
+  if (!sampled.length) {
+    return (
+      <View style={styles.emptyChart}>
+        <Text style={styles.emptyChartText}>
+          No data for selected period
+        </Text>
+      </View>
+    );
   }
 
-  return result;
-}
+  const width = Math.max(screenWidth - 82, 220);
 
-function buildLineData(points: HistoryPoint[]) {
-  const sampled = samplePoints(points, 6);
+  const paddingLeft = 10;
+  const paddingRight = 10;
+  const paddingTop = 18;
+  const paddingBottom = 30;
 
-  return sampled.map((p, index) => ({
-    value: Number(p.total.toFixed(2)),
-    label: formatShortDate(p.date),
-    dataPointText: '',
-    customDataPoint: () => (
-      <View style={styles.lineDot} />
-    ),
-    spacing: index === 0 ? 0 : undefined,
-  }));
-}
+  const chartWidth = width - paddingLeft - paddingRight;
+  const chartHeight = height - paddingTop - paddingBottom;
 
-function buildBarData(points: HistoryPoint[]) {
-  const sampled = samplePoints(points, 18);
+  const values = sampled.map(x => x.total);
 
-  return sampled.map((p, index) => {
-    const d = parseDate(p.date);
-    const label =
-      index % 4 === 0
-        ? d.toLocaleDateString('en-US', { year: 'numeric' })
-        : '';
+  const minValue = Math.min(...values);
+  const maxValue = Math.max(...values);
+
+  const valueRange = Math.max(maxValue - minValue, 1);
+
+  const coords = sampled.map((point, index) => {
+    const x =
+      sampled.length === 1
+        ? paddingLeft + chartWidth / 2
+        : paddingLeft +
+          (index / (sampled.length - 1)) * chartWidth;
+
+    const normalized = (point.total - minValue) / valueRange;
+
+    const y =
+      paddingTop +
+      chartHeight -
+      normalized * chartHeight;
 
     return {
-      value: Number(p.total.toFixed(2)),
-      label,
-      frontColor: '#10B981',
-      spacing: index === 0 ? 8 : 10,
+      x,
+      y,
+      point,
     };
   });
-}
+
+  let linePath = '';
+
+  coords.forEach((item, index) => {
+    if (index === 0) {
+      linePath += `M ${item.x} ${item.y}`;
+    } else {
+      linePath += ` L ${item.x} ${item.y}`;
+    }
+  });
+
+  const first = coords[0];
+  const last = coords[coords.length - 1];
+
+  const areaPath =
+    `${linePath} ` +
+    `L ${last.x} ${paddingTop + chartHeight} ` +
+    `L ${first.x} ${paddingTop + chartHeight} Z`;
+
+  return (
+    <View style={styles.simpleLineChartContainer}>
+      <Svg
+        width={width}
+        height={height}
+      >
+        <Defs>
+          <LinearGradient
+            id="financeLineGradient"
+            x1="0"
+            y1="0"
+            x2="0"
+            y2="1"
+          >
+            <Stop
+              offset="0"
+              stopColor="#10B981"
+              stopOpacity="0.22"
+            />
+
+            <Stop
+              offset="1"
+              stopColor="#10B981"
+              stopOpacity="0.03"
+            />
+          </LinearGradient>
+        </Defs>
+
+        {[0, 1, 2, 3].map(index => {
+          const y =
+            paddingTop +
+            (index / 3) * chartHeight;
+
+          return (
+            <Line
+              key={`rule-${index}`}
+              x1={paddingLeft}
+              y1={y}
+              x2={width - paddingRight}
+              y2={y}
+              stroke="rgba(34,197,94,0.18)"
+              strokeWidth={1}
+              strokeDasharray="5 5"
+            />
+          );
+        })}
+
+        <Path
+          d={areaPath}
+          fill="url(#financeLineGradient)"
+        />
+
+        <Path
+          d={linePath}
+          fill="none"
+          stroke="#6FD48B"
+          strokeWidth={3}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+
+        {coords.map((item, index) => (
+          <React.Fragment key={`${item.point.date}-${index}`}>
+            <Circle
+              cx={item.x}
+              cy={item.y}
+              r={4.5}
+              fill="#2DCD5D"
+            />
+
+            <SvgText
+              x={item.x}
+              y={height - 7}
+              fontSize="10"
+              fill="#6B7280"
+              textAnchor={
+                index === 0
+                  ? 'start'
+                  : index === coords.length - 1
+                    ? 'end'
+                    : 'middle'
+              }
+            >
+              {formatShortDate(item.point.date)}
+            </SvgText>
+          </React.Fragment>
+        ))}
+      </Svg>
+    </View>
+  );
+};
 
 const RangeButton = ({
   title,
@@ -285,9 +451,17 @@ const RangeButton = ({
   return (
     <Pressable
       onPress={onPress}
-      style={[styles.rangeButton, active && styles.rangeButtonActive]}
+      style={[
+        styles.rangeButton,
+        active && styles.rangeButtonActive,
+      ]}
     >
-      <Text style={[styles.rangeButtonText, active && styles.rangeButtonTextActive]}>
+      <Text
+        style={[
+          styles.rangeButtonText,
+          active && styles.rangeButtonTextActive,
+        ]}
+      >
         {title}
       </Text>
     </Pressable>
@@ -315,12 +489,18 @@ const StatCard = ({
 
       <View style={styles.cardHeaderRow}>
         <View>
-          <Text style={styles.bigValue}>{formatMoney(currentValue)}</Text>
-          <Text style={styles.currentValueLabel}>Current value</Text>
+          <Text style={styles.bigValue}>
+            {formatMoney(currentValue)}
+          </Text>
+
+          <Text style={styles.currentValueLabel}>
+            Current value
+          </Text>
         </View>
 
         <Text style={styles.deltaValue}>
-          {formatDelta(deltaValue)} ({formatPercent(deltaPercent).replace('+', '')})
+          {formatDelta(deltaValue)} (
+          {formatPercent(deltaPercent).replace('+', '')})
         </Text>
       </View>
 
@@ -332,17 +512,18 @@ const StatCard = ({
 };
 
 const MyFinanceScreen = () => {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation =
+    useNavigation<
+      NativeStackNavigationProp<RootStackParamList>
+    >();
 
-  // React Query хранит статистику в кеше.
-  // Этот же ключ можно инвалидировать после инвестиций, выплат аренды,
-  // пополнений и других финансовых операций.
   const {
     data: stats,
     isLoading,
     isFetching,
     isError,
     refetch,
+    dataUpdatedAt,
   } = useQuery<AssetStats | null>({
     queryKey: ['finance', 'assets-summary'],
     queryFn: fetchFinanceStats,
@@ -351,63 +532,129 @@ const MyFinanceScreen = () => {
     retry: 1,
   });
 
-  const [overallRange, setOverallRange] = useState<RangeKey>('1y');
-  const [propertyRange, setPropertyRange] = useState<RangeKey>('1y');
-  const [rentalRange, setRentalRange] = useState<RentalRangeKey>('all');
+  const [overallRange, setOverallRange] =
+    useState<RangeKey>('1y');
 
-  const [customStart, setCustomStart] = useState<Date | null>(null);
-  const [customEnd, setCustomEnd] = useState<Date | null>(null);
+  const [propertyRange, setPropertyRange] =
+    useState<RangeKey>('1y');
 
-  const [rangeModalVisible, setRangeModalVisible] = useState(false);
-  const [pickerTarget, setPickerTarget] = useState<'start' | 'end' | null>(null);
+  const [rentalRange, setRentalRange] =
+    useState<RentalRangeKey>('all');
 
-  // Отдельный useEffect больше не нужен:
-  // загрузкой, повторными запросами и кешем управляет React Query.
+  const [customStart, setCustomStart] =
+    useState<Date | null>(null);
 
+  const [customEnd, setCustomEnd] =
+    useState<Date | null>(null);
+
+  const [
+    rangeModalVisible,
+    setRangeModalVisible,
+  ] = useState(false);
+
+  const [
+    pickerTarget,
+    setPickerTarget,
+  ] = useState<'start' | 'end' | null>(null);
 
   const overallHistory = useMemo(() => {
-    if (!stats?.combinedHistory?.length) return [];
-    return filterHistoryByRange(stats.combinedHistory, overallRange);
+    if (!stats?.combinedHistory?.length) {
+      return [];
+    }
+
+    return filterHistoryByRange(
+      stats.combinedHistory,
+      overallRange,
+    );
   }, [stats, overallRange]);
 
   const propertyHistory = useMemo(() => {
-    if (!stats?.equityHistory?.length) return [];
-    return filterHistoryByRange(stats.equityHistory, propertyRange);
+    if (!stats?.equityHistory?.length) {
+      return [];
+    }
+
+    return filterHistoryByRange(
+      stats.equityHistory,
+      propertyRange,
+    );
   }, [stats, propertyRange]);
 
   const rentalHistory = useMemo(() => {
-    if (!stats?.rentIncomeHistory?.length) return [];
+    if (!stats?.rentIncomeHistory?.length) {
+      return [];
+    }
+
     return filterHistoryByRentalRange(
       stats.rentIncomeHistory,
       rentalRange,
       customStart,
       customEnd,
     );
-  }, [stats, rentalRange, customStart, customEnd]);
+  }, [
+    stats,
+    rentalRange,
+    customStart,
+    customEnd,
+  ]);
 
-  const overallSummary = useMemo(() => buildSummary(overallHistory), [overallHistory]);
-  const propertySummary = useMemo(() => buildSummary(propertyHistory), [propertyHistory]);
-  const rentalSummary = useMemo(() => buildSummary(rentalHistory), [rentalHistory]);
+  const overallSummary = useMemo(
+    () => buildSummary(overallHistory),
+    [overallHistory],
+  );
 
-  const overallLineData = useMemo(() => buildLineData(overallHistory), [overallHistory]);
-  const propertyLineData = useMemo(() => buildLineData(propertyHistory), [propertyHistory]);
-  const rentalBarData = useMemo(() => buildSimpleBars(rentalHistory), [rentalHistory]);
+  const propertySummary = useMemo(
+    () => buildSummary(propertyHistory),
+    [propertyHistory],
+  );
+
+  const rentalSummary = useMemo(
+    () => buildSummary(rentalHistory),
+    [rentalHistory],
+  );
+
+  const rentalBarData = useMemo(
+    () => buildSimpleBars(rentalHistory),
+    [rentalHistory],
+  );
+
   const rentalRangeLabel = useMemo(() => {
-    if (rentalRange !== 'custom' || !customStart || !customEnd) return '';
+    if (
+      rentalRange !== 'custom' ||
+      !customStart ||
+      !customEnd
+    ) {
+      return '';
+    }
 
-    const start = customStart.toLocaleDateString('en-GB');
-    const end = customEnd.toLocaleDateString('en-GB');
+    const start =
+      customStart.toLocaleDateString('en-GB');
+
+    const end =
+      customEnd.toLocaleDateString('en-GB');
+
     return `${start} – ${end}`;
-  }, [rentalRange, customStart, customEnd]);
+  }, [
+    rentalRange,
+    customStart,
+    customEnd,
+  ]);
 
   const applyCustomRange = () => {
     if (!customStart || !customEnd) {
-      Alert.alert('Validation', 'Please select start and end dates');
+      Alert.alert(
+        'Validation',
+        'Please select start and end dates',
+      );
+
       return;
     }
 
     if (customStart > customEnd) {
-      Alert.alert('Validation', 'Start date must be before end date');
+      Alert.alert(
+        'Validation',
+        'Start date must be before end date',
+      );
+
       return;
     }
 
@@ -415,12 +662,17 @@ const MyFinanceScreen = () => {
     setRangeModalVisible(false);
   };
 
-  const onChangePicker = (_event: any, selectedDate?: Date) => {
+  const onChangePicker = (
+    _event: any,
+    selectedDate?: Date,
+  ) => {
     if (Platform.OS !== 'ios') {
       setPickerTarget(null);
     }
 
-    if (!selectedDate) return;
+    if (!selectedDate) {
+      return;
+    }
 
     if (pickerTarget === 'start') {
       setCustomStart(selectedDate);
@@ -432,7 +684,10 @@ const MyFinanceScreen = () => {
   if (isLoading) {
     return (
       <View style={styles.loadingWrap}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <ActivityIndicator
+          size="large"
+          color={theme.colors.primary}
+        />
       </View>
     );
   }
@@ -451,10 +706,17 @@ const MyFinanceScreen = () => {
   if (!stats) {
     return (
       <View style={styles.loadingWrap}>
-        <Text style={styles.emptyText}>No statistics available</Text>
+        <Text style={styles.emptyText}>
+          No statistics available
+        </Text>
 
-        <Pressable style={styles.retryButton} onPress={() => refetch()}>
-          <Text style={styles.retryButtonText}>Refresh</Text>
+        <Pressable
+          style={styles.retryButton}
+          onPress={() => refetch()}
+        >
+          <Text style={styles.retryButtonText}>
+            Refresh
+          </Text>
         </Pressable>
       </View>
     );
@@ -467,8 +729,6 @@ const MyFinanceScreen = () => {
         contentContainerStyle={styles.content}
         refreshControl={
           <RefreshControl
-            // При первом открытии используется полноэкранный loader.
-            // Spinner pull-to-refresh показываем только при фоновой перезагрузке.
             refreshing={isFetching && !isLoading}
             onRefresh={refetch}
             tintColor={theme.colors.primary}
@@ -476,221 +736,294 @@ const MyFinanceScreen = () => {
         }
       >
         <AnimatedCard delay={0}>
-        <View style={styles.headerShell}>
-          <View style={styles.headerRow}>
-            <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-              <Ionicons name="chevron-back" size={26} color="#171717" />
-            </Pressable>
+          <View style={styles.headerShell}>
+            <View style={styles.headerRow}>
+              <Pressable
+                onPress={() => navigation.goBack()}
+                style={styles.backButton}
+              >
+                <Ionicons
+                  name="chevron-back"
+                  size={26}
+                  color="#171717"
+                />
+              </Pressable>
 
-            <Text style={styles.headerTitle}>Statistics</Text>
+              <Text style={styles.headerTitle}>
+                Statistics
+              </Text>
 
-            <View style={styles.headerRightPlaceholder} />
+              <View
+                style={
+                  styles.headerRightPlaceholder
+                }
+              />
+            </View>
+            <LastUpdated timestamp={dataUpdatedAt} style={styles.updated} />
           </View>
-        </View>
         </AnimatedCard>
 
         <AnimatedCard delay={80}>
-        <StatCard
-          title="Overall Growth"
-          currentValue={overallSummary.currentValue}
-          deltaValue={overallSummary.deltaValue}
-          deltaPercent={overallSummary.deltaPercent}
-          footer={
-            <View style={styles.rangeRow}>
-              <RangeButton
-                title="3 month"
-                active={overallRange === '3m'}
-                onPress={() => setOverallRange('3m')}
-              />
-              <RangeButton
-                title="6 month"
-                active={overallRange === '6m'}
-                onPress={() => setOverallRange('6m')}
-              />
-              <RangeButton
-                title="1 year"
-                active={overallRange === '1y'}
-                onPress={() => setOverallRange('1y')}
-              />
-              <RangeButton
-                title="All"
-                active={overallRange === 'all'}
-                onPress={() => setOverallRange('all')}
+          <StatCard
+            title="Overall Growth"
+            currentValue={
+              overallSummary.currentValue
+            }
+            deltaValue={
+              overallSummary.deltaValue
+            }
+            deltaPercent={
+              overallSummary.deltaPercent
+            }
+            footer={
+              <View style={styles.rangeRow}>
+                <RangeButton
+                  title="3 month"
+                  active={overallRange === '3m'}
+                  onPress={() =>
+                    setOverallRange('3m')
+                  }
+                />
+
+                <RangeButton
+                  title="6 month"
+                  active={overallRange === '6m'}
+                  onPress={() =>
+                    setOverallRange('6m')
+                  }
+                />
+
+                <RangeButton
+                  title="1 year"
+                  active={overallRange === '1y'}
+                  onPress={() =>
+                    setOverallRange('1y')
+                  }
+                />
+
+                <RangeButton
+                  title="All"
+                  active={overallRange === 'all'}
+                  onPress={() =>
+                    setOverallRange('all')
+                  }
+                />
+              </View>
+            }
+          >
+            <View style={styles.chartWrap}>
+              <SimpleLineChart
+                points={overallHistory}
               />
             </View>
-          }
-        >
-          <View style={styles.chartWrap}>
-            {overallLineData.length > 0 ? (
-              <LineChart
-                areaChart
-                curved
-                hideDataPoints={false}
-                data={overallLineData}
-                width={screenWidth - 82}
-                height={220}
-                color="#A7E6A7"
-                startFillColor="rgba(16,185,129,0.22)"
-                endFillColor="rgba(16,185,129,0.10)"
-                startOpacity={0.5}
-                endOpacity={0.08}
-                thickness={3}
-                hideRules={false}
-                rulesColor="rgba(34,197,94,0.20)"
-                rulesType="dashed"
-                yAxisColor="transparent"
-                xAxisColor="transparent"
-                yAxisTextStyle={styles.axisText}
-                xAxisLabelTextStyle={styles.axisText}
-                noOfSections={4}
-                maxValue={Math.max(...overallLineData.map((x) => x.value), 1)}
-                pointerConfig={{ activatePointersOnLongPress: false }}
-              />
-            ) : (
-              <View style={styles.emptyChart}>
-                <Text style={styles.emptyChartText}>No data for selected period</Text>
-              </View>
-            )}
-          </View>
-        </StatCard>
+          </StatCard>
         </AnimatedCard>
 
         <AnimatedCard delay={160}>
-        <StatCard
-          title="Rental income"
-          currentValue={rentalSummary.currentValue}
-          deltaValue={rentalSummary.deltaValue}
-          deltaPercent={rentalSummary.deltaPercent}
-          footer={
-            <>
+          <StatCard
+            title="Rental income"
+            currentValue={
+              rentalSummary.currentValue
+            }
+            deltaValue={
+              rentalSummary.deltaValue
+            }
+            deltaPercent={
+              rentalSummary.deltaPercent
+            }
+            footer={
               <View style={styles.rangeRow}>
                 <RangeButton
                   title="6 month"
                   active={rentalRange === '6m'}
-                  onPress={() => setRentalRange('6m')}
+                  onPress={() =>
+                    setRentalRange('6m')
+                  }
                 />
+
                 <RangeButton
                   title="1 year"
                   active={rentalRange === '1y'}
-                  onPress={() => setRentalRange('1y')}
+                  onPress={() =>
+                    setRentalRange('1y')
+                  }
                 />
+
                 <RangeButton
                   title="All"
                   active={rentalRange === 'all'}
-                  onPress={() => setRentalRange('all')}
+                  onPress={() =>
+                    setRentalRange('all')
+                  }
                 />
+
                 <RangeButton
                   title="Custom"
-                  active={rentalRange === 'custom'}
-                  onPress={() => setRangeModalVisible(true)}
+                  active={
+                    rentalRange === 'custom'
+                  }
+                  onPress={() =>
+                    setRangeModalVisible(true)
+                  }
                 />
               </View>
-            </>
-          }
-        >
-          {!!rentalRangeLabel && (
-            <Text style={styles.rangeLabel}>{rentalRangeLabel}</Text>
-          )}
+            }
+          >
+            {!!rentalRangeLabel && (
+              <Text style={styles.rangeLabel}>
+                {rentalRangeLabel}
+              </Text>
+            )}
 
-         <View style={[styles.chartWrap, { marginTop: rentalRangeLabel ? 8 : 20 }]}>
-  {rentalBarData.length > 0 ? (
-    <View style={styles.customBarChartWrap}>
-      <View style={styles.customBarGrid}>
-        <View style={styles.customBarRule} />
-        <View style={styles.customBarRule} />
-        <View style={styles.customBarRule} />
-        <View style={styles.customBarRule} />
-      </View>
-
-      <View style={styles.customBarColumns}>
-        {rentalBarData.map((bar) => (
-          <View key={bar.id} style={styles.customBarColumn}>
             <View
               style={[
-                styles.customBar,
-                { height: `${bar.heightPercent}%` },
+                styles.chartWrap,
+                {
+                  marginTop: rentalRangeLabel
+                    ? 8
+                    : 20,
+                },
               ]}
-            />
-            {!!bar.yearLabel && (
-              <Text style={styles.customBarYearLabel}>{bar.yearLabel}</Text>
-            )}
-          </View>
-        ))}
-      </View>
-    </View>
-  ) : (
-    <View style={styles.emptyChart}>
-      <Text style={styles.emptyChartText}>No data for selected period</Text>
-    </View>
-  )}
-</View>
-        </StatCard>
+            >
+              {rentalBarData.length > 0 ? (
+                <View
+                  style={
+                    styles.customBarChartWrap
+                  }
+                >
+                  <View
+                    style={
+                      styles.customBarGrid
+                    }
+                  >
+                    <View
+                      style={
+                        styles.customBarRule
+                      }
+                    />
+                    <View
+                      style={
+                        styles.customBarRule
+                      }
+                    />
+                    <View
+                      style={
+                        styles.customBarRule
+                      }
+                    />
+                    <View
+                      style={
+                        styles.customBarRule
+                      }
+                    />
+                  </View>
+
+                  <View
+                    style={
+                      styles.customBarColumns
+                    }
+                  >
+                    {rentalBarData.map(bar => (
+                      <View
+                        key={bar.id}
+                        style={
+                          styles.customBarColumn
+                        }
+                      >
+                        <View
+                          style={[
+                            styles.customBar,
+                            {
+                              height: `${bar.heightPercent}%`,
+                            },
+                          ]}
+                        />
+
+                        {!!bar.yearLabel && (
+                          <Text
+                            style={
+                              styles.customBarYearLabel
+                            }
+                          >
+                            {bar.yearLabel}
+                          </Text>
+                        )}
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              ) : (
+                <View
+                  style={styles.emptyChart}
+                >
+                  <Text
+                    style={
+                      styles.emptyChartText
+                    }
+                  >
+                    No data for selected
+                    period
+                  </Text>
+                </View>
+              )}
+            </View>
+          </StatCard>
         </AnimatedCard>
 
         <AnimatedCard delay={240}>
-        <StatCard
-          title="Property Value Growth"
-          currentValue={propertySummary.currentValue}
-          deltaValue={propertySummary.deltaValue}
-          deltaPercent={propertySummary.deltaPercent}
-          footer={
-            <View style={styles.rangeRow}>
-              <RangeButton
-                title="3 month"
-                active={propertyRange === '3m'}
-                onPress={() => setPropertyRange('3m')}
-              />
-              <RangeButton
-                title="6 month"
-                active={propertyRange === '6m'}
-                onPress={() => setPropertyRange('6m')}
-              />
-              <RangeButton
-                title="1 Year"
-                active={propertyRange === '1y'}
-                onPress={() => setPropertyRange('1y')}
-              />
-              <RangeButton
-                title="All"
-                active={propertyRange === 'all'}
-                onPress={() => setPropertyRange('all')}
+          <StatCard
+            title="Property Value Growth"
+            currentValue={
+              propertySummary.currentValue
+            }
+            deltaValue={
+              propertySummary.deltaValue
+            }
+            deltaPercent={
+              propertySummary.deltaPercent
+            }
+            footer={
+              <View style={styles.rangeRow}>
+                <RangeButton
+                  title="3 month"
+                  active={propertyRange === '3m'}
+                  onPress={() =>
+                    setPropertyRange('3m')
+                  }
+                />
+
+                <RangeButton
+                  title="6 month"
+                  active={propertyRange === '6m'}
+                  onPress={() =>
+                    setPropertyRange('6m')
+                  }
+                />
+
+                <RangeButton
+                  title="1 Year"
+                  active={propertyRange === '1y'}
+                  onPress={() =>
+                    setPropertyRange('1y')
+                  }
+                />
+
+                <RangeButton
+                  title="All"
+                  active={propertyRange === 'all'}
+                  onPress={() =>
+                    setPropertyRange('all')
+                  }
+                />
+              </View>
+            }
+          >
+            <View style={styles.chartWrap}>
+              <SimpleLineChart
+                points={propertyHistory}
               />
             </View>
-          }
-        >
-          <View style={styles.chartWrap}>
-            {propertyLineData.length > 0 ? (
-              <LineChart
-                areaChart
-                curved
-                hideDataPoints={false}
-                data={propertyLineData}
-                width={screenWidth - 82}
-                height={220}
-                color="#A7E6A7"
-                startFillColor="rgba(16,185,129,0.22)"
-                endFillColor="rgba(16,185,129,0.10)"
-                startOpacity={0.5}
-                endOpacity={0.08}
-                thickness={3}
-                hideRules={false}
-                rulesColor="rgba(34,197,94,0.20)"
-                rulesType="dashed"
-                yAxisColor="transparent"
-                xAxisColor="transparent"
-                yAxisTextStyle={styles.axisText}
-                xAxisLabelTextStyle={styles.axisText}
-                noOfSections={4}
-                maxValue={Math.max(...propertyLineData.map((x) => x.value), 1)}
-                pointerConfig={{ activatePointersOnLongPress: false }}
-              />
-            ) : (
-              <View style={styles.emptyChart}>
-                <Text style={styles.emptyChartText}>No data for selected period</Text>
-              </View>
-            )}
-          </View>
-        </StatCard>
+          </StatCard>
         </AnimatedCard>
       </ScrollView>
 
@@ -698,27 +1031,50 @@ const MyFinanceScreen = () => {
         visible={rangeModalVisible}
         transparent
         animationType="slide"
-        onRequestClose={() => setRangeModalVisible(false)}
+        onRequestClose={() =>
+          setRangeModalVisible(false)
+        }
       >
         <View style={styles.modalOverlay}>
           <View style={styles.bottomSheet}>
             <View style={styles.sheetHandle} />
-            <Text style={styles.sheetTitle}>Select period</Text>
+
+            <Text style={styles.sheetTitle}>
+              Select period
+            </Text>
 
             <Pressable
               style={styles.dateField}
-              onPress={() => setPickerTarget('start')}
+              onPress={() =>
+                setPickerTarget('start')
+              }
             >
-              <Text style={styles.dateFieldText}>{formatPickerDate(customStart)}</Text>
-              <Ionicons name="close" size={24} color="#171717" />
+              <Text style={styles.dateFieldText}>
+                {formatPickerDate(customStart)}
+              </Text>
+
+              <Ionicons
+                name="calendar-outline"
+                size={24}
+                color="#171717"
+              />
             </Pressable>
 
             <Pressable
               style={styles.dateField}
-              onPress={() => setPickerTarget('end')}
+              onPress={() =>
+                setPickerTarget('end')
+              }
             >
-              <Text style={styles.dateFieldText}>{formatPickerDate(customEnd)}</Text>
-              <Ionicons name="close" size={24} color="#171717" />
+              <Text style={styles.dateFieldText}>
+                {formatPickerDate(customEnd)}
+              </Text>
+
+              <Ionicons
+                name="calendar-outline"
+                size={24}
+                color="#171717"
+              />
             </Pressable>
 
             {pickerTarget && (
@@ -730,14 +1086,27 @@ const MyFinanceScreen = () => {
                       : customEnd ?? new Date()
                   }
                   mode="date"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  display={
+                    Platform.OS === 'ios'
+                      ? 'spinner'
+                      : 'default'
+                  }
                   onChange={onChangePicker}
                 />
               </View>
             )}
 
-            <Pressable style={styles.continueButton} onPress={applyCustomRange}>
-              <Text style={styles.continueButtonText}>Continue</Text>
+            <Pressable
+              style={styles.continueButton}
+              onPress={applyCustomRange}
+            >
+              <Text
+                style={
+                  styles.continueButtonText
+                }
+              >
+                Continue
+              </Text>
             </Pressable>
           </View>
         </View>
@@ -769,7 +1138,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#6B7280',
   },
-
 
   retryButton: {
     marginTop: 16,
@@ -817,6 +1185,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#171717',
   },
+  updated: { textAlign: 'center', marginTop: 4 },
 
   headerRightPlaceholder: {
     width: 36,
@@ -872,23 +1241,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  axisText: {
-    color: '#5B5B5B',
-    fontSize: 11,
-  },
-
-  axisYearText: {
-    color: '#A3A3A3',
-    fontSize: 13,
-  },
-
-  lineDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#2DCD5D',
-    borderWidth: 1,
-    borderColor: '#2DCD5D',
+  simpleLineChartContainer: {
+    width: '100%',
+    alignItems: 'center',
+    overflow: 'hidden',
   },
 
   rangeRow: {
@@ -982,56 +1338,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 14,
   },
-customBarChartWrap: {
-  width: '100%',
-  height: 270,
-  justifyContent: 'flex-end',
-  position: 'relative',
-  paddingHorizontal: 8,
-  paddingBottom: 28,
-},
 
-customBarGrid: {
-  ...StyleSheet.absoluteFillObject,
-  top: 12,
-  bottom: 28,
-  justifyContent: 'space-between',
-},
-
-customBarRule: {
-  borderTopWidth: 1,
-  borderColor: 'rgba(156,163,175,0.28)',
-  borderStyle: 'dashed',
-},
-
-customBarColumns: {
-  flexDirection: 'row',
-  alignItems: 'flex-end',
-  justifyContent: 'space-between',
-  flex: 1,
-},
-
-customBarColumn: {
-  flex: 1,
-  alignItems: 'center',
-  justifyContent: 'flex-end',
-  height: '100%',
-},
-
-customBar: {
-  width: 10,
-  backgroundColor: '#10B981',
-  borderTopLeftRadius: 4,
-  borderTopRightRadius: 4,
-  minHeight: 6,
-},
-
-customBarYearLabel: {
-  marginTop: 10,
-  fontSize: 12,
-  color: '#A3A3A3',
-  fontWeight: '500',
-},
   dateFieldText: {
     fontSize: 18,
     color: '#171717',
@@ -1059,5 +1366,56 @@ customBarYearLabel: {
     fontSize: 18,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+
+  customBarChartWrap: {
+    width: '100%',
+    height: 270,
+    justifyContent: 'flex-end',
+    position: 'relative',
+    paddingHorizontal: 8,
+    paddingBottom: 28,
+  },
+
+  customBarGrid: {
+    ...StyleSheet.absoluteFillObject,
+    top: 12,
+    bottom: 28,
+    justifyContent: 'space-between',
+  },
+
+  customBarRule: {
+    borderTopWidth: 1,
+    borderColor: 'rgba(156,163,175,0.28)',
+    borderStyle: 'dashed',
+  },
+
+  customBarColumns: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    flex: 1,
+  },
+
+  customBarColumn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    height: '100%',
+  },
+
+  customBar: {
+    width: 10,
+    backgroundColor: '#10B981',
+    borderTopLeftRadius: 4,
+    borderTopRightRadius: 4,
+    minHeight: 6,
+  },
+
+  customBarYearLabel: {
+    marginTop: 10,
+    fontSize: 12,
+    color: '#A3A3A3',
+    fontWeight: '500',
   },
 });

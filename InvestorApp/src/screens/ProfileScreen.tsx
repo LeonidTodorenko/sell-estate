@@ -8,6 +8,7 @@ import {
   ScrollView,
   Pressable,
   RefreshControl,
+  Clipboard,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -19,6 +20,7 @@ import theme from '../constants/theme';
 import api, { setAccessToken } from '../api';
 import { clearSession } from '../services/sessionStorage';
 import DemoModeBanner from '../components/DemoModeBanner';
+import Haptics from '../services/HapticsService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
 
@@ -379,6 +381,12 @@ const ProfileScreen = ({ navigation }: Props) => {
   const topSubtitle = [user.phone, user.email].filter(Boolean).join(' • ');
   const statusValue = clubStatus || '—';
 
+  const copyValue = (label: string, value: string) => {
+    Clipboard.setString(value);
+    Haptics.success();
+    Alert.alert('Copied', `${label} copied to clipboard.`);
+  };
+
   return (
     <ScrollView
       style={styles.container}
@@ -428,6 +436,32 @@ const ProfileScreen = ({ navigation }: Props) => {
         <Text style={styles.subInfo} numberOfLines={1}>
           {topSubtitle || user.email}
         </Text>
+      </View>
+
+      <View style={styles.identifiersCard}>
+        <View style={styles.identifierRow}>
+          <View style={styles.identifierText}>
+            <Text style={styles.identifierLabel}>Client Number</Text>
+            <Text style={styles.identifierValue} selectable>{user.userId}</Text>
+          </View>
+          <Pressable style={styles.copyButton} onPress={() => copyValue('Client Number', user.userId)}>
+            <Ionicons name="copy-outline" size={18} color={theme.colors.primary} />
+            <Text style={styles.copyButtonText}>Copy</Text>
+          </Pressable>
+        </View>
+
+        {storedUser.isDemo && !!storedUser.demoCode && (
+          <View style={[styles.identifierRow, styles.identifierDivider]}>
+            <View style={styles.identifierText}>
+              <Text style={styles.identifierLabel}>Demo Code</Text>
+              <Text style={styles.identifierValue} selectable>{storedUser.demoCode}</Text>
+            </View>
+            <Pressable style={styles.copyButton} onPress={() => copyValue('Demo Code', storedUser.demoCode!)}>
+              <Ionicons name="copy-outline" size={18} color={theme.colors.primary} />
+              <Text style={styles.copyButtonText}>Copy</Text>
+            </Pressable>
+          </View>
+        )}
       </View>
 
       <View style={styles.menuCard}>
@@ -734,6 +768,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     paddingVertical: 12,
   },
+  identifiersCard: { marginTop: 18, backgroundColor: '#FFFFFF', borderRadius: 24, paddingHorizontal: 22 },
+  identifierRow: { minHeight: 76, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  identifierDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#E5E7EB' },
+  identifierText: { flex: 1, paddingRight: 12 },
+  identifierLabel: { color: theme.colors.textSecondary, fontSize: 13 },
+  identifierValue: { color: theme.colors.text, fontSize: 16, fontWeight: '600', marginTop: 4 },
+  copyButton: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 10 },
+  copyButtonText: { color: theme.colors.primary, fontSize: 14, fontWeight: '600' },
 
   menuItem: {
     minHeight: 96,
