@@ -12,6 +12,7 @@ import {
   LayoutAnimation,
   Platform,
   UIManager,
+  TextInput,
 } from 'react-native';
 
 import Swiper from 'react-native-swiper';
@@ -538,6 +539,7 @@ const PropertyListScreen = () => {
   const [videoModalVisible, setVideoModalVisible] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [expandedPropertyId, setExpandedPropertyId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const {
   data: properties = [],
   isLoading,
@@ -593,6 +595,17 @@ useEffect(() => {
   const closeGallery = useCallback(() => {
     setGalleryVisible(false);
   }, []);
+
+  const filteredProperties = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return properties;
+
+    return properties.filter((property) =>
+      [property.title, property.location]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query)),
+    );
+  }, [properties, searchQuery]);
 
   const openVideo = (url: string) => {
     //Alert.alert('URI', url);
@@ -727,11 +740,26 @@ useEffect(() => {
     <View style={styles.container}>
       <Text style={styles.title}>Available Properties</Text>
 
+      <View style={styles.searchWrap}>
+        <Ionicons name="search-outline" size={19} color={theme.colors.textSecondary} />
+        <TextInput
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Search by name or location"
+          placeholderTextColor={theme.colors.textSecondary}
+          returnKeyType="search"
+          style={styles.searchInput}
+        />
+      </View>
+
       <FlatList
-        data={properties}
+        data={filteredProperties}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
+        ListEmptyComponent={
+          <Text style={styles.searchEmptyText}>No properties match your search.</Text>
+        }
         renderItem={({ item, index }) => (
           <AnimatedCard delay={Math.min(index, 5) * 70}>
             <PropertyCard
@@ -860,6 +888,30 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     display: 'none',
     color: theme.colors.text,
+  },
+
+  searchWrap: {
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E5E7EB',
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: 'row',
+    marginBottom: 14,
+    marginHorizontal: 16,
+    paddingHorizontal: 13,
+  },
+  searchInput: {
+    color: theme.colors.text,
+    flex: 1,
+    fontSize: 15,
+    paddingHorizontal: 9,
+    paddingVertical: 11,
+  },
+  searchEmptyText: {
+    color: theme.colors.textSecondary,
+    paddingTop: 48,
+    textAlign: 'center',
   },
   text: {
     color: theme.colors.text,

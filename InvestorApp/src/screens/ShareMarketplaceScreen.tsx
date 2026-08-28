@@ -31,6 +31,7 @@ import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityI
 import { fetchPropertiesWithExtras, Property } from "../services/properties";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Haptics from "../services/HapticsService";
+import DemoBadge from "../components/DemoBadge";
 
 import historyIcon from "../assets/images/history2_icon.png";
 
@@ -247,6 +248,7 @@ const ShareMarketplaceScreen = () => {
   const queryClient = useQueryClient();
 
   const [userId, setUserId] = useState<string | null>(null);
+  const [isDemo, setIsDemo] = useState(false);
   const [sessionLoading, setSessionLoading] = useState(true);
   const [bidShares, setBidShares] = useState("");
 
@@ -281,6 +283,8 @@ const ShareMarketplaceScreen = () => {
         const stored = await AsyncStorage.getItem("user");
         const parsed = stored ? JSON.parse(stored) : null;
 
+        setIsDemo(parsed?.isDemo === true || parsed?.user?.isDemo === true);
+
         setUserId(
           parsed?.userId ??
             parsed?.id ??
@@ -307,9 +311,12 @@ const ShareMarketplaceScreen = () => {
     gcTime: 10 * 60_000,
   });
 
-  const offers = data?.offers ?? [];
-  const bidsMap = data?.bidsMap ?? {};
-  const propertiesMap = data?.propertiesMap ?? {};
+  const offers = useMemo(() => data?.offers ?? [], [data?.offers]);
+  const bidsMap = useMemo(() => data?.bidsMap ?? {}, [data?.bidsMap]);
+  const propertiesMap = useMemo(
+    () => data?.propertiesMap ?? {},
+    [data?.propertiesMap],
+  );
 
   const invalidateMarketplaceRelatedQueries = useCallback(async () => {
     const invalidations = [
@@ -620,6 +627,7 @@ const ShareMarketplaceScreen = () => {
     const myBids = bids.filter((b) => b.bidderId === userId);
     const latestMyBid = myBids.length > 0 ? myBids[0] : null;
     const isMyListing = item.sellerId === userId;
+    const displayedPrice = item.buyoutPricePerShare ?? item.startPricePerShare ?? 0;
 
     return (
       <AnimatedCard delay={Math.min(index, 5) * 70}>
@@ -696,6 +704,13 @@ const ShareMarketplaceScreen = () => {
             />
             <Text style={styles.inlineMetaText}>
               {item.sharesForSale} shares
+            </Text>
+          </View>
+
+          <View style={styles.totalValueWrap}>
+            <Text style={styles.totalValueLabel}>Total value</Text>
+            <Text style={styles.totalValueText}>
+              {formatCurrency(item.sharesForSale * displayedPrice)}
             </Text>
           </View>
 
@@ -830,6 +845,7 @@ const ShareMarketplaceScreen = () => {
 
   return (
     <View style={styles.container}>
+      <DemoBadge visible={isDemo} />
       <View style={styles.headerRow}>
         {/* <Text style={styles.headerTitle}>Market</Text> */}
         <MarketHeaderAction
@@ -1185,6 +1201,20 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     position: "relative",
     marginBottom: 24,
+  },
+
+  totalValueWrap: {
+    alignItems: "center",
+  },
+  totalValueLabel: {
+    color: theme.colors.textSecondary,
+    fontSize: 10,
+  },
+  totalValueText: {
+    color: theme.colors.text,
+    fontSize: 13,
+    fontWeight: "700",
+    marginTop: 2,
   },
 
   headerTitle: {

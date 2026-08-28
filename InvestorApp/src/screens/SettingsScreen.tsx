@@ -17,6 +17,7 @@ import { RootStackParamList } from '../navigation/AppNavigator';
 import { Alert } from 'react-native';
 import api from '../api';
 import { clearSession, loadSession } from '../services/sessionStorage';
+import appConfig from '../../app.json';
 
 import rightIcon from '../assets/images/kyc_right_m.png';
 import bellIcon from '../assets/images/setting_Button_icon_bell.png';
@@ -144,6 +145,7 @@ const SettingsScreen = () => {
 
 
         </View>
+        <Text style={styles.versionText}>OwnersClub {appConfig.version}</Text>
       </ScrollView>
     </View>
   );
@@ -195,6 +197,15 @@ const styles = StyleSheet.create({
 
   content: {
     padding: theme.spacing.lg,
+    flexGrow: 1,
+  },
+
+  versionText: {
+    color: theme.colors.textSecondary,
+    fontSize: 12,
+    marginTop: 'auto',
+    paddingTop: 24,
+    textAlign: 'center',
   },
 
   card: {

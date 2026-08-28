@@ -268,6 +268,17 @@ export default function UserTransactionsScreen() {
     return transactions.filter((tx) => normalizeFilter(tx) === activeFilter);
   }, [transactions, activeFilter]);
 
+  const summary = useMemo(() =>
+    filteredTransactions.reduce(
+      (totals, transaction) => {
+        const amount = Number(transaction.amount) || 0;
+        if (amount >= 0) totals.in += amount;
+        else totals.out += Math.abs(amount);
+        return totals;
+      },
+      { in: 0, out: 0 },
+    ), [filteredTransactions]);
+
   const sections = useMemo<TransactionSection[]>(() => {
     const groups: Record<string, UserTransaction[]> = {};
 
@@ -377,6 +388,16 @@ export default function UserTransactionsScreen() {
               <Text style={styles.clearChipText}>Clear</Text>
             </Pressable>
           )}
+        </View>
+
+        <View style={styles.summaryCard}>
+          <Text style={styles.summaryCount}>
+            {filteredTransactions.length} {filteredTransactions.length === 1 ? 'transaction' : 'transactions'}
+          </Text>
+          <View style={styles.summaryAmounts}>
+            <Text style={styles.summaryIn}>In ${summary.in.toFixed(2)}</Text>
+            <Text style={styles.summaryOut}>Out ${summary.out.toFixed(2)}</Text>
+          </View>
         </View>
 
         {isLoading ? (
@@ -579,6 +600,36 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: 16,
     paddingBottom: 36,
+  },
+
+  summaryCard: {
+    alignItems: 'center',
+    backgroundColor: '#F7F7F7',
+    borderRadius: 14,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginHorizontal: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  summaryCount: {
+    color: theme.colors.textSecondary,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  summaryAmounts: {
+    alignItems: 'flex-end',
+  },
+  summaryIn: {
+    color: theme.colors.success,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  summaryOut: {
+    color: theme.colors.text,
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 2,
   },
 
   sectionTitle: {

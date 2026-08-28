@@ -30,6 +30,7 @@ import Swiper from "react-native-swiper";
 import theme from "../constants/theme";
 import BlueButton from "../components/BlueButton";
 import ImageGalleryModal from "../components/ImageGalleryModal";
+import DemoBadge from "../components/DemoBadge";
 import DateTimePicker from "@react-native-community/datetimepicker";
 
 import Ionicons from "react-native-vector-icons/Ionicons";
@@ -146,7 +147,7 @@ const InvestmentCard: React.FC<InvestmentCardProps> = ({
   navigation,
 }) => {
   const swiperRef = useRef<Swiper>(null);
-  const [index, setIndex] = useState(0);
+  const [_index, setIndex] = useState(0);
 
   const slides: Slide[] = useMemo(() => {
     if (!property) return [];
@@ -908,6 +909,7 @@ const InvestmentsScreen = () => {
         onRefresh={refetch}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
+        ListHeaderComponent={<DemoBadge visible={isDemo} />}
         ListEmptyComponent={
           !isLoading ? (
             <View style={styles.emptyState}>

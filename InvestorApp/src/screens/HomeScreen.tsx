@@ -814,32 +814,25 @@ const clubInfo = homeData?.clubInfo ?? null;
 
           <View style={{ height: theme.spacing.md }} />
 
-        <View style={styles.actionsRow}>
-          <Pressable
-            onPress={() => navigation.navigate('Withdraw')}
-            style={({ pressed }) => [
-              styles.actionButton,
-              styles.actionButtonDark,
-              { marginRight: theme.spacing.sm },
-              pressed && { opacity: 0.9 },
-            ]}
-          >
-            <Image source={upIcon} style={styles.actionButtonIcon} resizeMode="contain" />
-            <Text style={styles.actionButtonTextLight}>Withdraw</Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => navigation.navigate('TopUp')}
-            style={({ pressed }) => [
-              styles.actionButton,
-              styles.actionButtonLight,
-              { marginLeft: theme.spacing.sm },
-              pressed && { opacity: 0.9 },
-            ]}
-          >
-            <Image source={plusIcon} style={styles.actionButtonIcon} resizeMode="contain" />
-            <Text style={styles.actionButtonTextDark}>Add Funds</Text>
-          </Pressable>
+        <Text style={styles.quickActionsTitle}>Quick Actions</Text>
+        <View style={styles.quickActionsRow}>
+          {[
+            { label: 'Add Funds', route: 'TopUp', icon: plusIcon },
+            { label: 'Invest', route: 'Properties', icon: investmentIcon },
+            { label: 'Marketplace', route: 'ShareMarketplaces', icon: shareIcon },
+            { label: 'Withdraw', route: 'Withdraw', icon: upIcon },
+          ].map((action) => (
+            <Pressable
+              key={action.label}
+              onPress={() => navigation.navigate(action.route)}
+              style={({ pressed }) => [styles.quickAction, pressed && { opacity: 0.75 }]}
+            >
+              <View style={styles.quickActionIconWrap}>
+                <Image source={action.icon} style={styles.quickActionIcon} resizeMode="contain" />
+              </View>
+              <Text style={styles.quickActionLabel} numberOfLines={1}>{action.label}</Text>
+            </Pressable>
+          ))}
         </View>
 
 
@@ -1284,6 +1277,40 @@ clubBadgeFallback: {
   actionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+
+  quickActionsTitle: {
+    color: theme.colors.white,
+    fontSize: theme.typography.sizes.sm,
+    fontWeight: '700',
+    marginBottom: theme.spacing.sm,
+  },
+  quickActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  quickAction: {
+    alignItems: 'center',
+    width: '24%',
+  },
+  quickActionIconWrap: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
+    borderRadius: 14,
+    height: 42,
+    justifyContent: 'center',
+    width: 42,
+  },
+  quickActionIcon: {
+    height: 18,
+    tintColor: theme.colors.white,
+    width: 18,
+  },
+  quickActionLabel: {
+    color: theme.colors.white,
+    fontSize: 10,
+    fontWeight: '600',
+    marginTop: 6,
   },
 
   sectionHeader: {
