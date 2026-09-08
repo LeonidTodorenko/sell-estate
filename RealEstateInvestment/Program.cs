@@ -79,7 +79,9 @@ builder.Services.AddCors(options =>
         policy.WithOrigins(
                 "https://todtech.ru",
                 "https://www.todtech.ru",
-                "https://sell-estate.onrender.com"
+                "https://wamsoc.com",
+                "https://www.wamsoc.com",
+                "http://localhost:5173"
             )
             .AllowAnyHeader()
             .AllowAnyMethod()
@@ -235,6 +237,8 @@ app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
 
+app.UseCors("Frontend");
+
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -251,7 +255,7 @@ app.UseStaticFiles(new StaticFileOptions
     FileProvider = new PhysicalFileProvider(uploadsRoot),
     RequestPath = "/uploads"
 });
-app.UseCors("Frontend");
+ 
 app.MapControllers();
  
 
