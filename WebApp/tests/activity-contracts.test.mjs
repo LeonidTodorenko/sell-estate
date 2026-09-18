@@ -1,0 +1,6 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {applicationStatus,applicationsPath,selectTrades,profilePayload} from '../src/activity-contracts.ts';
+test('application contract preserves unknown statuses and safely encodes identity',()=>{assert.equal(applicationStatus(null),'Pending');assert.equal(applicationStatus('reviewing'),'reviewing');assert.equal(applicationsPath('a/b'),'/applications/user/a%2Fb');});
+test('trade history filters by participant and sorts without mutating API data',()=>{const rows=[{buyerId:'me',sellerId:'x',timestamp:'2026-01-01'},{buyerId:'x',sellerId:'me',timestamp:'2026-03-01'},{buyerId:'me',sellerId:'x',timestamp:'2026-02-01'}];assert.deepEqual(selectTrades(rows,'me','buy'),[rows[2],rows[0]]);assert.deepEqual(selectTrades(rows,'me','sell'),[rows[1]]);assert.equal(selectTrades(rows,'me','all').length,3);assert.equal(rows[0].timestamp,'2026-01-01');});
+test('demo profile payload locks issued email and excludes extra fields',()=>{const p={id:'me',fullName:'Name',email:'changed@example.com',avatarBase64:'ignored'};assert.deepEqual(profilePayload(p,'demo@example.com',true),{fullName:'Name',email:'demo@example.com',phoneNumber:'',address:''});assert.equal(profilePayload(p,'old@example.com',false).email,'changed@example.com');});
