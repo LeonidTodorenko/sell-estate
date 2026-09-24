@@ -9,6 +9,7 @@ using RealEstateInvestment.Models;
 namespace RealEstateInvestment.Controllers
 {
     [ApiController]
+    [FinancialConcurrency]
     [Authorize]
     [Route("api/demo/wallet")]
     public class DemoWalletController : ControllerBase
@@ -25,6 +26,8 @@ namespace RealEstateInvestment.Controllers
         [HttpPost("topup")]
         public async Task<IActionResult> TopUp([FromBody] DemoTopUpRequest request)
         {
+            if (await FinancialActor.ValidateAsync(User, _context) is { } actorError) return actorError;
+
             if (!User.IsDemo())
                 return Forbid();
 
@@ -35,14 +38,13 @@ namespace RealEstateInvestment.Controllers
             if (request.Amount <= 0 || request.Amount > MaxTopUpAmount)
                 return BadRequest(new { message = $"Amount must be greater than 0 and no more than {MaxTopUpAmount:0} USD" });
 
-            await using var transaction = await _context.Database.BeginTransactionAsync();
+            await using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
             var demoUser = await _context.DemoUsers.FirstOrDefaultAsync(x => x.Id == demoUserId);
             if (demoUser == null)
                 return NotFound(new { message = "Demo account not found" });
 
             var now = DateTime.UtcNow;
-            if (!demoUser.IsActive || demoUser.IsBlocked || demoUser.IsDeleted == true ||
-                (demoUser.ExpiresAt.HasValue && demoUser.ExpiresAt.Value <= now))
+            if (!FinancialActor.IsEligible(demoUser))
                 return Unauthorized(new { message = "Demo account is inactive or expired" });
 
             demoUser.WalletBalance += request.Amount;

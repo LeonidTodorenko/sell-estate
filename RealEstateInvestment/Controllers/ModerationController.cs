@@ -34,6 +34,7 @@ namespace RealEstateInvestment.Controllers
         }
 
         [HttpPost("{id}/approve")]
+        [FinancialAdmin]
         public async Task<IActionResult> Approve(Guid id, [FromBody] string? comment)
         {
             var userId = User.GetUserId();
@@ -47,6 +48,7 @@ namespace RealEstateInvestment.Controllers
         }
 
         [HttpPost("{id}/reject")]
+        [FinancialAdmin]
         public async Task<IActionResult> Reject(Guid id, [FromBody] string? comment)
         {
             var userId = User.GetUserId();

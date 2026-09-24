@@ -14,6 +14,7 @@ using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 namespace RealEstateInvestment.Controllers
 {
     [ApiController]
+    [FinancialConcurrency]
     //  [Authorize] todo
     [Route("api/properties")]
     public class PropertyController : ControllerBase
@@ -47,6 +48,7 @@ namespace RealEstateInvestment.Controllers
 
         //  Add Property
         [HttpPost]
+        [FinancialAdmin]
         public async Task<IActionResult> CreateProperty([FromBody] Property property)
         {
             //if (property.TotalShares <= 0)
@@ -102,6 +104,7 @@ namespace RealEstateInvestment.Controllers
 
         // Change the status of the object (sold, rented)
         [HttpPost("{id}/change-status")]
+        [FinancialAdmin]
         public async Task<IActionResult> ChangePropertyStatus(Guid id, [FromBody] string status)
         {
             if (status != "pending" && status != "available" && status != "sold" && status != "rented") // todo add enum
@@ -165,6 +168,7 @@ namespace RealEstateInvestment.Controllers
          
 
         [HttpDelete("{id}")]
+        [FinancialAdmin]
         public async Task<IActionResult> DeleteProperty(Guid id)
         {
             var property = await _context.Properties.FindAsync(id);
@@ -228,6 +232,7 @@ namespace RealEstateInvestment.Controllers
         }
 
         [HttpPost("{id}/change-listing-type")]
+        [FinancialAdmin]
         public async Task<IActionResult> ChangeListingType(Guid id, [FromBody] string listingType)
         {
             if (listingType != "sale" && listingType != "rent")
@@ -249,8 +254,11 @@ namespace RealEstateInvestment.Controllers
         }
 
         [HttpPost("{propertyId}/validate-payments")]
+        [FinancialAdmin]
         public async Task<IActionResult> ValidatePayments(Guid propertyId)
         {
+            await using var financialTransaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+
             var property = await _context.Properties.FindAsync(propertyId);
             if (property == null)
                 return NotFound(new { message = "Property not found" });
@@ -315,6 +323,7 @@ namespace RealEstateInvestment.Controllers
             });
 
             await _context.SaveChangesAsync();
+            await financialTransaction.CommitAsync();
 
             return Ok(new
             {
@@ -413,11 +422,16 @@ namespace RealEstateInvestment.Controllers
         }
 
         [HttpPost("{propertyId}/pay-rent")]
-        [Authorize(Roles = "admin")]
+        [FinancialAdmin]
         public async Task<IActionResult> PayRentalIncome(Guid propertyId, [FromBody] RentPayoutRequest request)
         {
+            await using var financialTransaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+
             var property = await _context.Properties.FindAsync(propertyId);
             if (property == null) return NotFound(new { message = "Property not found" });
+
+            if (DateTime.UtcNow.Subtract(property.LastPayoutDate).Days < 30)
+                return Conflict("Payments have already been made in the last 30 days");
 
             var totalShares = property.TotalShares;
             if (totalShares <= 0)
@@ -494,6 +508,7 @@ namespace RealEstateInvestment.Controllers
             });
 
             await _context.SaveChangesAsync();
+            await financialTransaction.CommitAsync();
             return Ok(new { message = "Payout completed" });
         }
 
@@ -726,6 +741,7 @@ namespace RealEstateInvestment.Controllers
         }
 
         [HttpPut("{id}")]
+        [FinancialAdmin]
         public async Task<IActionResult> UpdateProperty(Guid id, [FromBody] Property updated,
     [FromServices] IModerationService moderation, [FromServices] AppDbContext db)
         {

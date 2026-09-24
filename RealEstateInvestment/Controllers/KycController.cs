@@ -24,6 +24,9 @@ namespace RealEstateInvestment.Controllers
         [HttpPost("upload")]
         public async Task<IActionResult> Upload([FromBody] KycDocument doc)
         {
+            if (await FinancialActor.ValidateAsync(User, _context) is { } actorError) return actorError;
+            doc.UserId = User.GetUserId(); // Compatibility field; JWT is the authority.
+
             if (doc == null || doc.UserId == Guid.Empty || string.IsNullOrWhiteSpace(doc.Base64File))
                 return BadRequest(new { message = "Invalid data" });
 
@@ -32,7 +35,7 @@ namespace RealEstateInvestment.Controllers
                 var demoUserId = User.GetUserId();
                 if (demoUserId == Guid.Empty) return Unauthorized();
                 var demoUser = await _context.DemoUsers.FindAsync(demoUserId);
-                if (demoUser == null || demoUser.IsTemplate || !demoUser.IsActive) return NotFound(new { message = "Demo user not found" });
+                if (!FinancialActor.IsEligible(demoUser)) return NotFound(new { message = "Demo user not found" });
 
                 _context.DemoKycDocuments.Add(new DemoKycDocument
                 {
@@ -47,8 +50,9 @@ namespace RealEstateInvestment.Controllers
                 return Ok(new { message = "Document uploaded in Demo Mode", simulated = true });
             }
 
-            if (string.IsNullOrWhiteSpace(doc.Status))
-                doc.Status = "pending";
+            doc.Id = Guid.NewGuid();
+            doc.Status = "pending";
+            doc.UploadedAt = DateTime.UtcNow;
 
             _context.KycDocuments.Add(doc);
 
@@ -83,6 +87,7 @@ namespace RealEstateInvestment.Controllers
         }
 
         [HttpGet("pending")]
+        [FinancialAdmin]
         public async Task<IActionResult> GetPending()
         {
             var docs = await _context.KycDocuments
@@ -92,10 +97,12 @@ namespace RealEstateInvestment.Controllers
         }
 
         [HttpPost("{id}/approve")]
+        [FinancialAdmin]
         public async Task<IActionResult> Approve(Guid id)
         {
             var doc = await _context.KycDocuments.FindAsync(id);
             if (doc == null) return NotFound();
+            if (doc.Status != "pending") return Conflict("KYC document already processed");
             doc.Status = "approved";
             _context.ActionLogs.Add(new ActionLog
             {
@@ -109,10 +116,12 @@ namespace RealEstateInvestment.Controllers
         }
 
         [HttpPost("{id}/reject")]
+        [FinancialAdmin]
         public async Task<IActionResult> Reject(Guid id)
         {
             var doc = await _context.KycDocuments.FindAsync(id);
             if (doc == null) return NotFound();
+            if (doc.Status != "pending") return Conflict("KYC document already processed");
             doc.Status = "rejected";
             _context.ActionLogs.Add(new ActionLog
             {
@@ -135,6 +144,7 @@ namespace RealEstateInvestment.Controllers
 
         // Admin Upload docs for user
         [HttpPost("admin-upload")]
+        [FinancialAdmin]
         public async Task<IActionResult> AdminUpload([FromBody] KycDocument doc)
         {
             if (doc == null || doc.UserId == Guid.Empty || string.IsNullOrEmpty(doc.Base64File))
@@ -155,6 +165,8 @@ namespace RealEstateInvestment.Controllers
         [HttpPost("{id}/delete")]
         public async Task<IActionResult> Delete(Guid id)
         {
+            if (await FinancialActor.ValidateAsync(User, _context) is { } actorError) return actorError;
+
             if (User.IsDemo())
             {
                 var demoUserId = User.GetUserId();
@@ -170,6 +182,7 @@ namespace RealEstateInvestment.Controllers
             }
             var doc = await _context.KycDocuments.FindAsync(id);
             if (doc == null) return NotFound();
+            if (doc.UserId != User.GetUserId() && !User.IsInRole("admin")) return Forbid();
 
             _context.KycDocuments.Remove(doc);
             _context.ActionLogs.Add(new ActionLog

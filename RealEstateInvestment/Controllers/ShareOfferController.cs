@@ -13,6 +13,7 @@ using RealEstateInvestment.Services;
 namespace RealEstateInvestment.Controllers
 {
     [ApiController]
+    [FinancialConcurrency]
     [Authorize]
     [Route("api/share-offers")]
     public class ShareOfferController : ControllerBase
@@ -30,7 +31,15 @@ namespace RealEstateInvestment.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateOffer([FromBody] CreateShareOfferRequest request)
         {
+            if (await FinancialActor.ValidateAsync(User, _context) is { } actorError) return actorError;
+            request.SellerId = User.GetUserId(); // Compatibility field; JWT is the authority.
+
             if (User.IsDemo()) return await CreateDemoOffer(request);
+            await using var financialTransaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+
+            if (request.SharesForSale <= 0 || request.StartPricePerShare <= 0 ||
+                request.BuyoutPricePerShare <= 0 || request.ExpirationDate <= DateTime.UtcNow)
+                return BadRequest("Invalid offer parameters");
 
             var seller = await _context.Users.FindAsync(request.SellerId);
 
@@ -94,6 +103,7 @@ namespace RealEstateInvestment.Controllers
                 Details = $"Seller: {request.SellerId}, Property: {request.PropertyId}, Shares: {request.SharesForSale}, Locked: {lockedAmount}"
             });
             await _context.SaveChangesAsync();
+            await financialTransaction.CommitAsync();
 
             return Ok(offer);
         }
@@ -191,8 +201,12 @@ namespace RealEstateInvestment.Controllers
         [HttpPost("sell-to-platform")]
         public async Task<IActionResult> SellToPlatform([FromBody] SellToPlatformRequest request)
         {
+            if (await FinancialActor.ValidateAsync(User, _context) is { } actorError) return actorError;
+            request.UserId = User.GetUserId(); // Compatibility field; JWT is the authority.
+
             if (User.IsDemo())
                 return BadRequest(new { message = "Platform buyback is disabled in demo mode because no isolated demo platform wallet/ownership account exists" });
+            await using var financialTransaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
             var investments = await _context.Investments
                 .Include(i => i.Property)
                 .Include(i => i.User)
@@ -298,6 +312,7 @@ namespace RealEstateInvestment.Controllers
             });
 
             await _context.SaveChangesAsync();
+            await financialTransaction.CommitAsync();
             return Ok(new { shares = totalSharesToSell, amount });
         }
 
@@ -340,13 +355,19 @@ namespace RealEstateInvestment.Controllers
         [HttpPost("{id}/buy")]
         public async Task<IActionResult> BuyShares(Guid id, [FromBody] BuySharesRequest req)
         {
+            if (await FinancialActor.ValidateAsync(User, _context) is { } actorError) return actorError;
+            req.BuyerId = User.GetUserId(); // Compatibility field; JWT is the authority.
+
             if (User.IsDemo()) return await BuyDemoShares(id, req);
+            await using var financialTransaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
             Guid buyerId = req.BuyerId;
             int sharesToBuy = req.SharesToBuy;
 
             var offer = await _context.ShareOffers.FindAsync(id);
-            if (offer == null || !offer.IsActive)
+            if (offer == null || !offer.IsActive || offer.ExpirationDate <= DateTime.UtcNow)
                 return NotFound("Offer not found or inactive");
+
+            if (offer.SellerId == User.GetUserId()) return BadRequest("You cannot buy your own offer");
 
             // для простоты и соответствия UI — покупаем только весь лот
             if (sharesToBuy <= 0 || sharesToBuy != offer.SharesForSale)
@@ -575,6 +596,7 @@ namespace RealEstateInvestment.Controllers
             });
 
             await _context.SaveChangesAsync();
+            await financialTransaction.CommitAsync();
 
             return Ok("Shares purchased successfully.");
         }
@@ -625,12 +647,16 @@ namespace RealEstateInvestment.Controllers
         [HttpPost("{id}/cancel")]
         public async Task<IActionResult> CancelOffer(Guid id, [FromBody] CancelOfferRequest req)
         {
+            if (await FinancialActor.ValidateAsync(User, _context) is { } actorError) return actorError;
+
             if (User.IsDemo()) return await CancelDemoOffer(id, req);
+            await using var financialTransaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
             var offer = await _context.ShareOffers.FindAsync(id);
             if (offer == null || !offer.IsActive)
                 return NotFound("Offer not found or already inactive");
 
-            var seller = await _context.Users.FindAsync(offer.SellerId);
+            if (offer.SellerId != User.GetUserId()) return Forbid();
+            var seller = await _context.Users.FindAsync(User.GetUserId());
             if (seller == null)
                 return BadRequest("Seller not found");
 
@@ -689,11 +715,12 @@ namespace RealEstateInvestment.Controllers
             offer.IsActive = false;
             _context.ActionLogs.Add(new ActionLog
             {
-                UserId = new Guid("2273adeb-483c-4104-a3a9-585b3dad9e27"), // todo add admin guid later
+                UserId = User.GetUserId(),
                 Action = "CancelOffer",
                 Details = $"Offer: {id}, Fee: {fee} transferred to superuser"
             });
             await _context.SaveChangesAsync();
+            await financialTransaction.CommitAsync();
             return Ok($"Offer canceled with {fee} USD cancellation fee.");
         }
 
@@ -725,13 +752,17 @@ namespace RealEstateInvestment.Controllers
         [HttpPost("{id}/extend-to")]
         public async Task<IActionResult> ExtendOfferTo(Guid id, [FromBody] ExtendOfferRequest req)
         {
+            if (await FinancialActor.ValidateAsync(User, _context) is { } actorError) return actorError;
+
             if (User.IsDemo()) return await ExtendDemoOffer(id, req);
+            await using var financialTransaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
             var offer = await _context.ShareOffers.FindAsync(id);
             if (offer == null) return NotFound("Offer not found");
 
             if (!offer.IsActive) return BadRequest("Offer is inactive");
 
-            var seller = await _context.Users.FindAsync(offer.SellerId);
+            if (offer.SellerId != User.GetUserId()) return Forbid();
+            var seller = await _context.Users.FindAsync(User.GetUserId());
             if (seller == null) return BadRequest("Seller not found");
              
             if (req.NewDate <= DateTime.UtcNow)
@@ -759,6 +790,7 @@ namespace RealEstateInvestment.Controllers
                 Details = $"date: {req.NewDate.ToShortDateString()}offer {id}"
             });
             await _context.SaveChangesAsync();
+            await financialTransaction.CommitAsync();
             return Ok();
         }
 
@@ -788,11 +820,16 @@ namespace RealEstateInvestment.Controllers
         [HttpPost("{id}/bid")]
         public async Task<IActionResult> PlaceBid(Guid id, [FromBody] PlaceBidRequest request)
         {
+            if (await FinancialActor.ValidateAsync(User, _context) is { } actorError) return actorError;
+            request.BidderId = User.GetUserId(); // Compatibility field; JWT is the authority.
+
             if (User.IsDemo()) return await PlaceDemoBid(id, request);
+            await using var financialTransaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
             var offer = await _context.ShareOffers.FindAsync(id);
             if (offer == null || !offer.IsActive || offer.ExpirationDate < DateTime.UtcNow)
                 return BadRequest("Offer is not available");
              
+            if (offer.SellerId == User.GetUserId()) return BadRequest("You cannot bid on your own offer");
             var bidder = await _context.Users.FindAsync(request.BidderId);
             if (bidder == null) return BadRequest("User not found");
 
@@ -867,6 +904,7 @@ namespace RealEstateInvestment.Controllers
 
 
             await _context.SaveChangesAsync();
+            await financialTransaction.CommitAsync();
             return Ok(bid);
         }
 
@@ -946,16 +984,16 @@ namespace RealEstateInvestment.Controllers
 
         private async Task<IActionResult> CreateDemoOffer(CreateShareOfferRequest request)
         {
+            await using var tx = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
             var userId = User.GetUserId();
             var seller = await GetActiveDemoUser(userId);
             if (seller == null) return Unauthorized(new { message = "Demo account is inactive, expired, or missing" });
-            if (request.PinOrPassword != seller.PinCode) return BadRequest("Invalid PIN");
-            if (request.SharesForSale <= 0 || request.StartPricePerShare <= 0 || request.ExpirationDate <= DateTime.UtcNow)
+            if (!FinancialActor.VerifyDemoSecret(seller, request.PinOrPassword)) return BadRequest("Invalid PIN or password");
+            if (request.SharesForSale <= 0 || request.StartPricePerShare <= 0 || request.BuyoutPricePerShare <= 0 || request.ExpirationDate <= DateTime.UtcNow)
                 return BadRequest("Invalid offer parameters");
             if (!await _context.Properties.AsNoTracking().AnyAsync(x => x.Id == request.PropertyId))
                 return BadRequest("Property not found");
 
-            await using var tx = await _context.Database.BeginTransactionAsync();
             var investments = await _context.DemoInvestments
                 .Where(x => x.DemoUserId == userId && x.PropertyId == request.PropertyId && x.Shares > 0)
                 .OrderBy(x => x.CreatedAt).ToListAsync();
@@ -1035,7 +1073,7 @@ namespace RealEstateInvestment.Controllers
         private async Task<IActionResult> BuyDemoShares(Guid offerId, BuySharesRequest request)
         {
             var buyerId = User.GetUserId();
-            await using var tx = await _context.Database.BeginTransactionAsync();
+            await using var tx = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
             var offer = await _context.DemoShareOffers.Include(x => x.Property).FirstOrDefaultAsync(x => x.Id == offerId);
             if (offer == null || !offer.IsActive || offer.ExpirationDate <= DateTime.UtcNow)
                 return NotFound("Offer not found or inactive");
@@ -1047,7 +1085,7 @@ namespace RealEstateInvestment.Controllers
             var buyer = await GetActiveDemoUser(buyerId);
             var seller = await GetActiveDemoUser(offer.DemoSellerId);
             if (buyer == null || seller == null) return BadRequest("Buyer or seller not found");
-            if (request.PinOrPassword != buyer.PinCode) return BadRequest("Invalid PIN");
+            if (!FinancialActor.VerifyDemoSecret(buyer, request.PinOrPassword)) return BadRequest("Invalid PIN or password");
             var total = offer.SharesForSale * offer.BuyoutPricePerShare.Value;
             if (buyer.WalletBalance < total) return BadRequest("Insufficient balance");
 
@@ -1092,12 +1130,12 @@ namespace RealEstateInvestment.Controllers
         private async Task<IActionResult> CancelDemoOffer(Guid offerId, CancelOfferRequest request)
         {
             var userId = User.GetUserId();
-            await using var tx = await _context.Database.BeginTransactionAsync();
+            await using var tx = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
             var offer = await _context.DemoShareOffers.FirstOrDefaultAsync(x => x.Id == offerId && x.DemoSellerId == userId);
             if (offer == null || !offer.IsActive) return NotFound("Offer not found or already inactive");
             var seller = await GetActiveDemoUser(userId);
             if (seller == null) return Unauthorized();
-            if (request.PinOrPassword != seller.PinCode) return BadRequest("Invalid PIN");
+            if (!FinancialActor.VerifyDemoSecret(seller, request.PinOrPassword)) return BadRequest("Invalid PIN or password");
             var setting = await _context.SystemSettings.AsNoTracking().FirstOrDefaultAsync(x => x.Key == "CancelListingFee");
             var fee = setting != null && decimal.TryParse(setting.Value, out var parsed) ? parsed : 0m;
             if (seller.WalletBalance < fee) return BadRequest($"Insufficient funds for cancellation fee: {fee} USD");
@@ -1116,32 +1154,34 @@ namespace RealEstateInvestment.Controllers
 
         private async Task<IActionResult> ExtendDemoOffer(Guid offerId, ExtendOfferRequest request)
         {
+            await using var tx = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
             var userId = User.GetUserId();
             var offer = await _context.DemoShareOffers.FirstOrDefaultAsync(x => x.Id == offerId && x.DemoSellerId == userId);
             if (offer == null) return NotFound("Offer not found");
             if (!offer.IsActive) return BadRequest("Offer is inactive");
             var seller = await GetActiveDemoUser(userId);
             if (seller == null) return Unauthorized();
-            if (request.PinOrPassword != seller.PinCode) return BadRequest("Invalid PIN");
+            if (!FinancialActor.VerifyDemoSecret(seller, request.PinOrPassword)) return BadRequest("Invalid PIN or password");
             if (request.NewDate <= DateTime.UtcNow || request.NewDate <= offer.ExpirationDate)
                 return BadRequest("New expiration must be after current expiration date");
             offer.ExpirationDate = request.NewDate;
             seller.LastActiveAt = DateTime.UtcNow;
             AddDemoLog(userId, "ExtendOffer", $"Offer={offerId}; Date={request.NewDate:O}");
             await _context.SaveChangesAsync();
+            await tx.CommitAsync();
             return Ok();
         }
 
         private async Task<IActionResult> PlaceDemoBid(Guid offerId, PlaceBidRequest request)
         {
             var bidderId = User.GetUserId();
-            await using var tx = await _context.Database.BeginTransactionAsync();
+            await using var tx = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
             var offer = await _context.DemoShareOffers.FirstOrDefaultAsync(x => x.Id == offerId);
             if (offer == null || !offer.IsActive || offer.ExpirationDate <= DateTime.UtcNow) return BadRequest("Offer is not available");
             if (offer.DemoSellerId == bidderId) return BadRequest("You cannot bid on your own offer");
             var bidder = await GetActiveDemoUser(bidderId);
             if (bidder == null) return Unauthorized();
-            if (request.PinOrPassword != bidder.PinCode) return BadRequest("Invalid PIN");
+            if (!FinancialActor.VerifyDemoSecret(bidder, request.PinOrPassword)) return BadRequest("Invalid PIN or password");
             if (request.BidPricePerShare <= 0 || request.BidPricePerShare < offer.StartPricePerShare) return BadRequest("Invalid bid price");
             if (request.Shares <= 0 || request.Shares > offer.SharesForSale) return BadRequest("Invalid number of shares");
             if (bidder.WalletBalance < request.BidPricePerShare * request.Shares) return BadRequest("Insufficient balance");
@@ -1165,8 +1205,11 @@ namespace RealEstateInvestment.Controllers
             return Ok(bids);
         }
 
-        private async Task<DemoUser?> GetActiveDemoUser(Guid id) => await _context.DemoUsers
-            .FirstOrDefaultAsync(x => x.Id == id && !x.IsTemplate && x.IsActive && x.ExpiresAt > DateTime.UtcNow);
+        private async Task<DemoUser?> GetActiveDemoUser(Guid id)
+        {
+            var user = await _context.DemoUsers.FirstOrDefaultAsync(x => x.Id == id);
+            return FinancialActor.IsEligible(user) ? user : null;
+        }
 
         private void AddDemoLog(Guid userId, string action, string details) => _context.DemoActionLogs.Add(new DemoActionLog { DemoUserId = userId, Action = action, Details = details });
 

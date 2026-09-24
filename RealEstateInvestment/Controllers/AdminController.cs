@@ -231,6 +231,7 @@ namespace RealEstateInvestment.Controllers
 
         // [Authorize(Roles = "admin")]
         [HttpPost("users/{id}/force-confirm-email")]
+        [FinancialAdmin]
         public async Task<IActionResult> ForceConfirmEmail(Guid id)
         {
             var u = await _db.Users.FindAsync(id);
@@ -244,6 +245,7 @@ namespace RealEstateInvestment.Controllers
         public class AdminResetPasswordRequest { public string? TempPassword { get; set; } }
 
         [HttpPost("users/{id}/reset-password")]
+        [FinancialAdmin]
         public async Task<IActionResult> AdminResetPassword(Guid id, [FromBody] AdminResetPasswordRequest req)
         {
             var u = await _db.Users.FindAsync(id);
@@ -265,6 +267,7 @@ namespace RealEstateInvestment.Controllers
         }
 
         [HttpPost("users/{id}/reset-pin")]
+        [FinancialAdmin]
         public async Task<IActionResult> AdminResetPin(Guid id)
         {
             var u = await _db.Users.FindAsync(id);

@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 namespace RealEstateInvestment.Controllers
 {
     [ApiController]
+    [FinancialConcurrency]
     [Authorize]
     [Route("api/rentals")]
     public class RentalIncomeController : ControllerBase
@@ -30,8 +31,11 @@ namespace RealEstateInvestment.Controllers
         /// Ежемесячная выплата аренды по объекту
         /// </summary>
         [HttpPost("payout/{propertyId}")]
+        [FinancialAdmin]
         public async Task<IActionResult> ProcessRentalPayout(Guid propertyId)
         {
+            await using var financialTransaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+
             // Подтягиваем объект с нужными полями
             var property = await _context.Properties
                 .FirstOrDefaultAsync(p => p.Id == propertyId);
@@ -215,6 +219,7 @@ namespace RealEstateInvestment.Controllers
 
        
             await _context.SaveChangesAsync();
+            await financialTransaction.CommitAsync();
 
             return Ok(new { message = "Payments to investors have been made" });
         }

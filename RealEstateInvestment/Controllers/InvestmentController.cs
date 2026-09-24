@@ -11,12 +11,12 @@ using RealEstateInvestment.Models;
 namespace RealEstateInvestment.Controllers
 {
     [ApiController]
+    [FinancialConcurrency]
     [Authorize]
     [Route("api/investments")]
     public class InvestmentController : ControllerBase
     {
         private readonly AppDbContext _context;
-        private static readonly SemaphoreSlim _investmentLock = new(1, 1);
 
         public InvestmentController(AppDbContext context)
         {
@@ -25,77 +25,21 @@ namespace RealEstateInvestment.Controllers
 
         //   An investor submits an application to purchase shares - todo старая логика
         [HttpPost("apply_old")]
-        public async Task<IActionResult> ApplyForInvestment([FromBody] InvestmentWithPin investmentRequest)
+        public IActionResult ApplyForInvestment([FromBody] InvestmentWithPin investmentRequest)
         {
-            await _investmentLock.WaitAsync();
-            try
-            {
-                var property = await _context.Properties.FindAsync(investmentRequest.PropertyId);
-                if (property == null) return NotFound(new { message = "Object not found" });
-
-                if (DateTime.UtcNow > property.ApplicationDeadline)
-                    return BadRequest(new { message = "The application deadline has expired" });
-
-                var user = await _context.Users.FindAsync(investmentRequest.UserId);
-                if (user == null)
-                    return NotFound(new { message = "User not found" });
-
-                if (!string.IsNullOrEmpty(user.PinCode))
-                {
-                    if (investmentRequest.PinOrPassword != user.PinCode && investmentRequest.PinOrPassword != user.PasswordHash)
-                        return BadRequest(new { message = "Invalid PIN" });
-                }
-                else
-                {
-                    if (investmentRequest.PinOrPassword != user.PasswordHash) // TODO: hash
-                        return BadRequest(new { message = "Invalid password" });
-                }
-
-                if (user.WalletBalance < investmentRequest.InvestedAmount)
-                    return BadRequest(new { message = "Insufficient funds" });
-
-                if (property.AvailableShares < investmentRequest.Shares)
-                    return BadRequest(new { message = "Not enough free shares" });
-
-                // spending money
-                user.WalletBalance -= investmentRequest.InvestedAmount;
-
-                // shares
-                property.AvailableShares -= investmentRequest.Shares;
-
-                // If an investor offers to pay the Upfront Payment, they will receive priority
-                if (investmentRequest.InvestedAmount >= property.UpfrontPayment)
-                {
-                    property.PriorityInvestorId = investmentRequest.UserId;
-                }
-
-                // Save the application
-                _context.Investments.Add(investmentRequest);
-                _context.ActionLogs.Add(new ActionLog
-                {
-                    UserId = investmentRequest.UserId,
-                    Action = "ApplyForInvestment KycDocument",
-                    Details = "Apply For Investment Shares: " + investmentRequest.Shares + "; InvestedAmount: " + investmentRequest.InvestedAmount + "; PropertyId: " + investmentRequest.PropertyId
-                });
-                await _context.SaveChangesAsync();
-                return Ok(new { message = "The application has been submitted" });
-            }
-            finally
-            {
-                _investmentLock.Release();
-            }
-
-            // todo
-            //Сделать статус Investment.Status = pending / confirmed и использовать это при финализации.
-            //Добавить логику возврата денег при FinalizeInvestment, если заявка не попала в распределение.
-            //В будущем: уведомления, e - mail, журнал транзакций.
+            return StatusCode(StatusCodes.Status410Gone, new { message = "Use /api/investments/apply" });
         }
 
         [HttpPost("apply")]
         public async Task<IActionResult> ApplicateForInvestment([FromBody] InvestmentApplicationWithPin req)
         {
+            if (await FinancialActor.ValidateAsync(User, _context) is { } actorError) return actorError;
+            req.UserId = User.GetUserId(); // Compatibility field; JWT is the authority.
+
             if (User.IsDemo())
                 return await ApplicateForDemoInvestment(req);
+
+            await using var financialTransaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
 
             if (req.RequestedShares <= 0)
                 return BadRequest(new { message = "RequestedShares must be a positive whole number" });
@@ -149,6 +93,7 @@ namespace RealEstateInvestment.Controllers
             //    return BadRequest(new { message = "The application deadline has expired" });
 
             // calculating and checking wallet
+            if (property.TotalShares <= 0 || property.Price <= 0) return BadRequest("Invalid property price or capacity");
             var pricePerShare = property.Price / property.TotalShares;
             var expectedAmount = req.RequestedShares * pricePerShare;
 
@@ -261,6 +206,7 @@ namespace RealEstateInvestment.Controllers
             }
 
             await _context.SaveChangesAsync();
+            await financialTransaction.CommitAsync();
             return Ok(new { message = "Application submitted" });
         }
 
@@ -272,14 +218,13 @@ namespace RealEstateInvestment.Controllers
             if (req.RequestedShares <= 0)
                 return BadRequest(new { message = "RequestedShares must be a positive whole number" });
 
-            await using var transaction = await _context.Database.BeginTransactionAsync();
+            await using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
             var demoUser = await _context.DemoUsers.FirstOrDefaultAsync(x => x.Id == demoUserId && !x.IsTemplate);
             if (demoUser == null)
                 return NotFound(new { message = "Demo user not found" });
-            if (!demoUser.IsActive ||
-                (demoUser.ExpiresAt.HasValue && demoUser.ExpiresAt.Value <= DateTime.UtcNow))
+            if (!FinancialActor.IsEligible(demoUser))
                 return Unauthorized(new { message = "Demo account is inactive or expired" });
-            if (req.PinOrPassword != demoUser.PinCode)
+            if (!FinancialActor.VerifyDemoSecret(demoUser, req.PinOrPassword))
                 return BadRequest(new { message = "Invalid PIN" });
 
             var property = await _context.Properties.AsNoTracking()
@@ -367,10 +312,15 @@ namespace RealEstateInvestment.Controllers
 
         // Completing the share purchase process (used after the bid period expires)
         [HttpPost("finalize/{propertyId}")]
+        [FinancialAdmin]
         public async Task<IActionResult> FinalizeInvestment(Guid propertyId)
         {
+            await using var financialTransaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+
             var property = await _context.Properties.FindAsync(propertyId);
             if (property == null) return NotFound(new { message = "Object not found" });
+
+            if (property.Status == "sold" || property.Status == "rented") return Conflict("Property already finalized");
 
             if (DateTime.UtcNow < property.ApplicationDeadline)
                 return BadRequest(new { message = "The deadline for applications has not yet expired" });
@@ -429,12 +379,16 @@ namespace RealEstateInvestment.Controllers
                 Details = "Finalize Investment propertyId: " + propertyId.ToString()
             });
             await _context.SaveChangesAsync();
+            await financialTransaction.CommitAsync();
             return Ok(new { message = "Investments distributed" });
         }
 
         [HttpPost("validate-payments/{propertyId}")]
+        [FinancialAdmin]
         public async Task<IActionResult> ValidateInitialPayment(Guid propertyId)
         {
+            await using var financialTransaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+
             var property = await _context.Properties.FindAsync(propertyId);
             if (property == null) return NotFound(new { message = "Property not found" });
 
@@ -479,6 +433,7 @@ namespace RealEstateInvestment.Controllers
 
                 _context.Investments.RemoveRange(investments);
                 await _context.SaveChangesAsync();
+                await financialTransaction.CommitAsync();
 
                 return Ok(new { message = "Investments revoked: not enough funds for first milestone" });
             }
@@ -542,6 +497,7 @@ namespace RealEstateInvestment.Controllers
         }
 
         [HttpPost("{id}/kyc/verify")]
+        [FinancialAdmin]
         public async Task<IActionResult> VerifyKyc(Guid id)
         {
             var user = await _context.Users.FindAsync(id);
@@ -560,6 +516,7 @@ namespace RealEstateInvestment.Controllers
         }
 
         [HttpPost("{id}/kyc/reject")]
+        [FinancialAdmin]
         public async Task<IActionResult> RejectKyc(Guid id)
         {
             var user = await _context.Users.FindAsync(id);
@@ -741,8 +698,11 @@ namespace RealEstateInvestment.Controllers
         }
 
         [HttpDelete("{investmentId}")]
+        [FinancialAdmin]
         public async Task<IActionResult> DeleteInvestment(Guid investmentId)
         {
+            await using var financialTransaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+
             var investment = await _context.Investments.FindAsync(investmentId);
             if (investment == null)
                 return NotFound(new { message = "Investment not found" });
@@ -774,6 +734,7 @@ namespace RealEstateInvestment.Controllers
                 Details = "Delete Investment investmentId: " + investmentId.ToString()
             });
             await _context.SaveChangesAsync();
+            await financialTransaction.CommitAsync();
 
             return Ok(new { message = "Investment cancelled and funds returned" });
 

@@ -9,6 +9,7 @@ using RealEstateInvestment.Helpers;
 namespace RealEstateInvestment.Controllers
 {
     [ApiController]
+    [FinancialConcurrency]
     [Authorize]
     [Route("api/withdrawals")]
     public class WithdrawalController : ControllerBase
@@ -24,18 +25,29 @@ namespace RealEstateInvestment.Controllers
         [HttpPost("request")]
         public async Task<IActionResult> RequestWithdrawal([FromBody] WithdrawalRequest request)
         {
+            await using var financialTransaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+
+            // Never persist caller-controlled workflow state or identifiers.
+            request.Id = Guid.NewGuid();
+            request.Status = "pending";
+            request.CreatedAt = DateTime.UtcNow;
+
+            if (await FinancialActor.ValidateAsync(User, _context) is { } actorError) return actorError;
+            request.UserId = User.GetUserId(); // Compatibility field; JWT is the authority.
+
             if (User.IsDemo())
             {
                 var demoUserId = User.GetUserId();
                 if (demoUserId == Guid.Empty) return Unauthorized();
                 var demo = await _context.DemoUsers.FindAsync(demoUserId);
-                if (demo == null || demo.IsTemplate || !demo.IsActive) return NotFound(new { message = "Demo user not found" });
+                if (!FinancialActor.IsEligible(demo)) return NotFound(new { message = "Demo user not found" });
                 if (request.Amount <= 0 || request.Amount > demo.WalletBalance) return BadRequest(new { message = "Insufficient demo funds" });
                 demo.WalletBalance -= request.Amount;
                 var tx = new DemoUserTransaction { DemoUserId = demoUserId, Type = TransactionType.Withdrawal, Amount = request.Amount, Notes = "Instant simulated withdrawal (Demo Mode)" };
                 _context.DemoUserTransactions.Add(tx);
                 _context.DemoActionLogs.Add(new DemoActionLog { DemoUserId = demoUserId, Action = "VirtualWithdrawal", Details = $"Instant simulated withdrawal: {request.Amount} USD" });
                 await _context.SaveChangesAsync();
+                await financialTransaction.CommitAsync();
                 return Ok(new { message = "Virtual withdrawal completed instantly", simulated = true, status = "simulated", transactionId = tx.Id, balance = demo.WalletBalance });
             }
             var user = await _context.Users.FindAsync(request.UserId);
@@ -64,21 +76,26 @@ namespace RealEstateInvestment.Controllers
             });
 
             await _context.SaveChangesAsync();
+            await financialTransaction.CommitAsync();
 
             return Ok(new { message = "Withdrawal request submitted" });
         }
 
         // administrator confirms the conclusion
         [HttpPost("{id}/approve")]
+        [FinancialAdmin]
         public async Task<IActionResult> ApproveWithdrawal(Guid id)
         {
+            await using var financialTransaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+
             var request = await _context.WithdrawalRequests.FindAsync(id);
             if (request == null) return NotFound(new { message = "Application not found" });
+            if (request.Status != "pending") return Conflict(new { message = "Withdrawal already processed" });
 
             request.Status = "approved";
             _context.ActionLogs.Add(new ActionLog
             {
-                UserId = new Guid("2273adeb-483c-4104-a3a9-585b3dad9e27"), // todo add admin guid later
+                UserId = User.GetUserId(),
                 Action = "ApproveWithdrawal",
                 Details = "Request approved on id:" + id.ToString()
             });
@@ -95,6 +112,7 @@ namespace RealEstateInvestment.Controllers
             });
 
             await _context.SaveChangesAsync();
+            await financialTransaction.CommitAsync();
 
        
 
@@ -103,21 +121,23 @@ namespace RealEstateInvestment.Controllers
 
         //  administrator rejects the withdrawal.
         [HttpPost("{id}/reject")]
+        [FinancialAdmin]
         public async Task<IActionResult> RejectWithdrawal(Guid id)
         {
+            await using var financialTransaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+
             var request = await _context.WithdrawalRequests.FindAsync(id);
             if (request == null) return NotFound(new { message = "Application not found" });
+            if (request.Status != "pending") return Conflict(new { message = "Withdrawal already processed" });
 
             var user = await _context.Users.FindAsync(request.UserId);
-            if (user != null)
-            {
-                user.WalletBalance += request.Amount; // Возвращаем деньги
-            }
+            if (user == null) return Conflict(new { message = "Withdrawal owner is missing; no refund performed" });
+            user.WalletBalance += request.Amount; // Возвращаем деньги
 
             request.Status = "rejected";
             _context.ActionLogs.Add(new ActionLog
             {
-                UserId = new Guid("2273adeb-483c-4104-a3a9-585b3dad9e27"), // todo add admin guid later
+                UserId = User.GetUserId(),
                 Action = "RejectWithdrawal",
                 Details = "Request rejected on id:" + id.ToString()
             });
@@ -133,6 +153,7 @@ namespace RealEstateInvestment.Controllers
             });
 
             await _context.SaveChangesAsync();
+            await financialTransaction.CommitAsync();
 
             return Ok(new { message = "Conclusion rejected" });
         }
@@ -161,6 +182,7 @@ namespace RealEstateInvestment.Controllers
         }
 
         [HttpGet("all")]
+        [FinancialAdmin]
         public async Task<IActionResult> GetAllWithdrawals()
         {
             var all = await _context.WithdrawalRequests

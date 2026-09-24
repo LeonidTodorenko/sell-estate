@@ -9,6 +9,7 @@ using RealEstateInvestment.Models;
 namespace RealEstateInvestment.Controllers
 {
     [ApiController]
+    [FinancialConcurrency]
     [Route("api/applications")]
     public class InvestmentApplicationsController : ControllerBase
     {
@@ -21,131 +22,9 @@ namespace RealEstateInvestment.Controllers
 
         [HttpPost("submit")]
         [Authorize(Roles = "investor")]
-        public async Task<IActionResult> SubmitApplication([FromBody] InvestmentApplication req)
+        public IActionResult SubmitApplication([FromBody] InvestmentApplication req)
         {
-            if (User.IsDemo())
-                return BadRequest(new { message = "Demo purchases must use /api/investments/apply so PIN and sandbox accounting are enforced" });
-
-            var user = await _context.Users.FindAsync(req.UserId);
-            if (user == null) return NotFound(new { message = "User not found" });
-             
-            var property = await _context.Properties
-                                         .Include(p => p.PaymentPlans)
-                                         .FirstOrDefaultAsync(p => p.Id == req.PropertyId);
-            if (property == null) return NotFound(new { message = "Property not found" });
-
-            if (property.PaymentPlans == null || !property.PaymentPlans.Any())
-                return BadRequest(new { message = "No payment plan found" });
-
-            // Проверка, что есть активный этап
-            //var now = DateTime.UtcNow;
-            //var step = property.PaymentPlans?
-            //    .FirstOrDefault(p => p.EventDate <= now && now <= p.DueDate);
-
-            var now = DateTime.UtcNow;
-
-            var orderedSteps = property.PaymentPlans
-                .OrderBy(p => p.EventDate)
-                .ToList();
-
-            var firstStep = orderedSteps.First();
-            var lastStep = orderedSteps.Last();
-
-            var activeStep = orderedSteps
-                .FirstOrDefault(p => p.EventDate <= now && now <= p.DueDate);
-
-            // разрешили любой шаг платежи
-            //if (step == null)
-            //    return BadRequest(new { message = "No active payment step" });
-
-            //if (DateTime.UtcNow > property.ApplicationDeadline)
-            //    return BadRequest(new { message = "Application deadline passed" });
-
-            // calculating and checking wallet
-            var pricePerShare = property.Price / property.TotalShares;
-            var expectedAmount = req.RequestedShares * pricePerShare;
-
-            if (req.RequestedShares <= 0)
-                return BadRequest(new { message = "RequestedShares must be greater than zero" });
-
-            if (property.AvailableShares < req.RequestedShares)
-                return BadRequest(new { message = "Not enough free shares" });
-
-            if (user.WalletBalance < expectedAmount)
-                return BadRequest(new { message = "Insufficient funds" });
-
-
-            // Если это первый шаг — сохраняем как заявку
-            var minEventDate = firstStep.EventDate;
-
-            if (now < minEventDate)
-            {
-                return BadRequest(new
-                {
-                    message = "The application date has not started yet. Please try again later."
-                });
-            }
-
-            var accountingStep = activeStep ?? lastStep;
-
-            var isFirstStep =
-                activeStep != null &&
-                activeStep.EventDate == firstStep.EventDate;
-
-            if (isFirstStep)
-            {
-                // Это самый первый шаг
-                var app = new InvestmentApplication
-                {
-                    UserId = req.UserId,
-                    PropertyId = req.PropertyId,
-                    RequestedAmount = req.RequestedAmount,
-                    RequestedShares = req.RequestedShares,
-                    StepNumber = req.StepNumber,
-                    IsPriority = false,
-                    Status = "pending",
-                    CreatedAt = now
-                };
-
-
-                _context.InvestmentApplications.Add(app);
-
-                // Если сумма >= нужной для текущего этапа — пользователь становится приоритетным
-                if (expectedAmount >= firstStep.Total)
-                {
-                    property.PriorityInvestorId = req.UserId;
-                }
-            }
-            else
-            {
-                // Автоматическое превращение заявки в инвестицию
-                user.WalletBalance -= expectedAmount;
-                property.AvailableShares -= req.RequestedShares;
-                accountingStep.Paid += expectedAmount;
-
-                _context.Investments.Add(new Investment
-                {
-                    UserId = req.UserId,
-                    PropertyId = req.PropertyId,
-                    Shares = req.RequestedShares,
-                    InvestedAmount = expectedAmount,
-                    CreatedAt = now
-                });
-            }
-             
-            //var app = new InvestmentApplication
-            //{
-            //    UserId = req.UserId,
-            //    PropertyId = req.PropertyId,
-            //    RequestedAmount = req.RequestedAmount,
-            //    RequestedShares = req.RequestedShares,
-            //    StepNumber = req.StepNumber,
-            //    IsPriority = false
-            //};
-
-            //_context.InvestmentApplications.Add(app);
-            await _context.SaveChangesAsync();
-            return Ok(new { message = "Application submitted" });
+            return StatusCode(StatusCodes.Status410Gone, new { message = "Use /api/investments/apply with PIN or password" });
         }
 
         //[HttpGet("user/{userId}")]
@@ -205,7 +84,7 @@ namespace RealEstateInvestment.Controllers
 
 
         [HttpGet("property/{propertyId}")]
-        [Authorize(Roles = "admin")]
+        [FinancialAdmin]
         public async Task<IActionResult> GetApplicationsByProperty(Guid propertyId)
         {
             var apps = await _context.InvestmentApplications
@@ -216,11 +95,16 @@ namespace RealEstateInvestment.Controllers
         }
 
         [HttpPost("{id}/approve")]
-        [Authorize(Roles = "admin")]
+        [FinancialAdmin]
         public async Task<IActionResult> ApproveApplication(Guid id, [FromBody] int approvedShares)
         {
+            await using var financialTransaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+
             var app = await _context.InvestmentApplications.FindAsync(id);
             if (app == null) return NotFound();
+            if (app.Status != "pending") return Conflict("Application already processed");
+
+            if (approvedShares <= 0 || approvedShares > app.RequestedShares) return BadRequest("Invalid approved shares");
 
             var property = await _context.Properties.FindAsync(app.PropertyId);
             var user = await _context.Users.FindAsync(app.UserId);
@@ -251,38 +135,47 @@ namespace RealEstateInvestment.Controllers
             app.ApprovedAmount = approvedAmount;
 
             await _context.SaveChangesAsync();
+            await financialTransaction.CommitAsync();
             return Ok(new { message = "Application approved" });
         }
 
         [HttpPost("{id}/reject")]
-        [Authorize(Roles = "admin")]
+        [FinancialAdmin]
         public async Task<IActionResult> RejectApplication(Guid id)
         {
+            await using var financialTransaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+
             var app = await _context.InvestmentApplications.FindAsync(id);
             if (app == null) return NotFound();
+            if (app.Status != "pending") return Conflict("Application already processed");
 
             app.Status = "rejected";
             await _context.SaveChangesAsync();
+            await financialTransaction.CommitAsync();
             return Ok(new { message = "Application rejected" });
         }
 
 
         [HttpPost("{id}/carry")]
-        [Authorize(Roles = "admin")]
+        [FinancialAdmin]
         public async Task<IActionResult> CarryApplication(Guid id)
         {
+            await using var financialTransaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+
             var app = await _context.InvestmentApplications.FindAsync(id);
             if (app == null) return NotFound();
+            if (app.Status != "pending") return Conflict("Application already processed");
 
             app.Status = "carried";
             app.StepNumber += 1;
             await _context.SaveChangesAsync();
+            await financialTransaction.CommitAsync();
             return Ok(new { message = "Application carried over" });
         }
 
         //  обновление статуса приоритета (в будущем возможно автоматизируем)
         [HttpPost("{id}/update-priority")]
-        [Authorize(Roles = "admin")]
+        [FinancialAdmin]
         public async Task<IActionResult> UpdatePriority(Guid id, [FromBody] bool isPriority)
         {
             var app = await _context.InvestmentApplications.FindAsync(id);
@@ -296,7 +189,7 @@ namespace RealEstateInvestment.Controllers
         // Автоматическая расстановка приоритета
         //    Он будет проходить по всем активным заявкам и выставлять IsPriority = true тем, у кого максимальные суммы.
         [HttpPost("recalculate-priority/{propertyId}")]
-        [Authorize(Roles = "admin")]
+        [FinancialAdmin]
         public async Task<IActionResult> RecalculatePriority(Guid propertyId)
         {
             var apps = await _context.InvestmentApplications

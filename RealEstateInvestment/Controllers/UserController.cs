@@ -47,6 +47,7 @@ namespace RealEstateInvestment.Controllers
 
         // Confirm KYC
         [HttpPost("{id}/verify-kyc")]
+        [FinancialAdmin]
         public async Task<IActionResult> VerifyKYC(Guid id)
         {
             var user = await _context.Users.FindAsync(id);
@@ -67,6 +68,7 @@ namespace RealEstateInvestment.Controllers
 
         // Block user
         [HttpPost("{id}/block")]
+        [FinancialAdmin]
         public async Task<IActionResult> ToggleBlockUser(Guid id)
         {
             var user = await _context.Users.FindAsync(id);
@@ -100,6 +102,7 @@ namespace RealEstateInvestment.Controllers
 
         // Unblock user
         [HttpPost("{id}/unblock")]
+        [FinancialAdmin]
         public async Task<IActionResult> UnblockUser(Guid id)
         {
             var user = await _context.Users.FindAsync(id);
@@ -118,6 +121,7 @@ namespace RealEstateInvestment.Controllers
 
         // Change user role (investor / admin)
         [HttpPost("{id}/change-role")]
+        [FinancialAdmin]
         public async Task<IActionResult> ChangeUserRole(Guid id, [FromBody] string role)
         {
             if (role != "investor" && role != "admin")
@@ -151,45 +155,10 @@ namespace RealEstateInvestment.Controllers
 
         // place some money to wallet
         [HttpPost("wallet/topup")]
-        public async Task<IActionResult> TopUp([FromBody] TopUpRequest req)
+        [Authorize]
+        public IActionResult TopUp([FromBody] TopUpRequest req)
         {
-            var user = await _context.Users.FindAsync(req.UserId);
-            if (user == null)
-                return NotFound(new { message = "User not found" });
-
-            if (!string.IsNullOrEmpty(user.PinCode))
-            {
-                if (req.PinOrPassword != user.PinCode && req.PinOrPassword != user.PasswordHash)
-                    return BadRequest(new { message = "Invalid PIN" });
-            }
-            else
-            {
-                if (req.PinOrPassword != user.PasswordHash) // TODO: hash check
-                    return BadRequest(new { message = "Invalid password" });
-            }
-
-            user.WalletBalance += req.Amount;
-
-            _context.ActionLogs.Add(new ActionLog
-            {
-                UserId = req.UserId,
-                Action = "TopUp",
-                Details = $"Wallet topped up on {req.Amount} USD"
-            });
-
-            _context.UserTransactions.Add(new UserTransaction
-            {
-                Id = Guid.NewGuid(),
-                UserId = req.UserId,
-                Type = TransactionType.Deposit,
-                Amount = req.Amount,
-                Timestamp = DateTime.UtcNow,
-                Notes = $"Wallet topped up on {req.Amount} USD"
-            });
-
-            await _context.SaveChangesAsync();
-
-            return Ok(new { message = "Balance updated" });
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = "Production top-up is unavailable until a verified payment gateway is configured. Demo accounts must use /api/demo/wallet/topup." });
         }
 
         // todo move

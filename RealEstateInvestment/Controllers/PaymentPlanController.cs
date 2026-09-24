@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using RealEstateInvestment.Helpers;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RealEstateInvestment.Data;
@@ -8,7 +9,6 @@ namespace RealEstateInvestment.Controllers
 {
     [ApiController]
     //  [Authorize] todo
-    [AllowAnonymous]
     [Route("api/properties/{propertyId}/payment-plans")]
     public class PaymentPlanController : ControllerBase
     {
@@ -31,6 +31,7 @@ namespace RealEstateInvestment.Controllers
         }
 
         [HttpPost]
+        [FinancialAdmin]
         public async Task<IActionResult> CreatePaymentPlan(Guid propertyId, [FromBody] PaymentPlan plan)
         {
             if (plan == null)
@@ -69,6 +70,7 @@ namespace RealEstateInvestment.Controllers
         }
 
         [HttpPut("{planId}")]
+        [FinancialAdmin]
         public async Task<IActionResult> UpdatePaymentPlan(Guid propertyId, Guid planId, [FromBody] PaymentPlan updated)
         {
             var plan = await _context.PaymentPlans.FirstOrDefaultAsync(p => p.Id == planId && p.PropertyId == propertyId);
@@ -90,6 +92,7 @@ namespace RealEstateInvestment.Controllers
         }
 
         [HttpDelete("{planId}")]
+        [FinancialAdmin]
         public async Task<IActionResult> DeletePaymentPlan(Guid propertyId, Guid planId)
         {
             var plan = await _context.PaymentPlans.FirstOrDefaultAsync(p => p.Id == planId && p.PropertyId == propertyId);
