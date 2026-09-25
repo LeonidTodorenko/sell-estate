@@ -27,11 +27,20 @@ public sealed class FinancialAdminAttribute : AuthorizeAttribute, IAsyncAuthoriz
             return;
         }
         var db = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
-        var id = principal.GetUserId();
-        var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
         var config = context.HttpContext.RequestServices.GetRequiredService<IConfiguration>();
-        if (user == null || user.IsBlocked || user.IsDeleted == true ||
-            !(user.Role == "admin" || user.IsSuperAdmin(config)))
+        if (!await IsCurrentAdminAsync(principal, db, config))
             context.Result = new ForbidResult();
+    }
+
+    public static async Task<bool> IsCurrentAdminAsync(System.Security.Claims.ClaimsPrincipal principal,
+        AppDbContext db, IConfiguration config)
+    {
+        if (principal.Identity?.IsAuthenticated != true || principal.IsDemo() || !principal.IsInRole("admin"))
+            return false;
+        var id = principal.GetUserId();
+        if (id == Guid.Empty) return false;
+        var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+        return user != null && !user.IsBlocked && user.IsDeleted != true &&
+            (user.Role == "admin" || user.IsSuperAdmin(config));
     }
 }

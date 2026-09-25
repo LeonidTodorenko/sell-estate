@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -39,8 +39,11 @@ namespace RealEstateInvestment.Controllers
         //}
 
         [HttpGet("user/{userId}")]
+        [Authorize]
         public async Task<IActionResult> GetUserApplications(Guid userId)
         {
+            if (await PrivateDataAccess.RequireOwnerAsync(User, _context, userId, HttpContext.RequestServices.GetRequiredService<IConfiguration>(), allowAdmin: true) is { } accessError) return accessError;
+
             if (User.IsDemo())
             {
                 var demoUserId = User.GetUserId();

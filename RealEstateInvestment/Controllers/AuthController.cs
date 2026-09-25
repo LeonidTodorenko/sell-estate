@@ -319,6 +319,13 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("me")]
         public async Task<IActionResult> Me()
         {
+            if (await FinancialActor.ValidateAsync(User, _context) is { } actorError) return actorError;
+            if (User.IsDemo())
+            {
+                var demoId = User.GetUserId();
+                return Ok(await _context.DemoUsers.Where(x => x.Id == demoId)
+                    .Select(RealEstateInvestment.Dtos.SafeUserResponse.Demo).SingleAsync());
+            }
             var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (!Guid.TryParse(userIdStr, out var userId)) return Unauthorized();
 

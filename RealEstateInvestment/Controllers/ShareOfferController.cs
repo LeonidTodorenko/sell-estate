@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Org.BouncyCastle.Asn1.Ocsp;
@@ -105,7 +105,7 @@ namespace RealEstateInvestment.Controllers
             await _context.SaveChangesAsync();
             await financialTransaction.CommitAsync();
 
-            return Ok(offer);
+            return Ok(new { offer.Id, offer.SellerId, offer.PropertyId, offer.SharesForSale, offer.StartPricePerShare, offer.BuyoutPricePerShare, offer.ExpirationDate, offer.CreatedAt, offer.IsActive, offer.LockedInvestedAmount });
         }
 
         public class CreateShareOfferRequest
@@ -122,6 +122,8 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("user/{id}/grouped")]
         public async Task<IActionResult> GetGroupedInvestments(Guid id)
         {
+            if (await PrivateDataAccess.RequireOwnerAsync(User, _context, id, HttpContext.RequestServices.GetRequiredService<IConfiguration>(), allowAdmin: true) is { } accessError) return accessError;
+
             if (User.IsDemo()) return await GetDemoGroupedInvestments();
             try
             {
@@ -183,6 +185,8 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("user/{userId}/active")]
         public async Task<IActionResult> GetUserActiveOffers(Guid userId)
         {
+            if (await PrivateDataAccess.RequireOwnerAsync(User, _context, userId, HttpContext.RequestServices.GetRequiredService<IConfiguration>(), allowAdmin: true) is { } accessError) return accessError;
+
             if (User.IsDemo()) return await GetDemoUserActiveOffers();
             var offers = await _context.ShareOffers
                 .Where(o => o.SellerId == userId && o.IsActive && o.ExpirationDate > DateTime.UtcNow)
@@ -327,6 +331,8 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("user/{id}/with-property")]
         public async Task<IActionResult> GetInvestmentsWithProperty(Guid id)
         {
+            if (await PrivateDataAccess.RequireOwnerAsync(User, _context, id, HttpContext.RequestServices.GetRequiredService<IConfiguration>(), allowAdmin: true) is { } accessError) return accessError;
+
             if (User.IsDemo()) return await GetDemoInvestmentsWithProperty();
             var result = await _context.Investments
                 .Where(i => i.UserId == id)
@@ -629,9 +635,7 @@ namespace RealEstateInvestment.Controllers
                     t.Shares,
                     t.PricePerShare,
                     PropertyId = t.PropertyId,
-                    PropertyTitle = t.Property.Title,
-                    t.BuyerId,
-                    t.SellerId
+                    PropertyTitle = t.Property.Title
                 })
                 .ToListAsync();
 
@@ -943,6 +947,8 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("{userId}/club-info")]
         public async Task<IActionResult> GetClubInfo(Guid userId)
         {
+            if (await PrivateDataAccess.RequireOwnerAsync(User, _context, userId, HttpContext.RequestServices.GetRequiredService<IConfiguration>(), allowAdmin: true) is { } accessError) return accessError;
+
             if (User.IsDemo())
             {
                 var assets = await CalculateDemoTotalAssets(User.GetUserId());

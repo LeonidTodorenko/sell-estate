@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using RealEstateInvestment.Data;
 using RealEstateInvestment.Models;
 using Microsoft.EntityFrameworkCore;
@@ -70,6 +70,8 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("user/{userId}")]
         public async Task<IActionResult> GetUserDocs(Guid userId)
         {
+            if (await PrivateDataAccess.RequireOwnerAsync(User, _context, userId, HttpContext.RequestServices.GetRequiredService<IConfiguration>(), allowAdmin: true) is { } accessError) return accessError;
+
             if (User.IsDemo())
             {
                 var demoUserId = User.GetUserId();
@@ -182,7 +184,7 @@ namespace RealEstateInvestment.Controllers
             }
             var doc = await _context.KycDocuments.FindAsync(id);
             if (doc == null) return NotFound();
-            if (doc.UserId != User.GetUserId() && !User.IsInRole("admin")) return Forbid();
+            if (await PrivateDataAccess.RequireOwnerAsync(User, _context, doc.UserId, HttpContext.RequestServices.GetRequiredService<IConfiguration>()) is { } accessError) return accessError;
 
             _context.KycDocuments.Remove(doc);
             _context.ActionLogs.Add(new ActionLog

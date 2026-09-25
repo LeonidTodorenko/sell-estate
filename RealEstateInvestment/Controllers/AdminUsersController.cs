@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RealEstateInvestment.Data;
 using RealEstateInvestment.Helpers;
@@ -8,6 +8,7 @@ using RealEstateInvestment.Services;
 namespace RealEstateInvestment.Controllers
 {
     [ApiController]
+    [FinancialAdmin]
     [Route("api/admin/users")]
     public class AdminUsersController : ControllerBase
     {

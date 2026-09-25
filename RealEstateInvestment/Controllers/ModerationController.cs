@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RealEstateInvestment.Data;
@@ -23,6 +23,7 @@ namespace RealEstateInvestment.Controllers
         }
 
         [HttpGet("requests")]
+        [FinancialAdmin]
         public async Task<IActionResult> List([FromQuery] ModerationStatus? status, [FromQuery] ChangeTarget? target)
         {
             var q = _db.ModerationRequests.AsQueryable();

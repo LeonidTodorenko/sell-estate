@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RealEstateInvestment.Data;
@@ -230,6 +230,8 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("investor/{userId}")]
         public async Task<IActionResult> GetInvestorPayouts(Guid userId)
         {
+            if (await PrivateDataAccess.RequireOwnerAsync(User, _context, userId, HttpContext.RequestServices.GetRequiredService<IConfiguration>(), allowAdmin: true) is { } accessError) return accessError;
+
             if (User.IsDemo())
             {
                 userId = User.ResolveRequestedUserId(userId);

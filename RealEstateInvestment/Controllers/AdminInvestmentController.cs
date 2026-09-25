@@ -1,4 +1,4 @@
-﻿using RealEstateInvestment.Helpers;
+using RealEstateInvestment.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -23,7 +23,7 @@ namespace RealEstateInvestment.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAllInvestments()
         {
-            var investments = await _context.Investments.ToListAsync();
+            var investments = await _context.Investments.Select(i => new { i.Id, i.UserId, i.PropertyId, i.Shares, i.InvestedAmount, i.CreatedAt }).ToListAsync();
             return Ok(investments);
         }
 

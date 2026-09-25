@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RealEstateInvestment.Data;
@@ -23,6 +23,8 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("inbox/{userId}")]
         public async Task<IActionResult> GetInbox(Guid userId)
         {
+            if (await PrivateDataAccess.RequireOwnerAsync(User, _context, userId, HttpContext.RequestServices.GetRequiredService<IConfiguration>(), allowAdmin: true) is { } accessError) return accessError;
+
             if (User.IsDemo())
             {
                 userId = User.ResolveRequestedUserId(userId);
@@ -47,6 +49,8 @@ namespace RealEstateInvestment.Controllers
         [HttpPost("{id}/mark-read")]
         public async Task<IActionResult> MarkAsRead(Guid id)
         {
+            if (await FinancialActor.ValidateAsync(User, _context) is { } actorError) return actorError;
+
             if (User.IsDemo())
             {
                 var demoUserId = User.GetUserId();
@@ -59,7 +63,7 @@ namespace RealEstateInvestment.Controllers
                 return Ok();
             }
 
-            var msg = await _context.Messages.FindAsync(id);
+            var msg = await _context.Messages.FirstOrDefaultAsync(m => m.Id == id && (m.RecipientId == null || m.RecipientId == User.GetUserId()));
             if (msg == null) return NotFound();
             msg.IsRead = true;
             await _context.SaveChangesAsync();
@@ -68,6 +72,7 @@ namespace RealEstateInvestment.Controllers
 
         // Create a message (to everyone or to one)
         [HttpPost("send")]
+        [FinancialAdmin]
         public async Task<IActionResult> Send([FromBody] Message msg)
         {
             _context.Messages.Add(msg);
@@ -78,6 +83,8 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("unread-count/{userId}")]
         public async Task<IActionResult> GetUnreadCount(Guid userId)
         {
+            if (await PrivateDataAccess.RequireOwnerAsync(User, _context, userId, HttpContext.RequestServices.GetRequiredService<IConfiguration>(), allowAdmin: true) is { } accessError) return accessError;
+
             if (User.IsDemo())
             {
                 userId = User.ResolveRequestedUserId(userId);

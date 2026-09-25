@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Org.BouncyCastle.Asn1.Ocsp;
@@ -445,6 +445,8 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("user/{userId}")]
         public async Task<IActionResult> GetUserInvestments(Guid userId)
         {
+            if (await PrivateDataAccess.RequireOwnerAsync(User, _context, userId, HttpContext.RequestServices.GetRequiredService<IConfiguration>(), allowAdmin: true) is { } accessError) return accessError;
+
             if (User.IsDemo())
             {
                 userId = User.ResolveRequestedUserId(userId);
@@ -457,12 +459,14 @@ namespace RealEstateInvestment.Controllers
 
             var investments = await _context.Investments
                 .Where(i => i.UserId == userId)
+                .Select(i => new { i.Id, i.UserId, i.PropertyId, i.Shares, i.InvestedAmount, i.CreatedAt })
                 .ToListAsync();
 
             return Ok(investments);
         }
 
         [HttpGet("all")]
+        [FinancialAdmin]
         public async Task<IActionResult> GetAllInvestments()
         {
             var result = await (
@@ -486,11 +490,13 @@ namespace RealEstateInvestment.Controllers
         }
 
         [HttpGet("kyc/pending")]
+        [FinancialAdmin]
         public async Task<IActionResult> GetUsersWithPendingKyc()
         {
             var users = await _context.Users
                 .Where(u => u.KycStatus == "pending")
                 .OrderBy(u => u.CreatedAt)
+                .Select(RealEstateInvestment.Dtos.SafeUserResponse.Production)
                 .ToListAsync();
 
             return Ok(users);
@@ -537,6 +543,8 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("with-aggregated/{userId}")]
         public async Task<IActionResult> GetUserAggregatedInvestments(Guid userId)
         {
+            if (await PrivateDataAccess.RequireOwnerAsync(User, _context, userId, HttpContext.RequestServices.GetRequiredService<IConfiguration>(), allowAdmin: true) is { } accessError) return accessError;
+
             if (User.IsDemo())
             {
                 userId = User.ResolveRequestedUserId(userId);
@@ -618,6 +626,8 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("with-details/{userId}")]
         public async Task<IActionResult> GetUserInvestmentsWithDetails(Guid userId)
         {
+            if (await PrivateDataAccess.RequireOwnerAsync(User, _context, userId, HttpContext.RequestServices.GetRequiredService<IConfiguration>(), allowAdmin: true) is { } accessError) return accessError;
+
             if (User.IsDemo())
             {
                 userId = User.ResolveRequestedUserId(userId);

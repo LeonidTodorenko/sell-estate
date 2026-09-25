@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RealEstateInvestment.Data;
@@ -28,6 +28,7 @@ namespace RealEstateInvestment.Controllers
         }
 
         [HttpGet]
+        [FinancialAdmin]
         public async Task<IActionResult> GetStats()
         {
             var investors = await _context.Users.CountAsync(u => u.Role == "investor");
@@ -50,6 +51,7 @@ namespace RealEstateInvestment.Controllers
 
 
         [HttpGet("payment-plan-summary")]
+        [FinancialAdmin]
         public IActionResult GetPaymentPlanSummary()
         {
             var summary = _context.PaymentPlans
@@ -87,6 +89,7 @@ namespace RealEstateInvestment.Controllers
         }
          
         [HttpGet("logs")]
+        [FinancialAdmin]
         public async Task<IActionResult> GetLogs([FromQuery] string? action, [FromQuery] string? userName, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
         {
             var query = from log in _context.ActionLogs
@@ -126,6 +129,7 @@ namespace RealEstateInvestment.Controllers
         }
 
         [HttpGet("superuser")]
+        [FinancialAdmin]
         public async Task<IActionResult> GetSuperUserData()
         {
             var superUserId = _superUserService.GetSuperUserId();
@@ -152,6 +156,7 @@ namespace RealEstateInvestment.Controllers
         }
 
         [HttpPost("superuser/update-balance")]
+        [FinancialAdmin]
         public async Task<IActionResult> UpdateSuperUserBalance([FromQuery] decimal delta)
         {
             var superUserId = _superUserService.GetSuperUserId();
@@ -180,6 +185,7 @@ namespace RealEstateInvestment.Controllers
         }
          
         [HttpGet("settings")]
+        [FinancialAdmin]
         public async Task<IActionResult> GetAllSettings()
         {
             var settings = await _context.SystemSettings
@@ -190,6 +196,7 @@ namespace RealEstateInvestment.Controllers
         }
          
         [HttpPut("settings/{key}")]
+        [FinancialAdmin]
         public async Task<IActionResult> UpdateSetting(string key, [FromBody] SystemSettingCurrent updated)
         {
             if (updated == null || string.IsNullOrEmpty(updated.Value))
@@ -227,6 +234,7 @@ namespace RealEstateInvestment.Controllers
 
          
         [HttpPost("reports/audit/send")]
+        [FinancialAdmin]
         public async Task<IActionResult> SendAuditReport([FromBody] AuditReportRequest req)
         {
             //var me = await CurrentUserAsync();

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RealEstateInvestment.Data;
@@ -28,6 +28,8 @@ namespace RealEstateInvestment.Controllers
         [HttpPost("send")]
         public async Task<IActionResult> SendMessage([FromBody] SendChatRequest req)
         {
+            if (await FinancialActor.ValidateAsync(User, _context) is { } actorError) return actorError;
+
             if (User.IsDemo()) return BadRequest(new { message = "Live support chat is disabled in Demo Mode. No message was sent." });
             var senderId = User.GetUserId();
             if (senderId == Guid.Empty) return Unauthorized();
@@ -50,11 +52,13 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("conversation/{userId1}/{userId2}")]
         public async Task<IActionResult> GetConversation(Guid userId1, Guid userId2)
         {
+            if (await FinancialActor.ValidateAsync(User, _context) is { } actorError) return actorError;
+
             if (User.IsDemo()) return Ok(Array.Empty<object>());
             var me = User.GetUserId();
             if (me == Guid.Empty) return Unauthorized();
 
-            var isAdmin = User.IsInRole("admin");// todo check 
+            var isAdmin = await FinancialAdminAttribute.IsCurrentAdminAsync(User, _context, HttpContext.RequestServices.GetRequiredService<IConfiguration>());
             if (!isAdmin && me != userId1 && me != userId2)
                 return Forbid();
 
@@ -71,6 +75,9 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("dialog/{userId}")]
         public async Task<IActionResult> GetChatWithUser(Guid userId)
         {
+            if (await PrivateDataAccess.RequireOwnerAsync(User, _context, userId, HttpContext.RequestServices.GetRequiredService<IConfiguration>(), allowAdmin: true) is { } accessError) return accessError;
+            if (User.IsDemo()) return Ok(Array.Empty<object>());
+
             // todo переделать админа
             var admin = _context.Users.FirstOrDefault(u => u.Role == "admin");
             if (admin == null) return NotFound();
@@ -87,6 +94,9 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("my-messages/{userId}")]
         public async Task<IActionResult> GetMyMessages(Guid userId)
         {
+            if (await PrivateDataAccess.RequireOwnerAsync(User, _context, userId, HttpContext.RequestServices.GetRequiredService<IConfiguration>(), allowAdmin: true) is { } accessError) return accessError;
+            if (User.IsDemo()) return Ok(Array.Empty<object>());
+
             var messages = await _context.ChatMessages
                 .Where(m => m.SenderId == userId || m.RecipientId == userId)
                 .OrderBy(m => m.SentAt)
@@ -96,6 +106,7 @@ namespace RealEstateInvestment.Controllers
         }
 
         [HttpGet("conversations")]
+        [FinancialAdmin]
         public async Task<IActionResult> GetAllConversations()
         {
             var admin = _context.Users.FirstOrDefault(u => u.Role == "admin");

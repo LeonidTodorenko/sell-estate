@@ -10,7 +10,7 @@ using RealEstateInvestment.Services.Demo;
 namespace RealEstateInvestment.Controllers;
 
 [ApiController]
-[Authorize]
+[FinancialAdmin]
 [Route("api/admin/demo-accounts")]
 public sealed class AdminDemoAccountsController : ControllerBase
 {

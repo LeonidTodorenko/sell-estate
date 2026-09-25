@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RealEstateInvestment.Data;
@@ -10,6 +10,7 @@ using RealEstateInvestment.Helpers;
 namespace RealEstateInvestment.Controllers
 {
     [ApiController]
+    [Authorize]
     [Route("api/notifications")]
     public class NotificationController : ControllerBase
     {
@@ -24,6 +25,9 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("{userId}")]
         public async Task<IActionResult> GetNotifications(Guid userId)
         {
+            if (await PrivateDataAccess.RequireOwnerAsync(User, _context, userId, HttpContext.RequestServices.GetRequiredService<IConfiguration>(), allowAdmin: false) is { } accessError) return accessError;
+            if (User.IsDemo()) return Ok(Array.Empty<object>());
+
             var notifications = await _context.Notifications
                 .Where(n => n.UserId == userId)
                 .ToListAsync();
@@ -35,7 +39,10 @@ namespace RealEstateInvestment.Controllers
         [HttpPost("{id}/read")]
         public async Task<IActionResult> MarkAsRead(Guid id)
         {
-            var notification = await _context.Notifications.FindAsync(id);
+            if (User.IsDemo()) return Forbid();
+            if (await FinancialActor.ValidateAsync(User, _context) is { } actorError) return actorError;
+
+            var notification = await _context.Notifications.FirstOrDefaultAsync(n => n.Id == id && n.UserId == User.GetUserId());
             if (notification == null) return NotFound(new { message = "Notification not found" });
 
             notification.IsRead = true;
@@ -53,6 +60,9 @@ namespace RealEstateInvestment.Controllers
         [HttpPost("register-token")]
         public async Task<IActionResult> RegisterToken([FromBody] TokenRequest request)
         {
+            if (User.IsDemo()) return Forbid();
+            if (await FinancialActor.ValidateAsync(User, _context) is { } actorError) return actorError;
+
             var userId = User.GetUserId();
             if (userId == Guid.Empty) return Unauthorized();
 

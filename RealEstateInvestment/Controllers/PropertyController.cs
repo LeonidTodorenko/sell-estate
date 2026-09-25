@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json.Linq;
@@ -126,8 +126,17 @@ namespace RealEstateInvestment.Controllers
 
         // todo check
         [HttpGet("my-properties/{userId}")]
+        [Authorize]
         public async Task<IActionResult> GetUserPropertyInvestments(Guid userId)
         {
+            if (await PrivateDataAccess.RequireOwnerAsync(User, _context, userId, HttpContext.RequestServices.GetRequiredService<IConfiguration>()) is { } accessError) return accessError;
+            if (User.IsDemo())
+                return Ok(await _context.DemoInvestments.Where(i => i.DemoUserId == userId)
+                    .GroupBy(i => new { i.PropertyId, i.Property.Title })
+                    .Select(g => new { g.Key.PropertyId, PropertyTitle = g.Key.Title,
+                        TotalShares = g.Sum(i => i.Shares), TotalInvested = g.Sum(i => i.InvestedAmount) })
+                    .ToListAsync());
+
             var result = await (
                 from inv in _context.Investments
                 join prop in _context.Properties on inv.PropertyId equals prop.Id
@@ -146,6 +155,7 @@ namespace RealEstateInvestment.Controllers
         }
 
         [HttpPost("{id}/upload-image")]
+        [FinancialAdmin]
         public async Task<IActionResult> UploadBase64(Guid id, [FromBody] UploadImageRequest request)
         {
             var property = await _context.Properties.FindAsync(id);
@@ -204,6 +214,7 @@ namespace RealEstateInvestment.Controllers
         }
 
         [HttpPost("{propertyId}/images")]
+        [FinancialAdmin]
         public async Task<IActionResult> UploadImage(Guid propertyId, [FromBody] UploadImageRequest request)
         {
             if (string.IsNullOrEmpty(request.Base64Image))
@@ -220,6 +231,7 @@ namespace RealEstateInvestment.Controllers
         }
 
         [HttpDelete("images/{imageId}")]
+        [FinancialAdmin]
         public async Task<IActionResult> DeleteImage(Guid imageId)
         {
             var img = await _context.PropertyImages.FindAsync(imageId);
@@ -513,7 +525,7 @@ namespace RealEstateInvestment.Controllers
         }
 
         [HttpGet("{propertyId}/rent-history")]
-        [Authorize(Roles = "admin")]
+        [FinancialAdmin]
         public async Task<IActionResult> GetRentPayoutHistory(Guid propertyId, [FromQuery] string? userId, [FromQuery] string? fullName, [FromQuery] DateTime? from, [FromQuery] DateTime? to)
         {
             var property = await _context.Properties.FindAsync(propertyId);
@@ -564,7 +576,7 @@ namespace RealEstateInvestment.Controllers
         }
 
         [HttpDelete("{propertyId}/presentation")]
-        [Authorize(Roles = "admin")]
+        [FinancialAdmin]
         public async Task<IActionResult> DeletePresentation(Guid propertyId)
         {
             var property = await _context.Properties.FindAsync(propertyId);
@@ -614,7 +626,7 @@ namespace RealEstateInvestment.Controllers
         }
 
         [HttpPost("{propertyId}/presentation/upload")]
-        [Authorize(Roles = "admin")]
+        [FinancialAdmin]
         [RequestSizeLimit(50_000_000)] // 50MB
         public async Task<IActionResult> UploadPresentation(Guid propertyId, [FromForm] IFormFile file)
         {
@@ -812,7 +824,7 @@ namespace RealEstateInvestment.Controllers
         }
 
         [HttpPost("{id}/video-url")]
-        [Authorize(Roles = "admin")]
+        [FinancialAdmin]
         public async Task<IActionResult> SetVideoUrl(Guid id, [FromBody] UpdateVideoUrlRequest request)
         {
             var property = await _context.Properties.FindAsync(id);
@@ -866,7 +878,7 @@ namespace RealEstateInvestment.Controllers
         }
 
         [HttpPost("{propertyId}/media/upload")]
-        [Authorize(Roles = "admin")]
+        [FinancialAdmin]
         [RequestSizeLimit(200_000_000)] // 200MB
         public async Task<IActionResult> UploadMedia(Guid propertyId, [FromForm] IFormFile file)
         {
@@ -962,7 +974,7 @@ namespace RealEstateInvestment.Controllers
         }
 
         [HttpDelete("media/{mediaId}")]
-        [Authorize(Roles = "admin")]
+        [FinancialAdmin]
         public async Task<IActionResult> DeleteMedia(Guid mediaId)
         {
             var media = await _context.PropertyMedias.FindAsync(mediaId);
@@ -1006,7 +1018,7 @@ namespace RealEstateInvestment.Controllers
 
         // todo test
         [HttpGet("debug-files")]
-        [AllowAnonymous]
+        [FinancialAdmin]
         public IActionResult DebugFiles()
         {
             var uploadsRoot = _config["App:UploadsRoot"];
@@ -1015,7 +1027,7 @@ namespace RealEstateInvestment.Controllers
         }
         // todo test
         [HttpGet("debug-files2")]
-        [AllowAnonymous]
+        [FinancialAdmin]
         public IActionResult DebugFiles2()
         {
             var uploadsRoot = _config["/uploads"];

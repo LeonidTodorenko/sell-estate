@@ -1,4 +1,4 @@
-﻿using FirebaseAdmin.Auth.Hash;
+using FirebaseAdmin.Auth.Hash;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RealEstateInvestment.Data;
@@ -17,7 +17,7 @@ using Org.BouncyCastle.Ocsp;
 namespace RealEstateInvestment.Controllers
 {
     [ApiController]
-    //[Authorize] todo убрал вернуть после того как уберем гостевой режим
+    [Authorize]
     [Route("api/users")]
     public class UserController : ControllerBase
     {
@@ -39,9 +39,10 @@ namespace RealEstateInvestment.Controllers
 
         // Get list of users (admin only)
         [HttpGet]
+        [FinancialAdmin]
         public async Task<IActionResult> GetUsers()
         {
-            var users = await _context.Users.ToListAsync();
+            var users = await _context.Users.Select(RealEstateInvestment.Dtos.SafeUserResponse.Production).ToListAsync();
             return Ok(users);
         }
 
@@ -144,10 +145,12 @@ namespace RealEstateInvestment.Controllers
 
         // all users
         [HttpGet("all")]
+        [FinancialAdmin]
         public async Task<IActionResult> GetAllUsers()
         {
             var users = await _context.Users
                 .OrderBy(u => u.FullName)
+                .Select(RealEstateInvestment.Dtos.SafeUserResponse.Production)
                 .ToListAsync();
 
             return Ok(users);
@@ -169,18 +172,19 @@ namespace RealEstateInvestment.Controllers
             public string PinOrPassword { get; set; }
         }
 
-        [AllowAnonymous]
         [HttpGet("{id}")]
         public async Task<IActionResult> GetUserById(Guid id)
         {
+            if (await PrivateDataAccess.RequireOwnerAsync(User, _context, id, HttpContext.RequestServices.GetRequiredService<IConfiguration>(), allowAdmin: true) is { } accessError) return accessError;
+
             if (User.IsDemo())
             {
                 var demoUserId = User.GetUserId();
                 if (demoUserId == Guid.Empty) return Unauthorized();
-                var demo = await _context.DemoUsers.AsNoTracking().FirstOrDefaultAsync(x => x.Id == demoUserId && x.IsActive && !x.IsTemplate);
+                var demo = await _context.DemoUsers.AsNoTracking().Where(x => x.Id == demoUserId).Select(RealEstateInvestment.Dtos.SafeUserResponse.Demo).FirstOrDefaultAsync();
                 return demo == null ? NotFound(new { message = "User not found" }) : Ok(demo);
             }
-            var user = await _context.Users.FindAsync(id);
+            var user = await _context.Users.Where(x => x.Id == id).Select(RealEstateInvestment.Dtos.SafeUserResponse.Production).FirstOrDefaultAsync();
             if (user == null)
                 return NotFound(new { message = "User not found" });
 
@@ -190,6 +194,8 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("{userId}/total-assets")]
         public async Task<IActionResult> GetTotalAssets(Guid userId)
         {
+            if (await PrivateDataAccess.RequireOwnerAsync(User, _context, userId, HttpContext.RequestServices.GetRequiredService<IConfiguration>(), allowAdmin: true) is { } accessError) return accessError;
+
             if (User.IsDemo())
             {
                 userId = User.ResolveRequestedUserId(userId);
@@ -329,6 +335,8 @@ namespace RealEstateInvestment.Controllers
         [Authorize]
         public async Task<IActionResult> GetMyRentIncomeHistory([FromQuery] DateTime? from, [FromQuery] DateTime? to)
         {
+            if (await FinancialActor.ValidateAsync(User, _context) is { } actorError) return actorError;
+
             var userId = User.GetUserId();
             if (userId == Guid.Empty)
                 return Unauthorized();
@@ -382,6 +390,8 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("{id}/assets-summary")]
         public async Task<IActionResult> GetUserAssetSummary(Guid id)
         {
+            if (await PrivateDataAccess.RequireOwnerAsync(User, _context, id, HttpContext.RequestServices.GetRequiredService<IConfiguration>(), allowAdmin: true) is { } accessError) return accessError;
+
             if (User.IsDemo())
             {
                 id = User.ResolveRequestedUserId(id);
@@ -550,6 +560,8 @@ namespace RealEstateInvestment.Controllers
         [HttpPost("{id}/update-profile")]
         public async Task<IActionResult> UpdateProfile(Guid id, [FromBody] UpdateProfileRequest req)
         {
+            if (await PrivateDataAccess.RequireOwnerAsync(User, _context, id, HttpContext.RequestServices.GetRequiredService<IConfiguration>(), allowAdmin: false) is { } accessError) return accessError;
+
             if (User.IsDemo())
             {
                 var demoUserId = User.GetUserId();
@@ -605,6 +617,8 @@ namespace RealEstateInvestment.Controllers
         [HttpPost("{id}/change-password")]
         public async Task<IActionResult> ChangePassword(Guid id, [FromBody] ChangePasswordRequest req)
         {
+            if (await PrivateDataAccess.RequireOwnerAsync(User, _context, id, HttpContext.RequestServices.GetRequiredService<IConfiguration>(), allowAdmin: false) is { } accessError) return accessError;
+
             if (User.IsDemo())
             {
                 var demoUserId = User.GetUserId();
@@ -639,6 +653,8 @@ namespace RealEstateInvestment.Controllers
         [HttpPost("{id}/upload-avatar")]
         public async Task<IActionResult> UploadAvatar(Guid id, [FromBody] AvatarRequest request)
         {
+            if (await PrivateDataAccess.RequireOwnerAsync(User, _context, id, HttpContext.RequestServices.GetRequiredService<IConfiguration>(), allowAdmin: false) is { } accessError) return accessError;
+
             if (User.IsDemo())
             {
                 var demoUserId = User.GetUserId();
@@ -681,6 +697,8 @@ namespace RealEstateInvestment.Controllers
                                                             [FromQuery] DateTime? from,
                                                             [FromQuery] DateTime? to)
         {
+            if (await PrivateDataAccess.RequireOwnerAsync(User, _context, userId, HttpContext.RequestServices.GetRequiredService<IConfiguration>(), allowAdmin: true) is { } accessError) return accessError;
+
             if (User.IsDemo())
             {
                 userId = User.ResolveRequestedUserId(userId);
@@ -1138,6 +1156,7 @@ namespace RealEstateInvestment.Controllers
         }
 
         [HttpGet("admin-id")]
+        [AllowAnonymous]
         public IActionResult GetAdminId()
         {
             // todo подумать как переделать на админа для чата или всем админам пока что хардкод
@@ -1153,6 +1172,8 @@ namespace RealEstateInvestment.Controllers
         [Authorize]
         public async Task<IActionResult> DeleteMyAccount()
         {
+            if (await FinancialActor.ValidateAsync(User, _context) is { } actorError) return actorError;
+
             var userId = User.GetUserId();
             if (userId == Guid.Empty)
                 return Unauthorized();

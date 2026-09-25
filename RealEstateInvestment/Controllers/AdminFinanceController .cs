@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RealEstateInvestment.Data;
@@ -12,6 +12,7 @@ namespace RealEstateInvestment.Controllers
 {
     
     [ApiController]
+    [FinancialAdmin]
     [Route("api/admin/finance")]
     public class AdminFinanceController : ControllerBase
     {

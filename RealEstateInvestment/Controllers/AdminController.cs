@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RealEstateInvestment.Data;
@@ -11,7 +11,7 @@ using RealEstateInvestment.Services;
 namespace RealEstateInvestment.Controllers
 {
     [ApiController]
-    [Authorize]
+    [FinancialAdmin]
     [Route("api/admin")]
     public class AdminController : ControllerBase
     {
@@ -86,7 +86,6 @@ namespace RealEstateInvestment.Controllers
 
         }
 
-        [AllowAnonymous]
         [HttpPost("users")]
         public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest req)
         {
