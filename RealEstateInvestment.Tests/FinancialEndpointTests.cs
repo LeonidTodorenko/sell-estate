@@ -399,7 +399,7 @@ public sealed class FinancialEndpointTests
     [InlineData("approve", "reject")]
     [InlineData("reject", "approve")]
     [InlineData("carry", "carry")]
-    public async Task Admin_application_transition_cannot_mutate_a_terminal_application(string first, string second)
+    public async Task Legacy_admin_application_transitions_are_gone_without_mutation(string first, string second)
     {
         using var h = new FinancialTestHost(); h.Login(h.Admin, role: "admin");
         var id = Guid.NewGuid();
@@ -409,9 +409,18 @@ public sealed class FinancialEndpointTests
             { Id = id, UserId = h.Actor, PropertyId = h.PropertyId, RequestedShares = 1, RequestedAmount = 10 });
             db.SaveChanges();
         });
-        Assert.Equal(HttpStatusCode.OK, (await h.Client.PostAsJsonAsync($"/api/applications/{id}/{first}", 1)).StatusCode);
-        Assert.Equal(HttpStatusCode.Conflict, (await h.Client.PostAsJsonAsync($"/api/applications/{id}/{second}", 1)).StatusCode);
-        h.WithDb(db => Assert.Equal(first == "approve" ? 990 : 1000, db.Users.Find(h.Actor)!.WalletBalance));
+        Assert.Equal(HttpStatusCode.Gone, (await h.Client.PostAsJsonAsync($"/api/applications/{id}/{first}", 1)).StatusCode);
+        Assert.Equal(HttpStatusCode.Gone, (await h.Client.PostAsJsonAsync($"/api/applications/{id}/{second}", 1)).StatusCode);
+        h.WithDb(db =>
+        {
+            Assert.Equal(1000, db.Users.Find(h.Actor)!.WalletBalance);
+            Assert.Equal(80, db.Properties.Find(h.PropertyId)!.AvailableShares);
+            var app = db.InvestmentApplications.Single();
+            Assert.Equal("pending", app.Status); Assert.Equal(1, app.StepNumber);
+            Assert.Null(app.ApprovedAmount); Assert.Null(app.ApprovedShares);
+            Assert.Single(db.Investments); Assert.Empty(db.Messages); Assert.Empty(db.ActionLogs);
+            Assert.Equal(0, db.PaymentPlans.Single().Paid);
+        });
     }
 
     [Fact]

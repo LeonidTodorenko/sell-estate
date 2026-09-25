@@ -96,8 +96,15 @@ namespace RealEstateInvestment.Controllers
 
         [HttpPost("{id}/approve")]
         [FinancialAdmin]
-        public async Task<IActionResult> ApproveApplication(Guid id, [FromBody] int approvedShares)
+        public IActionResult ApproveApplication(Guid id, [FromBody] int approvedShares)
         {
+            // Legacy / future manual override. Normal first-step applications are processed
+            // by ScheduledTaskService at PaymentPlan DueDate. Old manual accounting predates
+            // reservations; do not re-enable before explicitly aligning it with the scheduler.
+            return StatusCode(StatusCodes.Status410Gone, new { message = "Manual application processing is disabled; applications are processed automatically at PaymentPlan DueDate." });
+
+            /* Disabled legacy implementation retained for future accounting review.
+
             await using var financialTransaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
 
             var app = await _context.InvestmentApplications.FindAsync(id);
@@ -137,12 +144,20 @@ namespace RealEstateInvestment.Controllers
             await _context.SaveChangesAsync();
             await financialTransaction.CommitAsync();
             return Ok(new { message = "Application approved" });
+                    */
         }
 
         [HttpPost("{id}/reject")]
         [FinancialAdmin]
-        public async Task<IActionResult> RejectApplication(Guid id)
+        public IActionResult RejectApplication(Guid id)
         {
+            // Legacy / future manual override. Normal first-step applications are processed
+            // by ScheduledTaskService at PaymentPlan DueDate. Old manual accounting predates
+            // reservations; do not re-enable before explicitly aligning it with the scheduler.
+            return StatusCode(StatusCodes.Status410Gone, new { message = "Manual application processing is disabled; applications are processed automatically at PaymentPlan DueDate." });
+
+            /* Disabled legacy implementation retained for future accounting review.
+
             await using var financialTransaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
 
             var app = await _context.InvestmentApplications.FindAsync(id);
@@ -153,13 +168,21 @@ namespace RealEstateInvestment.Controllers
             await _context.SaveChangesAsync();
             await financialTransaction.CommitAsync();
             return Ok(new { message = "Application rejected" });
+                    */
         }
 
 
         [HttpPost("{id}/carry")]
         [FinancialAdmin]
-        public async Task<IActionResult> CarryApplication(Guid id)
+        public IActionResult CarryApplication(Guid id)
         {
+            // Legacy / future manual override. Normal first-step applications are processed
+            // by ScheduledTaskService at PaymentPlan DueDate. Old manual accounting predates
+            // reservations; do not re-enable before explicitly aligning it with the scheduler.
+            return StatusCode(StatusCodes.Status410Gone, new { message = "Manual application processing is disabled; applications are processed automatically at PaymentPlan DueDate." });
+
+            /* Disabled legacy implementation retained for future accounting review.
+
             await using var financialTransaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
 
             var app = await _context.InvestmentApplications.FindAsync(id);
@@ -171,6 +194,7 @@ namespace RealEstateInvestment.Controllers
             await _context.SaveChangesAsync();
             await financialTransaction.CommitAsync();
             return Ok(new { message = "Application carried over" });
+                    */
         }
 
         //  обновление статуса приоритета (в будущем возможно автоматизируем)

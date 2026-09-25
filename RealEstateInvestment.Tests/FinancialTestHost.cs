@@ -35,13 +35,19 @@ internal sealed class FinancialTestHost : IDisposable
     public Guid Offer { get; } = Guid.NewGuid();
     public Guid DemoOffer { get; } = Guid.NewGuid();
     public HttpClient Client { get; }
+    public IServiceProvider Services => server.Services;
 
-    public FinancialTestHost()
+    public FinancialTestHost(Action<IServiceCollection>? configure = null,
+        Microsoft.EntityFrameworkCore.Diagnostics.IInterceptor? interceptor = null)
     {
         connection.Open();
         server = new TestServer(new WebHostBuilder().ConfigureServices(services =>
         {
-            services.AddDbContext<AppDbContext>(o => o.UseSqlite(connection));
+            services.AddDbContext<AppDbContext>(o =>
+            {
+                o.UseSqlite(connection);
+                if (interceptor != null) o.AddInterceptors(interceptor);
+            });
             services.AddSingleton<ISuperUserService>(new StubSuperUser(Admin));
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(o =>
             {
@@ -68,6 +74,7 @@ internal sealed class FinancialTestHost : IDisposable
             services.AddTransient<KycController>(sp => new KycController(sp.GetRequiredService<AppDbContext>(), null!));
             services.AddTransient<PropertyController>(sp => new PropertyController(
                 sp.GetRequiredService<AppDbContext>(), null!, null!, null!));
+            configure?.Invoke(services);
         }).Configure(app =>
         {
             app.UseRouting();

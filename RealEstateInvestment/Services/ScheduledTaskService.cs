@@ -127,181 +127,128 @@
                 }
             }
 
+            // One fresh context and Serializable transaction per property. No tracked state
+            // from discovery or a rolled-back round may leak into another round.
             private async Task RunScheduledProperyStatusTask()
             {
-                using (IServiceScope scope = _serviceProvider.CreateScope())
+                List<Guid> propertyIds;
+                using (var discoveryScope = _serviceProvider.CreateScope())
                 {
-                    AppDbContext context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-                    // var client = _httpClientFactory.CreateClient();
-
-                  // await SendFirebase($"You ", "Y approved", scope, context, new Guid("297b10d4-d2f1-45d0-81ef-6b883b3c0b37"));
-
-                    var now = DateTime.UtcNow;
-                    var properties = await context.Properties
-                        .Include(p => p.PaymentPlans)
-                        .ToListAsync();
-
-                    //var properties = await context.Properties.ToListAsync();
-
-                    foreach (var property in properties)
-                    {
-                        if (property.Status == "sold" || property.Status == "declined")
-                            continue;
-
-                        var step = property.PaymentPlans
-                                            ?.Where(p => p.DueDate <= now && p.Paid == 0)
-                                            .OrderBy(p => p.DueDate)
-                                            .FirstOrDefault();
-
-                        if (step == null)
-                            continue;
-
-                        var minEventDate = property.PaymentPlans.Min(p => p.EventDate);
-
-                        var applications = await context.InvestmentApplications
-                            .Where(a => a.PropertyId == property.Id && step.EventDate == minEventDate)
-                            .OrderByDescending(a => a.IsPriority)
-                            .ThenBy(a => a.CreatedAt)
-                            .ToListAsync();
-
-                        decimal totalAllocated = 0;
-                        bool acceptedAny = false;
-
-                        decimal totalRequested = applications.Sum(a => a.RequestedAmount);
-                        if (totalRequested >= step.Total)
-                        {
-                            foreach (var app in applications)
-                            {
-                                if (app.Status == "accepted")
-                                    continue;
-
-                                // todo пока проверку убрали if (totalAllocated + app.RequestedAmount <= step.Total)
-                                {
-                                    var user = await context.Users.FindAsync(app.UserId);
-                                    if (user == null) //  || user.WalletBalance < app.RequestedAmount уже зарезервировали
-                                        continue;
-
-                                    //user.WalletBalance -= app.RequestedAmount; уже зарезервировали
-                                    //property.AvailableShares -= app.RequestedShares;
-                                    totalAllocated += app.RequestedAmount;
-
-                                    context.Investments.Add(new Investment
-                                    {
-                                        UserId = app.UserId,
-                                        PropertyId = app.PropertyId,
-                                        Shares = app.RequestedShares,
-                                        InvestedAmount = app.RequestedAmount,
-                                        CreatedAt = now
-                                    });
-
-                                    // todo логика на будущее app.Status = app.RequestedAmount == step.Total ? "accepted" : "partial";
-                                    app.Status = "accepted";
-                                    app.ApprovedShares = app.RequestedShares;
-                                    app.ApprovedAmount = app.RequestedAmount;
-
-                                    context.Messages.Add(new Message
-                                    {
-                                        Title = "Your investment application was approved",
-                                        Content = $"You were allocated {app.RequestedShares} shares for property {property.Title}.",
-                                        RecipientId = app.UserId
-                                    });
-
-                                await SendFirebase($"You were allocated {app.RequestedShares} shares for property {property.Title}.", "Your investment application was approved", scope,context, app.UserId);
-                              
-
-                                    acceptedAny = true;
-
-
-
-
-                                    //if (app.RequestedAmount >= step.Total)   уже зарезервировали
-                                    //    property.PriorityInvestorId = app.UserId;
-                                }
-                                // логика которую пока убрали
-                                //else
-                                //{
-                                //    app.Status = "carried";
-                                //    app.StepNumber += 1;
-
-                                //    context.Messages.Add(new Message
-                                //    {
-                                //        Title = "Your application has been carried over",
-                                //        Content = $"Your application for property {property.Title} has been moved to the next stage.",
-                                //        RecipientId = app.UserId
-                                //    });
-                                //}
-                            }
-                            step.Paid = totalAllocated;
-                        }
-
-                        if (!acceptedAny)
-                        {
-                            foreach (var app in applications)
-                            {
-                                var user = await context.Users.FindAsync(app.UserId);
-                                if (user != null)
-                                {
-                                    user.WalletBalance += app.RequestedAmount;
-                                    property.AvailableShares += app.RequestedShares;
-                                    property.Status = "declined"; // todo обсудить 
-                                    app.Status = "rejected";
-                                    property.PriorityInvestorId = null; // todo сбрасывает в рамках логики тестов
-                                    context.Messages.Add(new Message
-                                    {
-                                        Title = "Application rejected",
-                                        Content = $"Your application for property {property.Title} was rejected due to insufficient funding.",
-                                        RecipientId = app.UserId
-                                    });
-                                }
-
-                            }
-                        }
-
-                        context.ActionLogs.Add(new ActionLog
-                        {
-                            UserId = new Guid("2273adeb-483c-4104-a3a9-585b3dad9e27"),
-                            Action = acceptedAny ? "InvestmentStepAccepted" : "InvestmentStepRejected",
-                            Details = $"PropertyId: {property.Id}, Step DueDate: {step.DueDate}, Accepted: {acceptedAny}"
-                        });
-
-                        //try
-                        //{
-                        //    // https://sell-estate.onrender.com/api
-                        //    // http://10.0.2.2:7019/api
-                        //    var response = await client.PostAsync($"https://sell-estate.onrender.com/api/properties/{property.Id}/validate-payments", null); // todo move to config
-
-                        //    if (response.IsSuccessStatusCode)
-                        //    {
-                        //        context.ActionLogs.Add(new ActionLog
-                        //        {
-                        //            UserId = new Guid("2273adeb-483c-4104-a3a9-585b3dad9e27"), // todo admin guid
-                        //            Action = "ScheduledPaymentValidationSuccess",
-                        //            Details = $"Validated payments for property: {property.Title}"
-                        //        });
-                        //    }
-                        //    else
-                        //    {
-                        //        context.ActionLogs.Add(new ActionLog
-                        //        {
-                        //            UserId = new Guid("2273adeb-483c-4104-a3a9-585b3dad9e27"),
-                        //            Action = "ScheduledPaymentValidationError",
-                        //            Details = $"Failed to validate property: {property.Title}, StatusCode: {response.StatusCode}"
-                        //        });
-                        //    }
-                        //}
-                        //catch (Exception ex)
-                        //{
-                        //    context.ActionLogs.Add(new ActionLog
-                        //    {
-                        //        UserId = new Guid("2273adeb-483c-4104-a3a9-585b3dad9e27"),
-                        //        Action = "ScheduledPaymentValidationException",
-                        //        Details = $"Exception validating property: {property.Title}, Error: {ex.Message}"
-                        //    });
-                        //}
-                    }
-
-                    await context.SaveChangesAsync();
+                    var discovery = discoveryScope.ServiceProvider.GetRequiredService<AppDbContext>();
+                    propertyIds = await discovery.Properties.AsNoTracking()
+                        .Where(p => p.Status != "sold" && p.Status != "declined")
+                        .Select(p => p.Id).ToListAsync();
                 }
+
+                foreach (var propertyId in propertyIds)
+                {
+                    try
+                    {
+                        await ProcessApplicationRound(propertyId);
+                    }
+                    catch (Exception ex) when (IsFinancialConflict(ex))
+                    {
+                        // Disposal rolls back the entire round. The next scheduled tick
+                        // re-reads committed state; never retry using this tracked context.
+                        Console.WriteLine($"Application round conflict for {propertyId}; deferred to next tick: {ex.Message}");
+                    }
+                }
+            }
+
+            private static bool IsFinancialConflict(Exception? ex) => ex != null &&
+                (ex is DbUpdateConcurrencyException ||
+                 ex is Npgsql.PostgresException { SqlState: "40001" or "40P01" } ||
+                 IsFinancialConflict(ex.InnerException));
+
+            private async Task ProcessApplicationRound(Guid propertyId)
+            {
+                using var scope = _serviceProvider.CreateScope();
+                var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                var notifications = new List<Message>();
+                await using (var transaction = await context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable))
+                {
+                    var now = DateTime.UtcNow;
+                    var property = await context.Properties.Include(p => p.PaymentPlans)
+                        .SingleOrDefaultAsync(p => p.Id == propertyId);
+                    if (property == null || property.Status == "sold" || property.Status == "declined") return;
+                    if (property.PaymentPlans == null || property.PaymentPlans.Count == 0) return;
+
+                    var step = property.PaymentPlans.Where(p => p.DueDate <= now && p.Paid == 0)
+                        .OrderBy(p => p.DueDate).ThenBy(p => p.Id).FirstOrDefault();
+                    if (step == null) return;
+
+                    // Preserve Min(EventDate): nulls are ignored if a dated step exists.
+                    // Resolve equal/all-null dates by DueDate and Id so only ONE step is first.
+                    var minEventDate = property.PaymentPlans.Min(p => p.EventDate);
+                    var firstStep = property.PaymentPlans.Where(p => p.EventDate == minEventDate)
+                        .OrderBy(p => p.DueDate).ThenBy(p => p.Id).First();
+                    if (step.Id != firstStep.Id) return;
+
+                    var applications = await context.InvestmentApplications
+                        .Where(a => a.PropertyId == property.Id && a.Status == "pending")
+                        .OrderByDescending(a => a.IsPriority).ThenBy(a => a.CreatedAt).ToListAsync();
+                    if (applications.Count == 0) return;
+
+                    var totalRequested = applications.Sum(a => a.RequestedAmount);
+                    var accepted = totalRequested >= step.Total;
+                    foreach (var app in applications)
+                    {
+                        var user = await context.Users.FindAsync(app.UserId);
+                        // Never commit a partially processed round with an orphan reservation.
+                        if (user == null) throw new InvalidOperationException($"Application {app.Id} has no user.");
+                        Message message;
+                        if (accepted)
+                        {
+                            // Total is a minimum threshold. Accept ALL pending reservations;
+                            // wallet and shares were already reserved by /investments/apply.
+                            context.Investments.Add(new Investment
+                            {
+                                UserId = app.UserId, PropertyId = app.PropertyId,
+                                Shares = app.RequestedShares, InvestedAmount = app.RequestedAmount, CreatedAt = now
+                            });
+                            app.Status = "accepted";
+                            app.ApprovedShares = app.RequestedShares;
+                            app.ApprovedAmount = app.RequestedAmount;
+                            message = new Message
+                            {
+                                Title = "Your investment application was approved",
+                                Content = $"You were allocated {app.RequestedShares} shares for property {property.Title}.",
+                                RecipientId = app.UserId
+                            };
+                            notifications.Add(message);
+                        }
+                        else
+                        {
+                            user.WalletBalance += app.RequestedAmount;
+                            property.AvailableShares += app.RequestedShares;
+                            property.Status = "declined";
+                            property.PriorityInvestorId = null;
+                            app.Status = "rejected";
+                            message = new Message
+                            {
+                                Title = "Application rejected",
+                                Content = $"Your application for property {property.Title} was rejected due to insufficient funding.",
+                                RecipientId = app.UserId
+                            };
+                        }
+                        context.Messages.Add(message);
+                    }
+                    if (accepted) step.Paid = totalRequested;
+                    context.ActionLogs.Add(new ActionLog
+                    {
+                        UserId = new Guid("2273adeb-483c-4104-a3a9-585b3dad9e27"),
+                        Action = accepted ? "InvestmentStepAccepted" : "InvestmentStepRejected",
+                        Details = $"PropertyId: {property.Id}, Step DueDate: {step.DueDate}, Accepted: {accepted}"
+                    });
+                    await context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                }
+
+                // External side effects only after commit. No outbox/retry in this iteration.
+                foreach (var message in notifications)
+                    await SendFirebase(message.Content, message.Title, scope, context, message.RecipientId!.Value);
+                // Persist notification error logs independently of the committed financial work.
+                if (context.ChangeTracker.HasChanges()) await context.SaveChangesAsync();
             }
 
             private async Task SendFirebase(string text1, string text2, IServiceScope scope, AppDbContext context, Guid userId)
