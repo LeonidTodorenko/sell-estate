@@ -23,7 +23,7 @@ function Login() {
   const session = useSyncExternalStore(subscribeSession, getSession);
   const demo = new URLSearchParams(location.search).get('demo') === '1';
   const [email, setEmail] = useState(''), [password, setPassword] = useState(''), [busy, setBusy] = useState(false), [error, setError] = useState('');
-  const next = typeof location.state?.from === 'string' && /^\/(dashboard|properties|investments|marketplace|transactions|profile|kyc|finance|rental-income|monthly-reports|inbox|applications|trade-history|sell-shares|my-properties|club|referrals|withdrawals|top-up|withdraw|chat)(\/|$)/.test(location.state.from) ? location.state.from : '/dashboard';
+  const next = typeof location.state?.from === 'string' && /^\/(dashboard|properties|investments|marketplace|transactions|profile|kyc|finance|rental-income|monthly-reports|inbox|applications|trade-history|sell-shares|my-properties|club|referrals|withdrawals|top-up|withdraw|chat)(\/|\?|#|$)/.test(location.state.from) ? location.state.from : '/dashboard';
   if (session) return <Navigate to={next} replace/>;
   async function submit(event: FormEvent) {
     event.preventDefault(); if (busy) return;
@@ -71,8 +71,8 @@ function Shell({ session }: { session: Session }) {
 }
 function Gate() {
   const session = useSyncExternalStore(subscribeSession, getSession), location = useLocation();
-  if (!session) return <Navigate to="/login" replace state={{ from: location.pathname, message: 'Please sign in to continue.' }}/>;
-  return <Shell session={session}/>;
+  if (!session) return <Navigate to="/login" replace state={{ from: location.pathname + location.search + location.hash, message: 'Please sign in to continue.' }}/>;
+  return <Shell key={`${session.user.id}-${session.isDemo}`} session={session}/>;
 }
 function AccountPage({ page }: { page: 'dashboard' | 'investments' | 'marketplace' | 'transactions' | 'profile' | 'kyc' | 'finance' | 'rental-income' | 'monthly-reports' | 'inbox' | 'applications' | 'trade-history' | 'bids' | 'sell-shares' | 'edit-profile' | 'change-password' | 'my-properties' | 'club' | 'referrals' | 'withdrawals' | 'top-up' | 'withdraw' | 'chat' }) {
   const session = useSyncExternalStore(subscribeSession, getSession);

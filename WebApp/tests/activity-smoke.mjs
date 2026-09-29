@@ -34,11 +34,11 @@ try{
   console.log(`PASS ${demo?'demo':'normal'} nine routes at five widths`);
   await page.goto(base+'/applications');await page.getByText('Pending',{exact:true}).last().waitFor();await page.getByText('Application details').click();assert.equal(await page.getByText('$0.00',{exact:true}).count(),1);
   await page.goto(base+'/applications?propertyId=missing');await page.getByText('No matching applications').waitFor();
-  await page.goto(base+'/trade-history');await page.getByText('Purchase property').waitFor();assert.equal(await page.getByText('Sale property').count(),0);await page.getByRole('combobox').selectOption('sell');await page.getByText('Sale property').waitFor();
+  await page.goto(base+'/trade-history');await page.getByText('Purchase property').waitFor();await page.getByText('Sale property').waitFor();if(demo){await page.getByRole('combobox').selectOption('sell');assert.equal(await page.getByText('Purchase property').count(),0);}else{assert.equal(await page.locator('option[value=sell]').count(),0);}
   await page.goto(base+'/profile/edit');await page.getByLabel('Full name',{exact:true}).fill('Updated Name');assert.equal(await page.getByLabel('Email',{exact:true}).isDisabled(),demo);if(!demo)await page.getByLabel('Email',{exact:true}).fill('updated@example.com');await page.getByLabel('Phone number').fill('123');await page.getByLabel('Address').fill('Test address');
   await page.getByRole('button',{name:'Save profile'}).click();await page.getByText('Profile updated.',{exact:true}).waitFor();
   mode='write-error';await page.getByRole('button',{name:'Save profile'}).click();await page.getByText('Profile rejected').waitFor();
-  mode='write401';const before=posts;await page.getByRole('button',{name:'Save profile'}).click();await page.getByText('Unauthorized write').waitFor();assert.equal(posts,before+1);mode='normal';
+  mode='write401';const before=posts;await page.getByRole('button',{name:'Save profile'}).click();await page.waitForURL('**/login');assert.equal(posts,before+1);mode='normal';await page.evaluate(a=>localStorage.setItem('ownersclub.web.session.v1',JSON.stringify(a)),auth());
   console.log(`PASS ${demo?'demo':'normal'} mappings, filters, profile payload, errors and no replay`);
  }
  for(const path of routes.slice(0,5)){mode='loading';await page.goto(base+path);await page.locator('.loading-dot').waitFor();await settled();mode='error';await page.reload();await page.getByText('Fixture unavailable').waitFor();mode='normal';await page.getByRole('button',{name:'Try again'}).click();await settled();if(path!='/profile/edit'){mode='empty';await page.reload();await settled();assert.ok(await page.locator('.state h3').count());}}

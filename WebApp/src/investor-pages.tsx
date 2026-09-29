@@ -1,6 +1,6 @@
 import { useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { uploadKyc } from './api';
+import { accountWrite, uploadKyc } from './api';
 import { date, money } from './format';
 import { Empty, Heading, Metric, Resource, useResource } from './ui';
 import { inDateRange, investorPaths, kycPayload, kycStatus, type DocumentType, type FinanceStats, type HistoryPoint, type InboxMessage, type KycDocument, type MonthlyReport, type RentalEntry } from './investor-contracts';
@@ -37,7 +37,7 @@ function DemoReports({ path }: { path: string }) {
 }
 export function Inbox({ session }: { session: Session }) {
   const resource = useResource<InboxMessage[]>(investorPaths(session).inbox);
-  return <><Heading title="Inbox" description="Account notifications. Opening a message does not change its read status."><button onClick={resource.retry}>Refresh</button></Heading><Link to="/chat">Support chat →</Link><Resource resource={resource}>{data => data.length ? <section className="panel message-list">{[...data].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)).map(m => <details key={m.id}><summary><span>{m.title}</span> {!m.isRead && <span className="tag">Unread</span>}<small>{date(m.createdAt)}</small></summary><p className="preserve-lines">{m.content}</p></details>)}</section> : <Empty title="You're all caught up">New notifications will appear here.</Empty>}</Resource></>;
+  return <><Heading title="Inbox" description="Account notifications. Mark a message as read after reviewing it."><button onClick={resource.retry}>Refresh</button></Heading><Link to="/chat">Support chat →</Link><Resource resource={resource}>{data => data.length ? <section className="panel message-list">{[...data].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)).map(m => <details key={m.id}><summary><span>{m.title}</span> {!m.isRead && <span className="tag">Unread</span>}<small>{date(m.createdAt)}</small></summary><p className="preserve-lines">{m.content}</p>{!m.isRead && <MarkRead session={session} id={m.id}/>}</details>)}</section> : <Empty title="You're all caught up">New notifications will appear here.</Empty>}</Resource></>;
 }
 
 const labels = { passport: 'Passport', driver_license: "Driver's License" };
@@ -70,3 +70,9 @@ export function Kyc({ session }: { session: Session }) {
   return <><Heading title="Identity Verification" description="Review your documents and verification status."><button disabled={busy} onClick={resource.retry}>Refresh</button></Heading>{session.isDemo && <p className="note">Demo verification is simulated. Use sample images only.</p>}<Resource resource={resource}>{docs => <><section className="panel"><h2>Verification status</h2><p>{labels[type]}: <strong>{status.replaceAll('_', ' ')}</strong></p><p className="muted">Status is based on the latest two documents of the selected type.</p></section><section className="panel"><h2>Uploaded documents</h2>{docs.length ? [...docs].sort((a, b) => Date.parse(b.uploadedAt) - Date.parse(a.uploadedAt)).map(d => <article className="history-row" key={d.id}><div><h3>{labels[d.type as DocumentType] || d.type}</h3><span>{date(d.uploadedAt)}</span></div><span className="tag">{d.status}</span></article>) : <Empty title="No documents submitted"/>}</section></>}</Resource><form className="panel kyc-form" onSubmit={submit}><h2>Submit identity documents</h2><label>Document type<select disabled={busy || uncertain} value={type} onChange={e => { setType(e.target.value as DocumentType); setFiles([null, null]); setMessage(''); }}><option value="passport">Passport</option><option value="driver_license">Driver's License</option></select></label><p>Choose the main document image and a selfie holding that document. JPEG, PNG or WebP, up to 5 MB each.</p>{['Document image', 'Selfie with document'].map((label, i) => <label key={`${type}-${i}`}>{label}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={blocked} onChange={e => setFiles(current => current.map((file, n) => n === i ? e.target.files?.[0] || null : file))}/></label>)}{status === 'pending' && <p>Documents are awaiting review.</p>}{status === 'approved' && <p>Your identity has been confirmed.</p>}{status === 'rejected' && <p className="error">Some documents were rejected. You can submit a new pair.</p>}{message && <p role="status" className="note">{message}</p>}<button className="button" disabled={blocked || !files[0] || !files[1]}>{busy ? 'Submitting…' : 'Submit for review'}</button>{uncertain && <p className="note">Submission is paused to avoid duplicates. After checking the refreshed list, reload this page if you need to start again.</p>}</form></>;
 }
 
+
+function MarkRead({session,id}:{session:Session;id:string}) {
+ const [busy,setBusy]=useState(false),[error,setError]=useState('');const lock=useRef(false);
+ async function mark(){if(lock.current)return;lock.current=true;setBusy(true);setError('');try{await accountWrite(session,`/messages/${encodeURIComponent(id)}/mark-read`,{});window.dispatchEvent(new Event('financial-data-changed'));}catch(e){setError(e instanceof Error?e.message:'Unable to mark message as read.');}finally{lock.current=false;setBusy(false);}}
+ return <><button disabled={busy} onClick={mark}>{busy?'Saving…':'Mark as read'}</button>{error&&<p role="alert">{error}</p>}</>;
+}

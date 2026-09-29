@@ -51,7 +51,7 @@ try{
  }
  demo=true;
  for(mode of ['error','401','network']){
-  await install(auth());await page.goto(base+'/top-up');await review();const before=posts;await page.getByRole('button',{name:'Confirm virtual top-up'}).click();await page.getByRole('alert').waitFor();assert.equal(posts,before+1);assert.equal(await page.getByRole('button',{name:'Review demo top-up'}).isDisabled(),true);
+  await install(auth());await page.goto(base+'/top-up');await review();const before=posts;await page.getByRole('button',{name:'Confirm virtual top-up'}).click();if(mode==='401'){await page.waitForURL('**/login');}else{await page.getByRole('alert').waitFor();assert.equal(await page.getByRole('button',{name:'Review demo top-up'}).isDisabled(),true);}assert.equal(posts,before+1);
  }
  mode='ok';
  for(const changed of [auth(false),auth(true,'another')]){

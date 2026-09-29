@@ -1,16 +1,16 @@
 import type { Session } from './types.ts';
 export const financialPolicy = {
- purchase: 'Purchase is unavailable: account security checks need a backend update.',
+ purchase: 'Applications use the current payment plan and account wallet.',
  application: 'Application changes are unavailable: existing actions require an administrator.',
- buy: 'Buyout is unavailable: account security checks need a backend update.',
- bid: 'Bidding is unavailable: account security checks need a backend update.',
- cancel: 'Cancellation is unavailable: account security checks need a backend update.',
- extend: 'Extension is unavailable: account security checks need a backend update.',
- sell: 'Listing shares is unavailable: account security checks need a backend update.',
+ buy: 'Buy shares at the displayed buyout price.',
+ bid: 'Bids are proposals, not completed purchases.',
+ cancel: 'Cancellation may charge the current server fee.',
+ extend: 'Choose a later expiration date.',
+ sell: 'Listing reserves shares from available holdings.',
  accept: 'Accept Bid is unavailable: no active backend contract exists.',
  price: 'Change Price is unavailable: no active backend contract exists.',
- buyback: 'Platform buyback is unavailable: ownership checks need a backend update; demo has no isolated platform wallet.',
- withdraw: 'Withdrawals are unavailable: account security checks need a backend update.',
+ buyback: 'Platform buyback is unavailable: this web release does not offer platform buyback.',
+ withdraw: 'Bank and card withdrawals are unavailable in this beta. No money is sent to a bank or card.',
  topup: 'Real top-ups are unavailable: no payment gateway is connected.',
 } as const;
 export function demoTopUpContract(expected: Session, current: Session | null, amount: number) {
@@ -19,15 +19,15 @@ export function demoTopUpContract(expected: Session, current: Session | null, am
  return { path: '/demo/wallet/topup', body: { amount } };
 }
 
-// Audit metadata only; disabled mappings are never passed to the transport.
+// Audited write availability. Unsupported actions remain unavailable.
 export const auditedWrites = {
- purchase: {endpoint:'/investments/apply',pin:'pinOrPassword',enabled:false},
+ purchase: {endpoint:'/investments/apply',pin:'pinOrPassword',enabled:true},
  application: {endpoint:'/applications/submit',pin:null,enabled:false},
- buy: {endpoint:'/share-offers/{id}/buy',pin:'pinOrPassword',enabled:false},
- bid: {endpoint:'/share-offers/{id}/bid',pin:'pinOrPassword',enabled:false},
- cancel: {endpoint:'/share-offers/{id}/cancel',pin:'pinOrPassword',enabled:false},
- extend: {endpoint:'/share-offers/{id}/extend-to',pin:'pinOrPassword',enabled:false},
- sell: {endpoint:'/share-offers',pin:'pinOrPassword',enabled:false},
+ buy: {endpoint:'/share-offers/{id}/buy',pin:'pinOrPassword',enabled:true},
+ bid: {endpoint:'/share-offers/{id}/bid',pin:'pinOrPassword',enabled:true},
+ cancel: {endpoint:'/share-offers/{id}/cancel',pin:'pinOrPassword',enabled:true},
+ extend: {endpoint:'/share-offers/{id}/extend-to',pin:'pinOrPassword',enabled:true},
+ sell: {endpoint:'/share-offers',pin:'pinOrPassword',enabled:true},
  accept: {endpoint:null,pin:null,enabled:false},
  price: {endpoint:null,pin:null,enabled:false},
  buyback: {endpoint:'/share-offers/sell-to-platform',pin:'pinOrPassword',enabled:false},

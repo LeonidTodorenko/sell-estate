@@ -48,7 +48,7 @@ try{
   else {
    for(const [path,label,button,value] of [['/chat','Message','Send message','Test message'],['/referrals','Friend’s email','Send invitation','friend@example.com']]){
     await page.goto(base+path);await settled();await page.getByLabel(label,{exact:true}).fill(value);await page.getByRole('button',{name:button,exact:true}).click();await page.getByText(path==='/chat'?'Message sent.':'Invitation sent.',{exact:true}).waitFor();await settled();if(path==='/referrals')await page.getByText('Code: INVITE-TEST',{exact:true}).waitFor();
-    await page.getByLabel(label,{exact:true}).fill(value);mode='write401';let before=posts;await page.getByRole('button',{name:button,exact:true}).click();await page.getByRole('alert').waitFor();assert.equal(posts,before+1);mode='normal';
+    await page.getByLabel(label,{exact:true}).fill(value);mode='write401';let before=posts;await page.getByRole('button',{name:button,exact:true}).click();await page.waitForURL('**/login');assert.equal(posts,before+1);mode='normal';await page.evaluate(a=>localStorage.setItem('ownersclub.web.session.v1',JSON.stringify(a)),auth());
    }
    canInvite=false;await page.goto(base+'/referrals');await settled();assert.equal(await page.getByRole('button',{name:'Send invitation'}).isDisabled(),true);canInvite=true;
   }

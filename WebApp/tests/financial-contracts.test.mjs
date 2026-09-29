@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {demoTopUpContract,auditedWrites} from '../src/financial-contracts.ts';
 const demo={user:{id:'demo-1'},isDemo:true,demoCode:'D1'};
-test('only audited demo top-up is enabled; PIN is inline for disabled purchase and market contracts',()=>{
- assert.deepEqual(Object.entries(auditedWrites).filter(([,v])=>v.enabled).map(([k])=>k),['demoTopup']);
+test('audited investment and marketplace writes are enabled; unavailable transfers stay disabled',()=>{
+ assert.deepEqual(Object.entries(auditedWrites).filter(([,v])=>v.enabled).map(([k])=>k),['purchase','buy','bid','cancel','extend','sell','demoTopup']);
  for(const key of ['purchase','buy','bid','cancel','extend','sell','buyback'])assert.equal(auditedWrites[key].pin,'pinOrPassword');
  assert.equal(auditedWrites.accept.endpoint,null);assert.equal(auditedWrites.price.endpoint,null);
 });

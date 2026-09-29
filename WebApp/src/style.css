@@ -53,3 +53,5 @@ summary { cursor: pointer; padding: 10px 0; font-weight: 600; }
 .account-form textarea { width:100%; min-height:120px; padding:12px; border:1px solid #cbd5e1; border-radius:8px; font:inherit; resize:vertical; }
 .property-grid h3, .message-list p { overflow-wrap:anywhere; }
 .onboarding-wrap{max-width:620px;margin:36px auto;padding:0 20px 40px}.onboarding-wrap fieldset{border:0;padding:0;margin:0;min-width:0;display:grid;gap:20px}.onboarding-wrap input{max-width:100%;min-width:0}.public-nav{flex-wrap:wrap}.onboarding-wrap .checkbox{flex-wrap:wrap}
+/* Keep operation forms and long content within existing cards on narrow screens. */
+.operation{margin-top:16px;min-width:0}.operation fieldset{border:0;padding:0;margin:0;display:grid;gap:12px;min-width:0}.operation input{width:100%;max-width:100%}.operation button{margin:8px 8px 0 0}.operation p,.panel p{overflow-wrap:anywhere}.avatar{object-fit:cover}.account-form input{max-width:100%}textarea:focus-visible{outline:3px solid #0b8056;outline-offset:3px}button:disabled{cursor:not-allowed}

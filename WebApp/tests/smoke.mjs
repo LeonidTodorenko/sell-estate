@@ -25,6 +25,7 @@ await context.route('https://sell-estate.onrender.com/api/**', async route => {
   assert.ok(request.headers().authorization?.startsWith('Bearer '), `Bearer header missing: ${path}`);
   if (path === '/properties') return mode === 'error' ? send({ message: 'Test server unavailable' }, 503) : send(mode === 'empty' ? [] : properties);
   if (path.endsWith('/images')) return send([]);
+  if (/^\/users\/(user-1|demo-1)$/.test(path)) return send({id:path.split('/').pop(),fullName:'Test Investor',email:'test@example.com',hasPin:true});
   if (path.endsWith('/total-assets')) return send({ totalAssets: 15000, walletBalance: 5000, investmentValue: 10000, rentalIncome: 120, pendingApplicationsValue: 0, marketValue: 0 });
   if (path.startsWith('/investments/with-aggregated/')) return send([{ propertyId: 'property-1', propertyTitle: 'Marina Residence', totalShares: 10, totalInvested: 10000, totalShareValue: 10000, ownershipPercent: 2 }]);
   if (path.startsWith('/investments/user/')) return send([{ id: 'investment-1', propertyId: 'property-1', shares: 10, investedAmount: 10000, createdAt: '2026-08-01T12:00:00Z' }]);

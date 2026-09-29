@@ -79,9 +79,9 @@ try {
   check('partial upload stays paused and refresh shows accepted document');
   docs=[]; mode='upload401'; uploads=0; await page.reload(); await visible('No documents submitted');
   for (const label of ['Document image','Selfie with document']) await page.getByLabel(label,{exact:true}).setInputFiles({name:'sample.png',mimeType:'image/png',buffer:png});
-  await page.getByRole('button',{name:'Submit for review',exact:true}).click(); await page.getByText('0 of 2 uploads confirmed.',{exact:false}).waitFor(); assert.equal(uploads,1); assert.equal(refreshes,0);
+  await page.getByRole('button',{name:'Submit for review',exact:true}).click(); await page.waitForURL('**/login'); assert.equal(uploads,1); assert.equal(refreshes,0);
   check('demo upload 401 never refreshes or replays');
-  mode='normal'; await page.reload(); await visible('No documents submitted');
+  mode='normal'; await setSession(auth(true)); await page.goto(base+'/kyc'); await visible('No documents submitted');
   for (const label of ['Document image','Selfie with document']) await page.getByLabel(label,{exact:true}).setInputFiles({name:'invalid.txt',mimeType:'text/plain',buffer:Buffer.from('bad')});
   const before=uploads; await page.getByRole('button',{name:'Submit for review',exact:true}).click(); await page.getByText('Choose a JPEG, PNG or WebP image, up to 5 MB.',{exact:false}).waitFor(); assert.equal(uploads,before);
   check('invalid images rejected before network writes');

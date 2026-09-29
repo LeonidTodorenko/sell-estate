@@ -45,12 +45,13 @@ async function request<T>(path: string, token?: string, body?: unknown, signal?:
     });
     const raw = await response.text();
     let data: unknown;
-    try { data = raw ? JSON.parse(raw) : undefined; } catch { data = undefined; }
+    try { data = raw ? JSON.parse(raw) : undefined; } catch { data = response.headers.get('content-type')?.includes('text/plain') ? raw : undefined; }
     if (!response.ok) {
+      if (response.status === 401 && token && session?.accessToken === token && body !== undefined) save(null);
       const detail = data && typeof data === 'object' ? data as Record<string, unknown> : {};
-      throw new ApiError(typeof detail.message === 'string' ? detail.message : typeof detail.title === 'string' ? detail.title : `Request failed (${response.status}). Please try again.`, response.status);
+      throw new ApiError(typeof detail.message === 'string' ? detail.message : typeof detail.title === 'string' ? detail.title : response.status === 403 ? 'Access is unavailable for this account. Check your account status or sign in again.' : `Request failed (${response.status}). Please try again.`, response.status);
     }
-    if (raw && data === undefined) throw new ApiError('The API returned an unexpected response format.', response.status);
+    if ((raw || body === undefined) && data === undefined) throw new ApiError('The API returned an unexpected response format.', response.status);
     return data as T;
   } catch (error) {
     if (signal?.aborted) throw error;
@@ -155,3 +156,21 @@ export async function demoTopUp(expected: Session, amount: number) {
   } finally { financialPending = false; }
 }
 
+
+// Explicit authenticated writes: verify the captured account, refresh before sending, never replay.
+export async function accountWrite(expected: Session, path: string, body: unknown) {
+  let current = session;
+  const matches = (value: Session | null) => value?.user.id === expected.user.id && value?.isDemo === expected.isDemo;
+  if (!matches(current)) throw new ApiError('The active account changed. Please reload.', 401);
+  if (current && isExpired(current)) current = await refresh();
+  if (!current || !matches(current)) throw new ApiError('Your session expired. Please sign in again.', 401);
+  const result = await request<unknown>(path, current.accessToken, body);
+  if (!matches(session)) throw new ApiError('The active account changed. Check history before retrying.', 401);
+  return result;
+}
+export async function financialWrite(expected: Session, path: string, body: unknown) {
+  if (financialPending) throw new ApiError('Another operation is in progress. Check history before retrying.', 409);
+  financialPending = true;
+  try { return await accountWrite(expected, path, body); }
+  finally { financialPending = false; }
+}

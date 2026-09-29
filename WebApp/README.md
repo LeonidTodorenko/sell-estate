@@ -41,11 +41,11 @@ npm run preview -- --port 5173 --strictPort
 | `/investments` | История инвестиций, минимальная сумма/число долей, сортировка по дате |
 | `/marketplace` | Активные предложения, поиск, собственные предложения |
 | `/transactions` | Операции, фильтр типа и диапазона дат |
-| `/profile` | Данные текущей сессии, тип аккаунта, demo code и актуальный баланс |
+| `/profile` | Актуальные безопасные поля `/users/{id}`, аватар, KYC status, тип аккаунта и баланс |
 
 Внутренние страницы защищены auth gate. Предусмотрены loading, error/retry, empty и not-found states. Интерфейс на английском, как InvestorApp; суммы — USD. Тёмно-зелёные/нейтральные цвета с основным `#11A36A`; desktop sidebar и горизонтальная мобильная навигация.
 
-Первая версия включает просмотр инвестиций/предложений/профиля. Покупка, продажа, ставки, инвестиционные заявки, редактирование профиля, регистрация и восстановление пароля остаются в мобильном приложении. Admin/KYC/report screens не перенесены. Тестовые данные существуют только в тесте, production-сборка их не включает.
+Iteration 8 включает подачу инвестиционных заявок, buy/bid/create/cancel/extend предложений, профиль/аватар/пароль, KYC, inbox с отметкой прочтения, chat, историю и Demo Top Up. Финансовые операции требуют предварительного просмотра и PIN/пароля, POST не повторяется автоматически. Банковский вывод, production Top Up, platform buyback, accept bid и change price недоступны. Admin screens не включены. Тестовые данные существуют только в тестах, production-сборка их не включает.
 
 ## Переиспользование и контракты
 
@@ -55,7 +55,7 @@ npm run preview -- --port 5173 --strictPort
 - JWT `isDemo` понимает boolean и строки `"true"`/`"false"`. JWT claim имеет приоритет перед UI metadata; затем используются поля ответа/session. Декодирование в браузере служит только для отображения и срока жизни, сервер проверяет подпись/доступ.
 - Demo login использует тот же endpoint и выданные пользователю demo credentials. Не создаёт demo-аккаунт и не подставляет выдуманные учётные данные. У demo нет refresh token: по истечении JWT требуется повторный вход.
 - Сессия хранится отдельно от mobile в localStorage: `ownersclub.web.session.v1`. Это browser persistence, не эквивалент RN Keychain/HttpOnly cookies. Никаких токенов в URL, логах или HTML.
-- `/auth/me` не используется для Profile: в текущем backend он читает production Users и не обслуживает demo. Profile показывает безопасный набор полей из login session; баланс запрашивается отдельно. `/users/:id` намеренно не нужен для этого экрана.
+- Profile читает SafeUserResponse из `/users/{id}`; секретных полей не ожидает. Iteration 7 поддерживает Demo и в `/auth/me`, однако профиль использует owner endpoint. JWT определяет контур данных.
 - Property Details, как RN, ищет объект в `/properties`; не предполагает несуществующий detail endpoint. Изображения загружаются только для открытого объекта, без массовых дополнительных запросов каталога.
 - Сортировка, фильтры, расчёт price / totalShares и формат USD перенесены без RN UI.
 
@@ -69,15 +69,19 @@ npm run preview -- --port 5173 --strictPort
 | Предложения | GET `/share-offers/active` |
 | Транзакции | GET `/users/transactions/user/{userId}` |
 
-## CORS: текущий blocker
+## CORS: проверка окружения
 
-См. `CORS-BLOCKER.md`. Прямые browser fetch с локального origin и будущего `wamsoc.com` сейчас блокируются. Backend не изменялся. Поэтому реальный вход и проверка приватных данных end-to-end не завершены. Для них после разрешения origin нужны действительные credentials. Нет dev proxy, который скрывал бы production-проблему.
+См. `CORS-BLOCKER.md`: исходное наблюдение относится к 8 сентября. На 25 сентября локальный Program.cs уже разрешает `https://wamsoc.com`, `https://www.wamsoc.com` и `http://localhost:5173`, но не `http://127.0.0.1:5173`. Для локальных обращений к backend открывайте localhost:5173. Соответствие опубликованного Render локальному backend и реальный login E2E в Iteration 8 не проверялись. Browser smoke полностью перехватывает API; backend/CORS здесь не изменялись.
 
 ## Cloudflare static output
 
 Обычный `dist/index.html` и `dist/assets/*`. `public/_redirects` попадает в dist и задаёт SPA fallback для Cloudflare Pages (`/* /index.html 200`). Для будущего Workers Static Assets следует отдельно настроить `assets.directory` на dist и `assets.not_found_handling` на `single-page-application`; Pages `_redirects` не заменяет настройку Worker. `public/_headers` содержит базовые заголовки для Pages; при Worker нужно проверить их поддержку отдельно. Никаких Workers, Cloudflare settings, DNS или доменов эта работа не меняла. Ничего не опубликовано.
 
 ## Проверки
+
+Iteration 8: `npm run typecheck`, `npm test` (27 tests), `npm run build`; семь browser suites: `smoke.mjs`, `activity-smoke.mjs`, `investor-smoke.mjs`, `community-smoke.mjs`, `onboarding-smoke.mjs`, `financial-smoke.mjs`, `iteration8-smoke.mjs`. Они используют подставные API-ответы; production writes не выполняются. Подробности: `C:\App\outputs\webapp-iteration-8-report.md`.
+
+Ниже — исторические проверки первоначальной версии, не свежая проверка Render:
 
 - `npm install`: завершён, первоначальное предупреждение о системном Node 20.17.
 - После остановки preview выполнен повторный `npm ci` на Node 24.19.0: успешно, audit 0 vulnerabilities. Первая попытка ci во время работающего preview упёрлась в Windows file lock; устранено остановкой preview.
