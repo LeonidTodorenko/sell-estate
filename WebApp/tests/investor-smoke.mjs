@@ -87,7 +87,7 @@ try {
   check('invalid images rejected before network writes');
   for (const route of routes) {
     mode='loading'; await page.goto(base+route); await page.locator('.loading-dot').first().waitFor(); await page.waitForFunction(() => !document.querySelector('.loading-dot'));
-    mode='error'; await page.reload(); await visible('Fixture unavailable'); mode='normal'; await page.getByRole('button',{name:'Try again'}).click(); await page.waitForFunction(() => !document.querySelector('.loading-dot')); assert.equal(await page.getByRole('alert').count(),0);
+    mode='error'; await page.reload(); await visible('Fixture unavailable'); mode='normal'; await page.getByRole('button',{name:'Try again'}).click(); await page.waitForFunction(() => !document.querySelector('.loading-dot') && !document.body.innerText.includes('Fixture unavailable')); const alerts=await page.getByRole('alert').allTextContents(); assert.deepEqual(alerts,[],`${route} retained alerts after retry`);
     mode='empty'; await page.reload(); await page.waitForFunction(() => !document.querySelector('.loading-dot')); assert.ok(await page.locator('main .state h3').count() > 0);
   }
   check('five routes: loading, error, retry and empty states');

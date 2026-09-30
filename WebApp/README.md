@@ -42,10 +42,15 @@ npm run preview -- --port 5173 --strictPort
 | `/marketplace` | Активные предложения, поиск, собственные предложения |
 | `/transactions` | Операции, фильтр типа и диапазона дат |
 | `/profile` | Актуальные безопасные поля `/users/{id}`, аватар, KYC status, тип аккаунта и баланс |
+| `/admin` | Read-only admin totals |
+| `/admin/users`, `/admin/users/:id` | Поиск и safe metadata пользователей |
+| `/admin/investments` | Read-only список инвестиций |
+| `/admin/demo-accounts` | Read-only состояние sandbox-аккаунтов |
+| `/admin/logs` | Фильтры и серверная пагинация action logs |
 
 Внутренние страницы защищены auth gate. Предусмотрены loading, error/retry, empty и not-found states. Интерфейс на английском, как InvestorApp; суммы — USD. Тёмно-зелёные/нейтральные цвета с основным `#11A36A`; desktop sidebar и горизонтальная мобильная навигация.
 
-Iteration 8 включает подачу инвестиционных заявок, buy/bid/create/cancel/extend предложений, профиль/аватар/пароль, KYC, inbox с отметкой прочтения, chat, историю и Demo Top Up. Финансовые операции требуют предварительного просмотра и PIN/пароля, POST не повторяется автоматически. Банковский вывод, production Top Up, platform buyback, accept bid и change price недоступны. Admin screens не включены. Тестовые данные существуют только в тестах, production-сборка их не включает.
+Iteration 8 включает подачу инвестиционных заявок, buy/bid/create/cancel/extend предложений, профиль/аватар/пароль, KYC, inbox с отметкой прочтения, chat, историю и Demo Top Up. Финансовые операции требуют предварительного просмотра и PIN/пароля, POST не повторяется автоматически. Банковский вывод, production Top Up, platform buyback, accept bid и change price недоступны. Iteration 9 добавляет только read-only Admin Web v1 с шестью представлениями. Frontend role guard служит для UX; каждый admin GET авторизует backend. Demo никогда не допускается в `/admin`. Admin mutations, KYC review, withdrawals, properties, settings и сообщения не включены. Тестовые данные существуют только в тестах, production-сборка их не включает.
 
 ## Переиспользование и контракты
 
@@ -68,6 +73,7 @@ Iteration 8 включает подачу инвестиционных заяв�
 | История инвестиций | GET `/investments/user/{userId}` |
 | Предложения | GET `/share-offers/active` |
 | Транзакции | GET `/users/transactions/user/{userId}` |
+| Admin overview / users / investments / demo / logs | GET `/admin/stats`, `/admin/users`, `/admin/users/{id}`, `/admin/investments`, `/admin/demo-accounts`, `/admin/stats/logs` |
 
 ## CORS: проверка окружения
 
@@ -79,7 +85,9 @@ Iteration 8 включает подачу инвестиционных заяв�
 
 ## Проверки
 
-Iteration 8: `npm run typecheck`, `npm test` (27 tests), `npm run build`; семь browser suites: `smoke.mjs`, `activity-smoke.mjs`, `investor-smoke.mjs`, `community-smoke.mjs`, `onboarding-smoke.mjs`, `financial-smoke.mjs`, `iteration8-smoke.mjs`. Они используют подставные API-ответы; production writes не выполняются. Подробности: `C:\App\outputs\webapp-iteration-8-report.md`.
+Iteration 9: `npm run typecheck`, `npm test` (30 tests), `npm run build`, `admin-smoke.mjs` и регрессионный `investor-smoke.mjs`. Оба browser smoke используют только подставные API-ответы; admin suite отклоняет любой запрос кроме GET. Подробности: `C:\App\outputs\webapp-iteration-9-report.md`.
+
+Iteration 8: семь browser suites (`smoke.mjs`, `activity-smoke.mjs`, `investor-smoke.mjs`, `community-smoke.mjs`, `onboarding-smoke.mjs`, `financial-smoke.mjs`, `iteration8-smoke.mjs`). Подробности: `C:\App\outputs\webapp-iteration-8-report.md`.
 
 Ниже — исторические проверки первоначальной версии, не свежая проверка Render:
 
