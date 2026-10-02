@@ -19,6 +19,8 @@ using RealEstateInvestment.Services.Demo;
 
 var builder = WebApplication.CreateBuilder(args);
 
+ProductionStartupGuard.Validate(builder.Configuration, builder.Environment);
+
 // PostgreSQL
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -174,26 +176,16 @@ builder.Services.AddScoped<SettingsService>();
 builder.Services.AddScoped<ICashFlowService, CashFlowService>();
 builder.Services.AddScoped<IFirebaseNotificationService, FirebaseNotificationService>();
 builder.Services.AddScoped<IModerationService, ModerationService>();
-builder.Services.AddHostedService<ScheduledTaskService>();
 builder.Services.AddScoped<IMonthlyReportService, MonthlyReportService>();
 builder.Services.AddScoped<IAdminAuditReportService, AdminAuditReportService>();
 builder.Services.AddScoped<IOnboardingDocumentService, OnboardingDocumentService>();
-builder.Services.AddHostedService<MonthlyReportsHostedService>();
 builder.Services.AddScoped<IKycContractService, KycContractService>();
 builder.Services.AddScoped<IDemoTemplateSeeder, DemoTemplateSeeder>();
 builder.Services.AddScoped<IDemoAccountFactory, DemoAccountFactory>();
 builder.Services.AddScoped<IDemoMonthlyProcessor, DemoMonthlyProcessor>();
-builder.Services.AddHostedService<DemoMonthlyHostedService>();
+var backgroundJobsEnabled = builder.Services.AddOwnersClubBackgroundJobs(builder.Configuration);
 
-static string? CleanSecret(string? value)
-{
-    return string.IsNullOrWhiteSpace(value)
-        ? value
-        : value.Replace("test", "", StringComparison.OrdinalIgnoreCase).Trim();
-}
-
-
-var resendApiKey = CleanSecret(builder.Configuration["Resend:ApiKey"]);
+var resendApiKey = builder.Configuration["Resend:ApiKey"]?.Trim();
 
 if (string.IsNullOrWhiteSpace(resendApiKey))
 {
@@ -213,18 +205,33 @@ builder.Services.Configure<FormOptions>(o =>
 
 var app = builder.Build();
 
+if (backgroundJobsEnabled)
+    app.Logger.LogWarning("Background jobs are enabled for this process.");
+else
+    app.Logger.LogInformation("Background jobs are disabled. Set {Setting}=true to register them.",
+        BackgroundJobRegistration.EnabledSetting);
+
 //app.UseCors();
 
 // CORS
 // todo test
 //app.UseCors("Mobile");
 
-app.UseDeveloperExceptionPage(); //todo remove after debug
-                                 //if (app.Environment.IsDevelopment())
-                                 //{
-                                 //    app.UseDeveloperExceptionPage();
-
-//}
+if (app.Environment.IsDevelopment())
+{
+    app.UseDeveloperExceptionPage();
+}
+else
+{
+    app.UseExceptionHandler(errorApp => errorApp.Run(async context =>
+    {
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        await context.Response.WriteAsJsonAsync(new
+        {
+            message = "An unexpected server error occurred."
+        });
+    }));
+}
 
 // из за того что https становится http
 app.UseForwardedHeaders(new ForwardedHeadersOptions

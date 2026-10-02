@@ -81,7 +81,7 @@ Iteration 8 включает подачу инвестиционных заяв�
 
 ## Cloudflare static output
 
-Обычный `dist/index.html` и `dist/assets/*`. `public/_redirects` попадает в dist и задаёт SPA fallback для Cloudflare Pages (`/* /index.html 200`). Для будущего Workers Static Assets следует отдельно настроить `assets.directory` на dist и `assets.not_found_handling` на `single-page-application`; Pages `_redirects` не заменяет настройку Worker. `public/_headers` содержит базовые заголовки для Pages; при Worker нужно проверить их поддержку отдельно. Никаких Workers, Cloudflare settings, DNS или доменов эта работа не меняла. Ничего не опубликовано.
+Обычный output — `dist/index.html` и `dist/assets/*`. Для Workers Static Assets следует настроить `assets.directory` на подготовленный release-каталог из `dist` и `assets.not_found_handling` на `single-page-application`. `_redirects` намеренно отсутствует: его нельзя добавлять в release package из-за известного redirect loop. Перед upload проверяется manifest сборки. `public/_headers` содержит базовые заголовки для static assets; при наличии Worker-generated responses заголовки нужно проверить отдельно. Никаких Workers, Cloudflare settings, DNS или доменов эта работа не меняла. Ничего не опубликовано.
 
 ## Проверки
 
@@ -107,4 +107,4 @@ $env:SMOKE_BASE_URL = 'http://127.0.0.1:5173'
 node tests/smoke.mjs
 ```
 
-Основные файлы: `src/main.tsx` (маршруты, auth gate, layout), `src/pages.tsx` (экраны), `src/api.ts`, `src/session.ts`, `src/types.ts`, `src/ui.tsx` (loading/error/data hook), `src/format.ts`, `src/style.css`, `.env.example`, `public/_redirects`, тесты и lockfile.
+Основные файлы: `src/main.tsx` (маршруты, auth gate, layout), `src/pages.tsx` (экраны), `src/api.ts`, `src/session.ts`, `src/types.ts`, `src/ui.tsx` (loading/error/data hook), `src/format.ts`, `src/style.css`, `.env.example`, `public/_headers`, тесты и lockfile.
