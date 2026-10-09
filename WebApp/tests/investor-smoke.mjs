@@ -33,6 +33,7 @@ await context.route('https://sell-estate.onrender.com/api/**', async route => {
   if (mode === 'loading') await new Promise(r => setTimeout(r, 350));
   const empty = mode === 'empty';
   if (path === `/kyc/user/${id}`) return send(docs);
+  if (path === `/users/${id}/total-assets`) return send({walletBalance:100, investmentValue:200, pendingApplicationsValue:0, marketValue:0, totalAssets:300});
   if (path === `/users/${id}/assets-summary`) {
     const history = empty ? [] : [{ date: '2026-08-01', total: -20 }, { date: '2026-09-01', total: 120 }];
     return send({ walletBalance: 100, investmentValue: 200, totalAssets: 300, rentalIncome: 120, combinedHistory: history, equityHistory: history, rentIncomeHistory: history });

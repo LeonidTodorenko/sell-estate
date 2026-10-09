@@ -108,3 +108,11 @@ node tests/smoke.mjs
 ```
 
 Основные файлы: `src/main.tsx` (маршруты, auth gate, layout), `src/pages.tsx` (экраны), `src/api.ts`, `src/session.ts`, `src/types.ts`, `src/ui.tsx` (loading/error/data hook), `src/format.ts`, `src/style.css`, `.env.example`, `public/_headers`, тесты и lockfile.
+
+## Iteration 11 — Charts & Visual Polish (9 October 2026)
+
+SVG charts without new dependencies: Dashboard combined asset history; Finance combined/equity/rental history and current asset structure; Rental Income actual payouts grouped by UTC month; Investments aggregated share value by property. 3M/6M/1Y/All end at the latest observation (Finance mobile convention). Histories represent account activity, not investment returns. Rental income is not added twice to wallet assets. Portfolio allocation includes pending shares provided by the existing aggregate endpoint and ignores purchase-history filters.
+
+Validation: typecheck, 34 unit tests, production build; charts-smoke (investor/demo, 320/390/760/1024/1440 px, ranges, monthly totals, loading/error/retry/empty/single observation), investor-smoke and smoke passed against mocked APIs. No live private API validation or deployment. Backend/DB and BackgroundJobs configuration unchanged.
+
+Optional charts QA uses the same separate Playwright tooling as existing smoke tests: `node tests/charts-smoke.mjs`. Set `SMOKE_BASE_URL`, `PLAYWRIGHT_MODULE` and optionally `CHART_SCREENSHOTS`.

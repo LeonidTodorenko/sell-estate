@@ -1,22 +1,19 @@
+import { AssetStructure, HistoryChart } from './charts';
+import { monthlyRent } from './chart-data';
 import { useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { accountWrite, uploadKyc } from './api';
 import { date, money } from './format';
 import { Empty, Heading, Metric, Resource, useResource } from './ui';
-import { inDateRange, investorPaths, kycPayload, kycStatus, type DocumentType, type FinanceStats, type HistoryPoint, type InboxMessage, type KycDocument, type MonthlyReport, type RentalEntry } from './investor-contracts';
+import { inDateRange, investorPaths, kycPayload, kycStatus, type DocumentType, type FinanceStats, type InboxMessage, type KycDocument, type MonthlyReport, type RentalEntry } from './investor-contracts';
 import type { Session } from './types';
 
 function DateFilters({ from, to, setFrom, setTo }: { from: string; to: string; setFrom: (v: string) => void; setTo: (v: string) => void }) {
   return <div className="filters"><label>From<input type="date" value={from} onChange={e => setFrom(e.target.value)}/></label><label>To<input type="date" value={to} onChange={e => setTo(e.target.value)}/></label>{(from || to) && <button onClick={() => { setFrom(''); setTo(''); }}>All dates</button>}</div>;
 }
-function History({ title, points }: { title: string; points?: HistoryPoint[] }) {
-  const [from, setFrom] = useState(''), [to, setTo] = useState('');
-  const rows = (points || []).filter(p => inDateRange(p.date, from, to)).sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
-  return <section className="panel"><h2>{title}</h2><DateFilters {...{ from, to, setFrom, setTo }}/>{from && to && from > to ? <p role="alert" className="error">The end date must be on or after the start date.</p> : !rows.length ? <Empty title="No history for this period"/> : <div className="history-list">{rows.map((point, index) => <div className="history-row" key={`${point.date}-${index}`}><span>{date(point.date)}</span><strong>{money(point.total)}</strong></div>)}</div>}</section>;
-}
 export function Finance({ session }: { session: Session }) {
   const resource = useResource<FinanceStats>(investorPaths(session).finance);
-  return <><Heading title="My Finance" description="Your current balances and financial history."><button onClick={resource.retry}>Refresh</button></Heading><nav className="actions"><Link to="/club">Club status & fees</Link><Link to="/withdrawals">Withdrawal requests</Link><Link to="/top-up">Top up information</Link><Link to="/withdraw">Withdrawal information</Link></nav><Resource resource={resource}>{data => <><div className="metrics"><Metric label="Total assets" value={money(data.totalAssets)}/><Metric label="Wallet balance" value={money(data.walletBalance)}/><Metric label="Investment value" value={money(data.investmentValue)}/><Metric label="Rental income to date" value={money(data.rentalIncome)}/></div><p className="note">Historical values reflect account activity and may differ from the current value of your portfolio.</p><History title="Combined history" points={data.combinedHistory}/><History title="Equity history (excluding rent)" points={data.equityHistory}/><History title="Rental income history" points={data.rentIncomeHistory}/><Link to="/rental-income">View rental payouts →</Link></>}</Resource></>;
+  return <><Heading title="My Finance" description="Your current balances and financial history."><button onClick={resource.retry}>Refresh</button></Heading><nav className="actions"><Link to="/club">Club status & fees</Link><Link to="/withdrawals">Withdrawal requests</Link><Link to="/top-up">Top up information</Link><Link to="/withdraw">Withdrawal information</Link></nav><Resource resource={resource}>{data => <><div className="metrics"><Metric label="Total assets" value={money(data.totalAssets)}/><Metric label="Wallet balance" value={money(data.walletBalance)}/><Metric label="Investment value" value={money(data.investmentValue)}/><Metric label="Rental income to date" value={money(data.rentalIncome)}/></div><p className="note">Historical values reflect account activity and may differ from the current value of your portfolio.</p><AssetStructure session={session}/><HistoryChart title="Combined history" points={data.combinedHistory}/><HistoryChart title="Equity history (excluding rent)" points={data.equityHistory}/><HistoryChart title="Rental income history" points={data.rentIncomeHistory}/><Link to="/rental-income">View rental payouts →</Link></>}</Resource></>;
 }
 export function RentalIncome({ session }: { session: Session }) {
   const resource = useResource<RentalEntry[]>(investorPaths(session).rental);
@@ -24,7 +21,7 @@ export function RentalIncome({ session }: { session: Session }) {
   return <><Heading title="Rental Income" description="Payouts received from your rental properties."><button onClick={resource.retry}>Refresh</button></Heading><DateFilters {...{ from, to, setFrom, setTo }}/><Resource resource={resource}>{data => {
     const rows = data.filter(p => inDateRange(p.timestamp, from, to)).sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp));
     if (from && to && from > to) return <p role="alert" className="error">The end date must be on or after the start date.</p>;
-    return <><div className="metrics"><Metric label="Income in selected period" value={money(rows.reduce((sum, p) => sum + p.amount, 0))}/><Metric label="Payouts" value={rows.length}/></div>{rows.length ? <section className="panel"><h2>Payout history</h2>{rows.map((p, i) => <article className="history-row" key={`${p.timestamp}-${i}`}><div><h3>{p.title}</h3><span className="muted">{date(p.timestamp)}</span></div><strong>{money(p.amount)}</strong></article>)}</section> : <Empty title="No rental income for this period">Rental payouts will appear here once received.</Empty>}</>;
+    return <><div className="metrics"><Metric label="Income in selected period" value={money(rows.reduce((sum, p) => sum + p.amount, 0))}/><Metric label="Payouts" value={rows.length}/></div><HistoryChart title="Monthly rental income" points={monthlyRent(rows)} bars description="Received payouts grouped by calendar month (UTC), within the selected dates."/>{rows.length ? <section className="panel"><h2>Payout history</h2>{rows.map((p, i) => <article className="history-row" key={`${p.timestamp}-${i}`}><div><h3>{p.title}</h3><span className="muted">{date(p.timestamp)}</span></div><strong>{money(p.amount)}</strong></article>)}</section> : <Empty title={data.length ? 'No rental income for this period' : 'No rental payouts yet'}>{data.length ? <>Try a wider date range. <button className="text-button" onClick={() => { setFrom(''); setTo(''); }}>Clear dates</button></> : <>Recorded rental payouts will appear here after they are received. <Link to="/my-properties">View your properties →</Link></>}</Empty>}</>;
   }}</Resource></>;
 }
 export function MonthlyReports({ session }: { session: Session }) {
