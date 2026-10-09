@@ -116,3 +116,14 @@ SVG charts without new dependencies: Dashboard combined asset history; Finance c
 Validation: typecheck, 34 unit tests, production build; charts-smoke (investor/demo, 320/390/760/1024/1440 px, ranges, monthly totals, loading/error/retry/empty/single observation), investor-smoke and smoke passed against mocked APIs. No live private API validation or deployment. Backend/DB and BackgroundJobs configuration unchanged.
 
 Optional charts QA uses the same separate Playwright tooling as existing smoke tests: `node tests/charts-smoke.mjs`. Set `SMOKE_BASE_URL`, `PLAYWRIGHT_MODULE` and optionally `CHART_SCREENSHOTS`.
+
+
+## Iteration 12 — OwnersClub WebApp Visual Upgrade (9 October 2026)
+
+Light theme only: white rounded cards, soft green surfaces and OwnersClub accents; no theme switch. Real property photos use GET `/properties/{propertyId}/images` (`id`, `base64Data`); gallery selection, catalog previews, investment/holding thumbnails and Dashboard active listings use the same media component. Requests are deferred until visible, deduplicated and limited to 40 retained entries; cache clears on session events. No stock photo assets. Empty, invalid or failed photos use a neutral building icon; gallery API errors support retry.
+
+Avatars use existing `avatarBase64` from auth/user DTOs; session refresh retains this field. Older stored sessions load the existing user DTO for the header; header updates after successful avatar upload; profile reads current user DTO. Invalid/failed avatars show initials. Financial calculations, charts and write contracts remain unchanged. Dashboard listings reuse `/share-offers/active`, filter active unexpired offers and show at most four previews.
+
+Public read-only API verification on 9 October confirmed four properties and WebP/JPEG data URI image responses. No live private account or write validation was performed. Regression browser tests intercept APIs; `media-smoke.mjs` additionally needs `MEDIA_FIXTURE` (JSON containing public `properties` and `images` indexed by property ID) and `MEDIA_SCREENSHOTS`, besides existing `PLAYWRIGHT_MODULE` and `SMOKE_BASE_URL` variables. Fixture photos are QA inputs only and are excluded from production dist.
+
+Release artifacts and manual deployment/rollback instructions are prepared separately. No deployment, Git commit/push, backend, DB or InvestorApp modifications are part of this iteration. Keep `BackgroundJobs__Enabled=false`.

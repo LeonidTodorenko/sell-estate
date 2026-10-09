@@ -25,6 +25,7 @@ export function normalizeSession(raw: unknown, previous?: Session): Session {
     refreshToken: isDemo ? null : text(data.refreshToken ?? data.refresh_token ?? data.refresh) ?? null,
     isDemo, demoCode,
     user: { id, isDemo, demoCode,
+      avatarBase64: text(user.avatarBase64 ?? data.avatarBase64) ?? previous?.user.avatarBase64,
       fullName: text(user.fullName ?? data.fullName) ?? previous?.user.fullName,
       email: text(user.email ?? data.email ?? claims.email) ?? previous?.user.email,
       role: text(user.role ?? data.role ?? claims['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] ?? claims.role) ?? previous?.user.role,

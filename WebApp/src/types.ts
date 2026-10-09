@@ -12,5 +12,5 @@ export interface Holding { propertyId: string; propertyTitle: string; totalShare
 export interface Totals { walletBalance?: number; investmentValue?: number; pendingApplicationsValue?: number; marketValue?: number; rentalIncome?: number; totalAssets?: number }
 export interface ShareOffer { id: string; sellerId: string; propertyId: string; propertyTitle: string; sharesForSale: number; isActive: boolean; expirationDate: string; startPricePerShare?: number; buyoutPricePerShare?: number | null }
 export interface Transaction { id: string; type: string; amount: number; shares?: number; propertyId?: string; propertyTitle?: string; timestamp: string; notes?: string }
-export interface User { id: string; fullName?: string; email?: string; phone?: string | null; role?: string; isDemo: boolean; demoCode?: string | null }
+export interface User { avatarBase64?: string | null; id: string; fullName?: string; email?: string; phone?: string | null; role?: string; isDemo: boolean; demoCode?: string | null }
 export interface Session { accessToken: string; refreshToken: string | null; user: User; isDemo: boolean; demoCode: string | null }

@@ -32,6 +32,7 @@ await context.route('**/*',async route=>{
  if(path===`/withdrawals/user/${id()}`)return send(mode==='empty'?[]:[{id:'w1',amount:15,status:'Pending',createdAt:'2026-09-01'}]);
  if(path==='/properties')return send([{id:'p1',title:'Marina Residence',location:'Dubai',latitude:0,longitude:0,price:100,totalShares:10,availableShares:2}]);
  if(path==='/properties/p1/images')return send([]);
+ if (/^\/users\/[^/]+$/.test(path)) return send({id:path.split('/').pop(),avatarBase64:null});
  throw Error(`Unexpected API ${path}`);
 });
 const routes=['/my-properties','/club','/referrals','/withdrawals','/top-up','/withdraw','/chat','/about','/properties/p1'];

@@ -15,6 +15,8 @@ await context.route('https://sell-estate.onrender.com/api/**', async route => {
   const request = route.request(), path = new URL(request.url()).pathname.slice(4);
   calls.push({ path, method: request.method() });
   const send = (data, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(data) });
+  if (path.endsWith('/images')) return send([]);
+  if (path === '/share-offers/active') return send([]);
   if (path.startsWith('/messages/unread-count/')) return send({count:2});
   if (path === '/auth/refresh') { refreshes++; return send(auth(false)); }
   const id = demo ? 'demo-owner' : 'real-owner';
@@ -41,6 +43,7 @@ await context.route('https://sell-estate.onrender.com/api/**', async route => {
   if (path === '/users/me/rent-income-history') return send(empty ? [] : [{ title: 'Marina residence with a long property name '.repeat(3), timestamp: '2026-09-01T12:00:00Z', amount: 120 }]);
   if (path === '/demo/monthly-reports') { assert.ok(demo); return send(empty ? [] : [{ id:'r1', reportMonth:'2026-09-01', totalCapital: 300, capitalChange: -20, walletBalance:100, investmentValue:200, rentalIncome:120 }]); }
   if (path === `/messages/inbox/${id}`) return send(empty ? [] : [{ id:'m1', title:'Portfolio update', content:'Text-only message <script>throw new Error()</script>', isRead:false, createdAt:'2026-09-01' }]);
+  if (/^\/users\/[^/]+$/.test(path) && path !== '/users/admin-id') return send({id:path.split('/').pop(),avatarBase64:null});
   throw new Error(`Unexpected endpoint ${path}`);
 });
 const visible = text => page.getByText(text, { exact:true }).first().waitFor();

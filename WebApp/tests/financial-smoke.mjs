@@ -27,6 +27,7 @@ await context.route('**/*',async route=>{
  if(path==='/properties/p1/images')return send([]);
  if(path==='/share-offers/active')return send([]);
  if(path.includes('/grouped')||path.includes('/bids')||path.startsWith('/applications/user/'))return send([]);
+  if (/^\/users\/[^/]+$/.test(path) && path !== '/users/admin-id') return send({id:path.split('/').pop(),avatarBase64:null});
  unexpected.push(`GET ${path}`);return route.abort();
 });
 const install=async a=>{await page.goto(base);await page.evaluate(a=>localStorage.setItem('ownersclub.web.session.v1',JSON.stringify(a)),a);};

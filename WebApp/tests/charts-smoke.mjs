@@ -14,6 +14,8 @@ await context.route('https://sell-estate.onrender.com/api/**', async route => {
   assert.equal(route.request().method(), 'GET');
   calls.push(path);
   const send = (data, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(data) });
+  if (path.endsWith('/images')) return send([]);
+  if (path === '/share-offers/active') return send([]);
   if (path.startsWith('/messages/unread-count/')) return send({ count: 0 });
   if (mode === 'loading') await new Promise(r => setTimeout(r, 450));
   if (mode === 'error') return send({ message: 'Chart fixture unavailable' }, 503);
@@ -32,6 +34,7 @@ await context.route('https://sell-estate.onrender.com/api/**', async route => {
     {id:'invalid',title:'Invalid fields',status:'pending',price:-1,totalShares:0,availableShares:-1}
   ]);
   if (path === '/users/me/rent-income-history') return send(empty ? [] : [{title:'Marina',timestamp:'2026-09-01',amount:120},{title:'Marina',timestamp:'2026-09-02',amount:30},{title:'Marina',timestamp:'2026-10-01',amount:-10}]);
+  if (/^\/users\/[^/]+$/.test(path) && path !== '/users/admin-id') return send({id:path.split('/').pop(),avatarBase64:null});
   throw new Error(`Unexpected path: ${path}`);
 });
 const ready = () => page.waitForFunction(() => !document.querySelector('.loading-dot'));

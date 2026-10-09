@@ -43,6 +43,7 @@ await context.route(`${apiOrigin}/api/**`, async route => {
     if (url.searchParams.has('action')) assert.equal(url.searchParams.get('action'),'Balance +');
     return send({total:21,page:pageNumber,pageSize:20,items:[{id:`log-${pageNumber}`,userId:'admin-1',userName:'Admin User',action:'Balance Updated',details:'Read-only fixture details',timestamp:'2026-09-03'}]});
   }
+  if (/^\/users\/[^/]+$/.test(path) && path !== '/users/admin-id') return send({id:path.split('/').pop(),avatarBase64:null});
   throw new Error(`Unexpected admin endpoint ${path}`);
 });
 async function setSession(value) {

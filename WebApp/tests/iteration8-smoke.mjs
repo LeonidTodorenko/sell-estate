@@ -36,6 +36,7 @@ await context.route('**/*',async route=>{
  if(path==='/messages/inbox/owner')return send([{id:'m1',title:'Update',content:'Safe message',isRead:read,createdAt:'2026-09-01'}]);
  if(path==='/share-offers/transactions')return send([{propertyId:'p1',propertyTitle:'Anonymous trade',timestamp:'2026-09-01',shares:2,pricePerShare:12,...(demo?{buyerId:'owner',sellerId:'other'}:{})}]);
  if(path.includes('/applications/user/'))return send([]);
+ if(path==='/users/changed')return send({id:'changed',fullName:'Changed account',avatarBase64:null});
  throw new Error(`Unexpected GET ${path}`);
 });
 async function install(){await page.goto(base);await page.evaluate(a=>localStorage.setItem('ownersclub.web.session.v1',JSON.stringify(a)),auth());}
