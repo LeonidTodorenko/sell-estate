@@ -1,0 +1,7 @@
+--------- beginning of main
+10-16 21:59:48.775  5617  5663 E ReactNativeJS: [runtime not ready]: Invariant Violation: TurboModuleRegistry.getEnforcing(...): 'RNCDatePicker' could not be found. Verify that a module by this name is registered in the native binary.
+10-16 21:59:48.789  5617  5663 I ReactNativeJS: Running "InvestorApp" with {"rootTag":1,"initialProps":{},"fabric":true}
+10-16 21:59:48.790  5617  5663 E ReactNativeJS: [runtime not ready]: Invariant Violation: "InvestorApp" has not been registered. This can happen if:
+10-16 21:59:48.790  5617  5663 E ReactNativeJS: * Metro (the local dev server) is run from the wrong folder. Check if Metro is running, stop it and restart it in the current project.
+10-16 21:59:48.790  5617  5663 E ReactNativeJS: * A module failed to load due to an error and `AppRegistry.registerComponent` wasn't called.
+10-16 21:59:48.832  5617  5663 E ReactNativeJS: [runtime not ready]: Error: Non-js exception: AppRegistryBinding::stopSurface failed. Global was not installed.
