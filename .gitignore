@@ -54,3 +54,4 @@ yarn.lock
 # Local env
 .env
 .env.*
+/WebApp/outputs/charts
