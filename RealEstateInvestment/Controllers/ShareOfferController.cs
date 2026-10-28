@@ -49,12 +49,12 @@ namespace RealEstateInvestment.Controllers
             if (!string.IsNullOrEmpty(seller.PinCode))
             {
                 if (request.PinOrPassword != seller.PinCode &&
-                    request.PinOrPassword != seller.PasswordHash)
+                    !PasswordHasher.VerifyPassword(request.PinOrPassword, seller.PasswordHash))
                     return BadRequest("Invalid PIN");
             }
             else
             {
-                if (request.PinOrPassword != seller.PasswordHash)
+                if (!PasswordHasher.VerifyPassword(request.PinOrPassword, seller.PasswordHash))
                     return BadRequest("Invalid password");
             }
 
@@ -226,12 +226,12 @@ namespace RealEstateInvestment.Controllers
             if (!string.IsNullOrEmpty(user.PinCode))
             {
                 if (request.PinOrPassword != user.PinCode &&
-                    request.PinOrPassword != user.PasswordHash)
+                    !PasswordHasher.VerifyPassword(request.PinOrPassword, user.PasswordHash))
                     return BadRequest("Invalid PIN");
             }
             else
             {
-                if (request.PinOrPassword != user.PasswordHash)
+                if (!PasswordHasher.VerifyPassword(request.PinOrPassword, user.PasswordHash))
                     return BadRequest("Invalid password");
             }
 
@@ -387,12 +387,12 @@ namespace RealEstateInvestment.Controllers
             // PIN / пароль
             if (!string.IsNullOrEmpty(buyer.PinCode))
             {
-                if (req.PinOrPassword != buyer.PinCode && req.PinOrPassword != buyer.PasswordHash)
+                if (req.PinOrPassword != buyer.PinCode && !PasswordHasher.VerifyPassword(req.PinOrPassword, buyer.PasswordHash))
                     return BadRequest("Invalid PIN");
             }
             else
             {
-                if (req.PinOrPassword != buyer.PasswordHash)
+                if (!PasswordHasher.VerifyPassword(req.PinOrPassword, buyer.PasswordHash))
                     return BadRequest("Invalid password");
             }
 
@@ -666,12 +666,12 @@ namespace RealEstateInvestment.Controllers
 
             if (!string.IsNullOrEmpty(seller.PinCode))
             {
-                if (req.PinOrPassword != seller.PinCode && req.PinOrPassword != seller.PasswordHash)
+                if (req.PinOrPassword != seller.PinCode && !PasswordHasher.VerifyPassword(req.PinOrPassword, seller.PasswordHash))
                     return BadRequest("Invalid PIN");
             }
             else
             {
-                if (req.PinOrPassword != seller.PasswordHash)
+                if (!PasswordHasher.VerifyPassword(req.PinOrPassword, seller.PasswordHash))
                     return BadRequest("Invalid password");
             }
 
@@ -777,12 +777,12 @@ namespace RealEstateInvestment.Controllers
 
             if (!string.IsNullOrEmpty(seller.PinCode))
             {
-                if (req.PinOrPassword != seller.PinCode && req.PinOrPassword != seller.PasswordHash)
+                if (req.PinOrPassword != seller.PinCode && !PasswordHasher.VerifyPassword(req.PinOrPassword, seller.PasswordHash))
                     return BadRequest("Invalid PIN");
             }
             else
             {
-                if (req.PinOrPassword != seller.PasswordHash)
+                if (!PasswordHasher.VerifyPassword(req.PinOrPassword, seller.PasswordHash))
                     return BadRequest("Invalid password");
             }
 
@@ -839,12 +839,12 @@ namespace RealEstateInvestment.Controllers
 
             if (!string.IsNullOrEmpty(bidder.PinCode))
             {
-                if (request.PinOrPassword != bidder.PinCode && request.PinOrPassword != bidder.PasswordHash)
+                if (request.PinOrPassword != bidder.PinCode && !PasswordHasher.VerifyPassword(request.PinOrPassword, bidder.PasswordHash))
                     return BadRequest("Invalid PIN");
             }
             else
             {
-                if (request.PinOrPassword != bidder.PasswordHash)
+                if (!PasswordHasher.VerifyPassword(request.PinOrPassword, bidder.PasswordHash))
                     return BadRequest("Invalid password");
             }
 

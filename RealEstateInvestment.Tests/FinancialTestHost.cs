@@ -127,7 +127,7 @@ internal sealed class FinancialTestHost : IDisposable
     private static User Normal(Guid id, string pin, string role = "investor") => new()
     {
         Id = id, FullName = "Test", Email = $"{id}@example.invalid", ClientNumber = id.ToString(),
-        PasswordHash = "plain-" + pin, SecretWord = "test", PinCode = pin,
+        PasswordHash = PasswordHasher.HashPassword("plain-" + pin), SecretWord = "test", PinCode = pin,
         IsEmailConfirmed = true, WalletBalance = 1000, Role = role,
         UserRole = role == "admin" ? UserRole.Admin : UserRole.Investor
     };

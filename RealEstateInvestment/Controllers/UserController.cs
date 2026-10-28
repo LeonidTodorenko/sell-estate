@@ -625,9 +625,9 @@ namespace RealEstateInvestment.Controllers
                 if (demoUserId == Guid.Empty) return Unauthorized();
                 var demo = await _context.DemoUsers.FindAsync(demoUserId);
                 if (demo == null || demo.IsTemplate || !demo.IsActive) return NotFound(new { message = "User not found" });
-                if (demo.PasswordHash != req.CurrentPassword) return BadRequest(new { message = "Invalid current password" });
+                if (!PasswordHasher.VerifyDemoPassword(req.CurrentPassword, demo.PasswordHash)) return BadRequest(new { message = "Invalid current password" });
                 if (string.IsNullOrWhiteSpace(req.NewPassword) || req.NewPassword.Length < 6) return BadRequest(new { message = "Password must be at least 6 characters" });
-                demo.PasswordHash = req.NewPassword;
+                demo.PasswordHash = PasswordHasher.HashPassword(req.NewPassword);
                 _context.DemoActionLogs.Add(new DemoActionLog { DemoUserId = demoUserId, Action = "ChangePassword", Details = "Demo password changed" });
                 await _context.SaveChangesAsync();
                 return Ok(new { message = "Password changed in Demo Mode", simulated = true });
@@ -635,10 +635,10 @@ namespace RealEstateInvestment.Controllers
             var user = await _context.Users.FindAsync(id);
             if (user == null) return NotFound(new { message = "User not found" });
 
-            if (user.PasswordHash != req.CurrentPassword) // todo check hash
+            if (!PasswordHasher.VerifyPassword(req.CurrentPassword, user.PasswordHash))
                 return BadRequest(new { message = "Invalid current password" });
 
-            user.PasswordHash = req.NewPassword; // todo add hash
+            user.PasswordHash = PasswordHasher.HashPassword(req.NewPassword);
             _context.ActionLogs.Add(new ActionLog
             {
                 UserId = id,
@@ -823,7 +823,7 @@ namespace RealEstateInvestment.Controllers
         //    {
         //        FullName = req.FullName,
         //        Email = req.Email,
-        //        PasswordHash = req.Password, // TODO: hash password
+        //        PasswordHash = PasswordHasher.HashPassword(req.Password),
         //        SecretWord = req.SecretWord
         //    };
 
@@ -900,7 +900,7 @@ namespace RealEstateInvestment.Controllers
             {
                 FullName = req.FullName,
                 Email = req.Email.Trim(),
-                PasswordHash = req.Password, // TODO: hash password
+                PasswordHash = PasswordHasher.HashPassword(req.Password),
                 SecretWord = req.SecretWord,
                 PinCode = req.PinCode,
                 IsEmailConfirmed = false,
@@ -1142,7 +1142,7 @@ namespace RealEstateInvestment.Controllers
             if (user == null)
                 return NotFound(new { message = "User not found" });
 
-            user.PasswordHash = req.NewPassword; // todo: hash
+            user.PasswordHash = PasswordHasher.HashPassword(req.NewPassword);
             _context.PasswordResetTokens.Remove(tokenEntry);
             _context.ActionLogs.Add(new ActionLog
             {

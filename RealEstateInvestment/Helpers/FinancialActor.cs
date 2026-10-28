@@ -16,7 +16,7 @@ public static class FinancialActor
     public static bool VerifyDemoSecret(DemoUser user, string? secret) =>
         !string.IsNullOrWhiteSpace(secret) &&
         ((!string.IsNullOrEmpty(user.PinCode) && secret == user.PinCode) ||
-         PasswordHasher.VerifyPassword(secret, user.PasswordHash));
+         PasswordHasher.VerifyDemoPassword(secret, user.PasswordHash));
 
     // Validate the authenticated identity before choosing a production or sandbox branch.
     // Normal User has no IsActive/ExpiresAt fields; do not invent new eligibility rules.

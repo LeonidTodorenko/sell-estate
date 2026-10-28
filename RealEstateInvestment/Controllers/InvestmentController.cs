@@ -58,12 +58,12 @@ namespace RealEstateInvestment.Controllers
 
             if (!string.IsNullOrEmpty(user.PinCode))
             {
-                if (req.PinOrPassword != user.PinCode && req.PinOrPassword != user.PasswordHash)
+                if (req.PinOrPassword != user.PinCode && !PasswordHasher.VerifyPassword(req.PinOrPassword, user.PasswordHash))
                     return BadRequest(new { message = "Invalid PIN" });
             }
             else
             {
-                if (req.PinOrPassword != user.PasswordHash) // TODO: hash
+                if (!PasswordHasher.VerifyPassword(req.PinOrPassword, user.PasswordHash))
                     return BadRequest(new { message = "Invalid password" });
             }
 

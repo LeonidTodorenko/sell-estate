@@ -1,4 +1,5 @@
-﻿using RealEstateInvestment.Data;
+using RealEstateInvestment.Helpers;
+using RealEstateInvestment.Data;
 using RealEstateInvestment.Models;
 
 namespace RealEstateInvestment.Services
@@ -42,7 +43,7 @@ namespace RealEstateInvestment.Services
                 Id = id,
                 FullName = _config["SuperUser:Bootstrap:FullName"]?.Trim() ?? "Development Super Admin",
                 Email = email,
-                PasswordHash = password,
+                PasswordHash = PasswordHasher.HashPassword(password),
                 SecretWord = secretWord,
                 Role = "admin",
                 IsEmailConfirmed = true,
