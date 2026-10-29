@@ -183,13 +183,10 @@
                         else
                         {
                             user.WalletBalance += app.RequestedAmount;
-                            context.UserTransactions.Add(new UserTransaction {
-                                Id = Guid.NewGuid(), UserId = user.Id,
-                                Type = RealEstateInvestment.Enums.TransactionType.InvestmentRefund,
-                                Amount = app.RequestedAmount, Shares = app.RequestedShares,
-                                PropertyId = property.Id, PropertyTitle = property.Title, Timestamp = now,
-                                Notes = $"Rejected application refund; Application={app.Id}"
-                            });
+                            RealEstateInvestment.Helpers.InvestmentLedger.Record(context, Guid.Empty, user.Id,
+                                property, app.RequestedAmount, app.RequestedShares,
+                                RealEstateInvestment.Enums.TransactionType.InvestmentRefund,
+                                "InvestmentRefund", $"scheduler/application-round; Application={app.Id}");
                             property.AvailableShares += app.RequestedShares;
                             property.Status = "declined";
                             property.PriorityInvestorId = null;

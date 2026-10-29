@@ -19,5 +19,6 @@ public sealed class FinancialConcurrencyAttribute : ExceptionFilterAttribute
 
     private static bool IsSerializationFailure(Exception? exception) => exception != null &&
         (exception is PostgresException { SqlState: "40001" or "40P01" } ||
+         exception is PostgresException { SqlState: "23505", ConstraintName: "PK_UserTransactions" } ||
          IsSerializationFailure(exception.InnerException));
 }

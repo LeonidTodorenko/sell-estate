@@ -39,6 +39,13 @@ namespace RealEstateInvestment.Controllers
             if (User.IsDemo())
                 return await ApplicateForDemoInvestment(req);
 
+            Guid? operationId = null;
+            if (Request.Headers.TryGetValue("Idempotency-Key", out var key))
+            {
+                if (key.Count != 1 || !Guid.TryParse(key[0], out var parsed) || parsed == Guid.Empty)
+                    return BadRequest("Idempotency-Key must be a non-empty UUID");
+                operationId = parsed;
+            }
             await using var financialTransaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
 
             if (req.RequestedShares <= 0)
@@ -68,6 +75,21 @@ namespace RealEstateInvestment.Controllers
             }
 
 
+            var operationContext = $"investment/apply; StepNumber={req.StepNumber}";
+            if (operationId.HasValue)
+            {
+                var prior = await _context.UserTransactions.AsNoTracking().SingleOrDefaultAsync(t => t.Id == operationId.Value);
+                if (prior != null)
+                {
+                    if (prior.UserId != req.UserId || prior.PropertyId != req.PropertyId ||
+                        prior.Type != TransactionType.Investment || prior.Shares != req.RequestedShares || prior.Notes != operationContext)
+                        return Conflict("Idempotency-Key was already used for another operation");
+                    return Ok(new { message = "Application submitted" });
+                }
+            }
+            if (property.Status == "declined" || property.Status == "sold" || property.Status == "rented")
+                return Conflict("Property is closed for investment");
+
             // Проверка, что есть активный этап
             //var now = DateTime.UtcNow;
             //var step = property.PaymentPlans?
@@ -96,6 +118,7 @@ namespace RealEstateInvestment.Controllers
             if (property.TotalShares <= 0 || property.Price <= 0) return BadRequest("Invalid property price or capacity");
             var pricePerShare = property.Price / property.TotalShares;
             var expectedAmount = req.RequestedShares * pricePerShare;
+            if (expectedAmount <= 0) return BadRequest("Invalid investment amount");
 
             if (user.WalletBalance < expectedAmount)
                 return BadRequest(new { message = "Insufficient funds" });
@@ -116,6 +139,7 @@ namespace RealEstateInvestment.Controllers
                 activeStep != null &&
                 activeStep.EventDate == firstStep.EventDate;
 
+            Guid sourceId;
             if (isFirstStep)
             {
                 user.WalletBalance -= expectedAmount;
@@ -142,28 +166,8 @@ namespace RealEstateInvestment.Controllers
                 };
 
                 _context.InvestmentApplications.Add(app);
+                sourceId = app.Id;
 
-                _context.ActionLogs.Add(new ActionLog
-                {
-                    UserId = req.UserId,
-                    Action = "ApplicateForInvestment",
-                    Details = "Investment Shares: " + req.RequestedShares + "; InvestedAmount: " + expectedAmount + "; PropertyId: " + req.PropertyId
-                });
-
-                _context.UserTransactions.Add(new UserTransaction
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = req.UserId,
-                    Type = TransactionType.Investment,
-                    Amount = expectedAmount,
-                    Shares = req.RequestedShares,
-                    PropertyId = property.Id,
-                    PropertyTitle = property.Title,
-                    Timestamp = now,
-                    Notes = "Investment"
-                });
-
-                // step.Paid += expectedAmount;
             }
             else
             {
@@ -173,38 +177,21 @@ namespace RealEstateInvestment.Controllers
 
                 accountingStep.Paid += expectedAmount; // step.Paid += expectedAmount; // todo учесть шаг для междусобытийных периодов
 
-                _context.Investments.Add(new Investment
+                var investment = new Investment
                 {
                     UserId = req.UserId,
                     PropertyId = req.PropertyId,
                     Shares = req.RequestedShares,
                     InvestedAmount = expectedAmount,
                     CreatedAt = now
-                });
-
-                _context.ActionLogs.Add(new ActionLog
-                {
-                    UserId = req.UserId,
-                    Action = "ApplicateForInvestment",
-                    Details = "Apply For Investment Shares: " + req.RequestedShares + "; InvestedAmount: " + expectedAmount + "; PropertyId: " + req.PropertyId
-                });
-
-                // мешает расчету для графика - скрыл пока
-                //_context.UserTransactions.Add(new UserTransaction
-                //{
-                //    Id = Guid.NewGuid(),
-                //    UserId = req.UserId,
-                //    Type = TransactionType.Investment,
-                //    Amount = expectedAmount,
-                //    Shares = req.RequestedShares,
-                //    PropertyId = property.Id,
-                //    PropertyTitle = property.Title,
-                //    Timestamp = DateTime.UtcNow,
-                //    Notes = "Apply For Investment Shares"
-                //});
-
+                };
+                _context.Investments.Add(investment);
+                sourceId = investment.Id;
             }
 
+            InvestmentLedger.Record(_context, req.UserId, req.UserId, property, expectedAmount,
+                req.RequestedShares, TransactionType.Investment, "ApplicateForInvestment", operationContext,
+                operationId, sourceId);
             await _context.SaveChangesAsync();
             await financialTransaction.CommitAsync();
             return Ok(new { message = "Application submitted" });
@@ -392,6 +379,9 @@ namespace RealEstateInvestment.Controllers
             var property = await _context.Properties.FindAsync(propertyId);
             if (property == null) return NotFound(new { message = "Property not found" });
 
+            if (property.Status == "sold" || property.Status == "rented")
+                return Conflict("Finalized property cannot be refunded");
+
             var firstPayment = await _context.PaymentPlans
                 .Where(p => p.PropertyId == propertyId)
                 .OrderBy(p => p.DueDate)
@@ -402,6 +392,12 @@ namespace RealEstateInvestment.Controllers
 
             if (DateTime.UtcNow < firstPayment.DueDate)
                 return BadRequest(new { message = "It's too early to validate payments" });
+
+            // Pending reservations belong to the scheduler; never close their property here.
+            if (await _context.InvestmentApplications.AnyAsync(a => a.PropertyId == propertyId && a.Status == "pending"))
+                return Conflict("Pending applications must be settled before refunding investments");
+            if (await _context.ShareOffers.AnyAsync(o => o.PropertyId == propertyId && o.IsActive))
+                return Conflict("Active share offers must be settled before refunding investments");
 
             var totalInvested = await _context.Investments
                 .Where(i => i.PropertyId == propertyId)
@@ -417,20 +413,16 @@ namespace RealEstateInvestment.Controllers
                 foreach (var inv in investments)
                 {
                     var user = await _context.Users.FindAsync(inv.UserId);
-                    if (user != null)
-                    {
-                        user.WalletBalance += inv.InvestedAmount;
-                        property.AvailableShares += inv.Shares;
-
-                        _context.ActionLogs.Add(new ActionLog
-                        {
-                            UserId = inv.UserId,
-                            Action = "InvestmentRevoked",
-                            Details = $"Investment {inv.Id} was revoked due to unpaid first milestone"
-                        });
-                    }
+                    if (user == null) throw new InvalidOperationException("Investment owner is missing; refund aborted");
+                    user.WalletBalance += inv.InvestedAmount;
+                    property.AvailableShares += inv.Shares;
+                    InvestmentLedger.Record(_context, User.GetUserId(), inv.UserId, property,
+                        inv.InvestedAmount, inv.Shares, TransactionType.InvestmentRefund,
+                        "InvestmentRevoked", $"validate-payments; Investment={inv.Id}");
                 }
 
+                property.Status = "declined";
+                property.PriorityInvestorId = null;
                 _context.Investments.RemoveRange(investments);
                 await _context.SaveChangesAsync();
                 await financialTransaction.CommitAsync();
@@ -723,8 +715,8 @@ namespace RealEstateInvestment.Controllers
             if (user == null || property == null)
                 return BadRequest(new { message = "Related user or property not found" });
 
-            if (property.Status == "sold")
-                return BadRequest(new { message = "Cannot cancel investment. Property is already sold." });
+            if (property.Status == "sold" || property.Status == "rented")
+                return BadRequest(new { message = "Cannot cancel investment. Property is already finalized." });
 
             if (DateTime.UtcNow > property.ApplicationDeadline)
                 return BadRequest(new { message = "Cannot cancel investment after the application deadline." });
@@ -737,12 +729,9 @@ namespace RealEstateInvestment.Controllers
             property.AvailableShares += investment.Shares;
 
             _context.Investments.Remove(investment);
-            _context.ActionLogs.Add(new ActionLog
-            {
-                UserId = new Guid("2273adeb-483c-4104-a3a9-585b3dad9e27"), // todo add admin guid later
-                Action = "DeleteInvestment",
-                Details = "Delete Investment investmentId: " + investmentId.ToString()
-            });
+            InvestmentLedger.Record(_context, User.GetUserId(), investment.UserId, property,
+                investment.InvestedAmount, investment.Shares, TransactionType.InvestmentRefund,
+                "DeleteInvestment", $"delete-investment; Investment={investment.Id}");
             await _context.SaveChangesAsync();
             await financialTransaction.CommitAsync();
 

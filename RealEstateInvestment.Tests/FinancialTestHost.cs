@@ -43,8 +43,8 @@ internal sealed class FinancialTestHost : IDisposable
         if (isolatedPostgres != null)
         {
             var safe = new Npgsql.NpgsqlConnectionStringBuilder(isolatedPostgres);
-            if (safe.Host != "127.0.0.1" || safe.Database != "qa262b_isolated" || safe.Port != 15433)
-                throw new InvalidOperationException("QA requires the named local restored database");
+            if (safe.Host != "127.0.0.1" || (safe.Database != "qa262b_isolated" && safe.Database != "qa292_isolated") || safe.Port != 15433)
+                throw new InvalidOperationException("QA requires an explicitly allowed local fixture database");
         }
         connection.Open();
         server = new TestServer(new WebHostBuilder().ConfigureServices(services =>
