@@ -132,6 +132,9 @@ function getTitle(item: UserTransaction) {
   if (t === 'deposit') return 'Deposit';
   if (t === 'withdrawal') return 'Withdrawal';
   if (t === 'investment') return 'Share Purchase';
+  if (t === 'cancellistingfee') return 'Listing Cancellation Fee';
+  if (t === 'sharemarketfee') return 'Marketplace Fee';
+  if (t === 'investmentrefund') return 'Investment Refund';
   if (t === 'buyback') return 'Buyback';
   if (t === 'share_market_buy' || t === 'sharemarketbuy') return 'Marketplace Buy';
   if (t === 'share_market_sell' || t === 'sharemarketsell') return 'Marketplace Sale';
@@ -182,6 +185,7 @@ function isPositiveTransaction(item: UserTransaction) {
 
   if (t === 'withdrawal') return false;
   if (t === 'investment') return false;
+  if (t === 'cancellistingfee' || t === 'sharemarketfee') return false;
   if (t === 'share_market_buy' || t === 'sharemarketbuy') return false;
 
   if (item.amount < 0) return false;

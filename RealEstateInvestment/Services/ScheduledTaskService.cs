@@ -1,4 +1,4 @@
-﻿    using RealEstateInvestment.Models;
+    using RealEstateInvestment.Models;
     using RealEstateInvestment.Data;
     using Microsoft.EntityFrameworkCore;
     //using RealEstateInvestment.Services;
@@ -45,86 +45,49 @@
 
             private async Task RunExpiredShareOfferProcessing()
             {
-                using (var scope = _serviceProvider.CreateScope())
-                {
-                    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-                    var now = DateTime.UtcNow;
-
-                    var expiredOffers = await context.ShareOffers
-                        .Include(o => o.Bids)
-                        .Where(o => o.IsActive && o.ExpirationDate <= now)
-                        .ToListAsync();
-
-                    foreach (var offer in expiredOffers)
-                    {
-                        if (offer.SharesForSale <= 0)
-                        {
-                            offer.IsActive = false;
-                            continue;
-                        }
-
-                        var bestBid = offer.Bids
-                            .Where(b => b.Shares <= offer.SharesForSale)
-                            .OrderByDescending(b => b.BidPricePerShare)
-                            .ThenBy(b => b.CreatedAt)
-                            .FirstOrDefault();
-
-                        if (bestBid == null)
-                        {
-                            offer.IsActive = false;
-                            continue;
-                        }
-
-                        var buyer = await context.Users.FindAsync(bestBid.BidderId);
-                        var seller = await context.Users.FindAsync(offer.SellerId);
-                        if (buyer == null || seller == null) continue;
-
-                        var totalCost = bestBid.BidPricePerShare * bestBid.Shares;
-                        if (buyer.WalletBalance < totalCost)
-                            continue;
-
-                        // Перевод средств
-                        buyer.WalletBalance -= totalCost;
-                        seller.WalletBalance += totalCost;
-
-                        // Обновление оффера
-                        //offer.SharesForSale -= bestBid.Shares;
-                        //if (offer.SharesForSale == 0)
-                        offer.IsActive = false;
-
-                        // Добавление инвестиций
-                        var investment = await context.Investments
-                            .FirstOrDefaultAsync(i => i.UserId == buyer.Id && i.PropertyId == offer.PropertyId);
-
-                        if (investment == null)
-                        {
-                            investment = new Investment
-                            {
-                                Id = Guid.NewGuid(),
-                                UserId = buyer.Id,
-                                PropertyId = offer.PropertyId,
-                                Shares = bestBid.Shares,
-                                InvestedAmount = totalCost,
-                                CreatedAt = now
-                            };
-                            context.Investments.Add(investment);
-                        }
-                        else
-                        {
-                            investment.Shares += bestBid.Shares;
-                            investment.InvestedAmount += totalCost;
-                        }
-
-                        context.ActionLogs.Add(new ActionLog
-                        {
-                            UserId = seller.Id,
-                            Action = "AutoAcceptBestBid",
-                            Details = $"Auto-sold {bestBid.Shares} shares to user {buyer.Id} at {bestBid.BidPricePerShare} per share."
-                        });
-                    }
-
-                    await context.SaveChangesAsync();
+                List<Guid> ids;
+                using (var scope = _serviceProvider.CreateScope()) {
+                    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                    ids = await db.ShareOffers.AsNoTracking().Where(x => x.IsActive && x.ExpirationDate <= DateTime.UtcNow)
+                        .Select(x => x.Id).ToListAsync();
                 }
+                foreach (var id in ids) {
+                    try { await ProcessExpiredOffer(id); }
+                    catch (Exception ex) when (IsFinancialConflict(ex)) {
+                        Console.WriteLine($"Expiry conflict {id}; deferred to next tick: {ex.Message}");
+                    }
+                    catch (InvalidOperationException ex) {
+                        // Preserve this offer atomically for investigation; other lots can still expire.
+                        Console.WriteLine($"Expiry requires review {id}: {ex.Message}");
+                    }
+                }
+            }
+
+            private async Task ProcessExpiredOffer(Guid id)
+            {
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+                var offer = await db.ShareOffers.SingleOrDefaultAsync(x => x.Id == id);
+                if (offer == null || !offer.IsActive || offer.ExpirationDate > DateTime.UtcNow) return;
+                var seller = await db.Users.SingleAsync(x => x.Id == offer.SellerId);
+                var settlement = new ShareOfferSettlement(db, scope.ServiceProvider.GetRequiredService<ISuperUserService>());
+                var bids = await db.ShareOfferBids.Where(x => x.OfferId == id && x.Shares > 0 &&
+                        x.Shares <= offer.SharesForSale && x.BidPricePerShare > 0 &&
+                        x.BidPricePerShare >= offer.StartPricePerShare && x.BidderId != offer.SellerId)
+                    .OrderByDescending(x => x.BidPricePerShare).ThenBy(x => x.CreatedAt).ThenBy(x => x.Id).ToListAsync();
+                // Bids do not reserve cash. Select the best currently fundable bid, then return the unsold remainder.
+                foreach (var bid in bids.Where(_ => !seller.IsBlocked && seller.IsDeleted != true && seller.IsEmailConfirmed)) {
+                    var buyer = await db.Users.SingleOrDefaultAsync(x => x.Id == bid.BidderId);
+                    if (buyer == null || buyer.IsBlocked || buyer.IsDeleted == true || !buyer.IsEmailConfirmed ||
+                        buyer.WalletBalance < bid.Shares * bid.BidPricePerShare) continue;
+                    await settlement.Settle(offer, buyer, seller, bid.Shares, bid.BidPricePerShare);
+                    break;
+                }
+                await settlement.ReturnRemainder(offer);
+                db.ActionLogs.Add(new ActionLog { UserId = seller.Id, Action = "ExpireShareOffer", Details = $"Offer={id}" });
+                await db.SaveChangesAsync();
+                await transaction.CommitAsync();
             }
 
             // One fresh context and Serializable transaction per property. No tracked state
@@ -220,6 +183,13 @@
                         else
                         {
                             user.WalletBalance += app.RequestedAmount;
+                            context.UserTransactions.Add(new UserTransaction {
+                                Id = Guid.NewGuid(), UserId = user.Id,
+                                Type = RealEstateInvestment.Enums.TransactionType.InvestmentRefund,
+                                Amount = app.RequestedAmount, Shares = app.RequestedShares,
+                                PropertyId = property.Id, PropertyTitle = property.Title, Timestamp = now,
+                                Notes = $"Rejected application refund; Application={app.Id}"
+                            });
                             property.AvailableShares += app.RequestedShares;
                             property.Status = "declined";
                             property.PriorityInvestorId = null;

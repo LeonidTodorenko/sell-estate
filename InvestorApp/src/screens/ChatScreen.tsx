@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback } from 'react';
+import React, {useRef, useState, useCallback} from 'react';
 import {
   View,
   Text,
@@ -15,10 +15,14 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
 import theme from '../constants/theme';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
-import { BOTTOM_BAR_HEIGHT } from '../components/BottomBar';
+import ErrorState from '../components/ErrorState';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {useFocusEffect} from '@react-navigation/native';
+import {BOTTOM_BAR_HEIGHT} from '../components/BottomBar';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+
+// These requests are represented by local loading/error UI.
+const localRequestUI = {silentLoading: true, silentError: true} as any;
 
 interface ChatMessage {
   id: string;
@@ -38,6 +42,8 @@ const ChatScreen = () => {
   const [sending, setSending] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [isDemo, setIsDemo] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const sendingRef = useRef(false);
 
   const insets = useSafeAreaInsets();
   const bottomOffset = BOTTOM_BAR_HEIGHT + Math.max(insets.bottom, 8);
@@ -46,12 +52,13 @@ const ChatScreen = () => {
 
   const scrollToBottom = () => {
     requestAnimationFrame(() => {
-      listRef.current?.scrollToOffset({ offset: 0, animated: true });
+      listRef.current?.scrollToOffset({offset: 0, animated: true});
     });
   };
 
   const loadChat = useCallback(async () => {
     try {
+      setLoadError(false);
       const stored = await AsyncStorage.getItem('user');
       if (!stored) {
         setLoading(false);
@@ -75,7 +82,7 @@ const ChatScreen = () => {
         return;
       }
 
-      const adminRes = await api.get('/users/admin-id');
+      const adminRes = await api.get('/users/admin-id', localRequestUI);
       const aid = adminRes.data?.adminId;
       if (!aid) {
         setLoading(false);
@@ -84,8 +91,10 @@ const ChatScreen = () => {
 
       setAdminId(aid);
 
-      const chatRes = await api.get(`/chat/conversation/${uid}/${aid}`);
-      const data: ChatMessage[] = Array.isArray(chatRes.data) ? chatRes.data : [];
+      const chatRes = await api.get(`/chat/conversation/${uid}/${aid}`, localRequestUI);
+      const data: ChatMessage[] = Array.isArray(chatRes.data)
+        ? chatRes.data
+        : [];
 
       const sorted = [...data].sort(
         (a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime(),
@@ -95,7 +104,7 @@ const ChatScreen = () => {
       setTimeout(scrollToBottom, 50);
     } catch (e) {
       console.error(e);
-      Alert.alert('Error', 'Failed to load chat');
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -121,8 +130,12 @@ const ChatScreen = () => {
   }, [loadChat]);
 
   const sendMessage = async () => {
+    if (sendingRef.current) return;
     if (isDemo) {
-      Alert.alert('Demo Mode', 'Live support chat is disabled in the sandbox. No message will be sent.');
+      Alert.alert(
+        'Demo Mode',
+        'Live support chat is disabled in the sandbox. No message will be sent.',
+      );
       return;
     }
     const text = input.trim();
@@ -133,26 +146,16 @@ const ChatScreen = () => {
     }
 
     try {
+      sendingRef.current = true;
       setSending(true);
-
-      const optimistic: ChatMessage = {
-        id: `tmp-${Date.now()}`,
-        senderId: userId,
-        recipientId: adminId,
-        content: text,
-        sentAt: new Date().toISOString(),
-      };
-
-      setMessages((prev) => [optimistic, ...prev]);
-      setInput('');
-      setTimeout(scrollToBottom, 50);
 
       await api.post('/chat/send', {
         recipientId: adminId,
         content: text,
-      });
+      }, localRequestUI);
+      setInput('');
 
-      const res = await api.get(`/chat/conversation/${userId}/${adminId}`);
+      const res = await api.get(`/chat/conversation/${userId}/${adminId}`, localRequestUI);
       const data: ChatMessage[] = Array.isArray(res.data) ? res.data : [];
       const sorted = [...data].sort(
         (a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime(),
@@ -162,13 +165,17 @@ const ChatScreen = () => {
       setTimeout(scrollToBottom, 50);
     } catch (error) {
       console.error('Failed to send message', error);
-      Alert.alert('Error', 'Failed to send message');
+      Alert.alert(
+        'Message not confirmed',
+        'Your text is kept if sending failed. Delivery may be uncertain; refresh the conversation before sending again.',
+      );
     } finally {
+      sendingRef.current = false;
       setSending(false);
     }
   };
 
-  const renderItem = ({ item }: { item: ChatMessage }) => {
+  const renderItem = ({item}: {item: ChatMessage}) => {
     const isMine = item.senderId === userId;
     const time = item.sentAt
       ? new Date(item.sentAt).toLocaleTimeString([], {
@@ -178,12 +185,19 @@ const ChatScreen = () => {
       : '';
 
     return (
-      <View style={[styles.messageRow, isMine ? styles.rowRight : styles.rowLeft]}>
-        <View style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleOther]}>
+      <View
+        style={[styles.messageRow, isMine ? styles.rowRight : styles.rowLeft]}>
+        <View
+          style={[
+            styles.bubble,
+            isMine ? styles.bubbleMine : styles.bubbleOther,
+          ]}>
           <Text style={[styles.messageText, isMine && styles.messageTextMine]}>
             {item.content}
           </Text>
-          <Text style={[styles.timeText, isMine && styles.timeTextMine]}>{time}</Text>
+          <Text style={[styles.timeText, isMine && styles.timeTextMine]}>
+            {time}
+          </Text>
         </View>
       </View>
     );
@@ -198,12 +212,29 @@ const ChatScreen = () => {
     );
   }
 
+  if (loadError && messages.length === 0)
+    return (
+      <ErrorState
+        title="Unable to load chat"
+        onRetry={onRefresh}
+        isRetrying={refreshing}
+      />
+    );
+
   if (isDemo) {
     return (
-      <View style={[styles.container, styles.center, { paddingHorizontal: 28 }]}>
-        <Ionicons name="chatbubble-ellipses-outline" size={48} color={theme.colors.primary} />
-        <Text style={[styles.emptyTitle, { marginTop: 16 }]}>Chat is read-only in Demo Mode</Text>
-        <Text style={styles.emptySubtitle}>Messages are not sent to production support from sandbox accounts.</Text>
+      <View style={[styles.container, styles.center, {paddingHorizontal: 28}]}>
+        <Ionicons
+          name="chatbubble-ellipses-outline"
+          size={48}
+          color={theme.colors.primary}
+        />
+        <Text style={[styles.emptyTitle, {marginTop: 16}]}>
+          Chat is read-only in Demo Mode
+        </Text>
+        <Text style={styles.emptySubtitle}>
+          Messages are not sent to production support from sandbox accounts.
+        </Text>
       </View>
     );
   }
@@ -216,12 +247,18 @@ const ChatScreen = () => {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={bottomOffset}
-    >
+      keyboardVerticalOffset={bottomOffset}>
+      {loadError && (
+        <Text
+          accessibilityRole="alert"
+          style={{padding: 12, color: theme.colors.danger}}>
+          Refresh failed. Pull down to retry.
+        </Text>
+      )}
       <FlatList
         ref={listRef}
         data={messages}
-        keyExtractor={(item) => item.id}
+        keyExtractor={item => item.id}
         renderItem={renderItem}
         inverted
         showsVerticalScrollIndicator={false}
@@ -231,7 +268,9 @@ const ChatScreen = () => {
           paddingHorizontal: 8,
           flexGrow: messages.length === 0 ? 1 : undefined,
         }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
             <Text style={styles.emptyTitle}>No messages here yet</Text>
@@ -249,37 +288,30 @@ const ChatScreen = () => {
             bottom: barHeight,
             paddingBottom: 0,
           },
-        ]}
-      >
-        <TouchableOpacity
-          activeOpacity={1}
-          style={styles.attachButton}
-          onPress={() => Alert.alert('Info', 'File attachments are not available yet')}
-        >
-          <Ionicons name="attach-outline" size={18} color="#6B7280" />
-        </TouchableOpacity>
-
-       <TextInput
-  style={styles.input}
-  value={input}
-  onChangeText={setInput}
-  placeholder="Enter your question"
-  placeholderTextColor="#A1A1AA"
-  multiline
-  scrollEnabled
-  textAlignVertical="center"
-  maxLength={2000}
-/>
+        ]}>
+        <TextInput
+          style={styles.input}
+          value={input}
+          editable={!sending}
+          onChangeText={setInput}
+          placeholder="Enter your question"
+          placeholderTextColor="#52675e"
+          multiline
+          scrollEnabled
+          textAlignVertical="center"
+          maxLength={2000}
+        />
 
         <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel="Send message"
           onPress={sendMessage}
-          disabled={sending || input.trim().length === 0}
+          disabled={sending || !userId || !adminId || input.trim().length === 0}
           style={[
             styles.sendBtn,
             (sending || input.trim().length === 0) && styles.sendBtnDisabled,
           ]}
-          activeOpacity={1}
-        >
+          activeOpacity={1}>
           {sending ? (
             <Text style={styles.sendBtnText}>…</Text>
           ) : (
@@ -297,7 +329,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    
   },
 
   center: {
@@ -327,7 +358,7 @@ const styles = StyleSheet.create({
 
   emptySubtitle: {
     fontSize: 12,
-    color: '#A1A1AA',
+    color: '#52675e',
     textAlign: 'center',
   },
 
@@ -352,7 +383,7 @@ const styles = StyleSheet.create({
   },
 
   bubbleMine: {
-    backgroundColor: '#11A36A',
+    backgroundColor: '#098653',
     borderBottomRightRadius: 6,
   },
 
@@ -364,7 +395,7 @@ const styles = StyleSheet.create({
   messageText: {
     fontSize: 14,
     lineHeight: 20,
-    color: '#111827',
+    color: '#18382c',
   },
 
   messageTextMine: {
@@ -391,14 +422,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#dce7e0',
     paddingLeft: 8,
     paddingRight: 8,
     paddingVertical: 8,
     shadowColor: '#000',
     shadowOpacity: 0.05,
     shadowRadius: 10,
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: {width: 0, height: 3},
     elevation: 9,
   },
 
@@ -411,26 +442,27 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
 
-input: {
-  flex: 1,
-  height: 52,
-  fontSize: 14,
-  color: theme.colors.text,
-  paddingHorizontal: 6,
-  paddingVertical: 6,
-  borderRadius: 20,
-  backgroundColor: 'transparent',
-  textAlignVertical: 'center',
-},
+  input: {
+    flex: 1,
+    minHeight: 48,
+    maxHeight: 120,
+    fontSize: 14,
+    color: theme.colors.text,
+    paddingHorizontal: 6,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: 'transparent',
+    textAlignVertical: 'center',
+  },
 
   sendBtn: {
-    width: 34,
-    height: 34,
-   
-  borderRadius: 18,
+    width: 48,
+    height: 48,
+
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-   backgroundColor: '#11A36A',
+    backgroundColor: '#098653',
     marginLeft: 8,
   },
 

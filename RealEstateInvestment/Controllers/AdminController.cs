@@ -108,7 +108,7 @@ namespace RealEstateInvestment.Controllers
             {
                 FullName = req.FullName,
                 Email = req.Email,
-                PasswordHash = req.Password, // TODO hash
+                PasswordHash = PasswordHasher.HashPassword(req.Password),
                 SecretWord = "created-by-admin",
                 Role = req.Role == UserRole.Admin ? "admin" : "investor", // временно
                 UserRole = req.Role,
@@ -254,7 +254,7 @@ namespace RealEstateInvestment.Controllers
                 ? $"Tmp{Guid.NewGuid().ToString("N")[..8]}!"
                 : req.TempPassword;
 
-            u.PasswordHash = temp; // TODO: hash
+            u.PasswordHash = PasswordHasher.HashPassword(temp);
             _db.ActionLogs.Add(new ActionLog { UserId = id, Action = "AdminResetPassword", Details = "Temp password set" });
 
             // уведомим пользователя

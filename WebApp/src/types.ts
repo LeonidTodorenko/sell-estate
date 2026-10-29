@@ -8,7 +8,7 @@ export interface Property {
 }
 export interface PropertyImage { id: string; base64Data: string }
 export interface Investment { id: string; propertyId: string; shares: number; investedAmount: number; createdAt: string }
-export interface Holding { propertyId: string; propertyTitle: string; totalShares: number; totalInvested: number; totalShareValue: number; ownershipPercent: number; monthlyRentalIncome: number }
+export interface Holding { confirmedShares?: number; marketShares?: number; confirmedApplications?: number; propertyId: string; propertyTitle: string; totalShares: number; totalInvested: number; totalShareValue: number; ownershipPercent: number; monthlyRentalIncome: number }
 export interface Totals { walletBalance?: number; investmentValue?: number; pendingApplicationsValue?: number; marketValue?: number; rentalIncome?: number; totalAssets?: number }
 export interface ShareOffer { id: string; sellerId: string; propertyId: string; propertyTitle: string; sharesForSale: number; isActive: boolean; expirationDate: string; startPricePerShare?: number; buyoutPricePerShare?: number | null }
 export interface Transaction { id: string; type: string; amount: number; shares?: number; propertyId?: string; propertyTitle?: string; timestamp: string; notes?: string }

@@ -1,0 +1,101 @@
+/* Iteration 20 â€” shared OwnersClub visual language, no behavioral changes. */
+:root {
+  --oc-accent: #098653;
+  --oc-accent-hover: #076b43;
+  --oc-ink: #18382c;
+  --oc-muted: #52675e;
+  --oc-line: #dce7e0;
+  --oc-surface: #fff;
+  --oc-soft: #f0f7f3;
+  --oc-radius: 12px;
+  --oc-success-bg: #e6f4ec;
+  --oc-success-ink: #14613f;
+  --oc-warning-bg: #fff5da;
+  --oc-warning-ink: #77530c;
+  --oc-danger-bg: #fcece9;
+  --oc-danger-ink: #9c3429;
+}
+button, .button {
+  min-height: 44px;
+  border-radius: var(--oc-radius);
+  border-color: var(--oc-line);
+  color: var(--oc-ink);
+  background: var(--oc-surface);
+}
+button:hover, .button.secondary:hover { background: var(--oc-soft); }
+.button { background: var(--oc-accent); border-color: var(--oc-accent); color: #fff; }
+.button:hover { background: var(--oc-accent-hover); border-color: var(--oc-accent-hover); }
+.button.secondary { color: var(--oc-accent); background: var(--oc-surface); border-color: var(--oc-line); }
+input:not([type=checkbox]), select, textarea {
+  border-color: var(--oc-line);
+  border-radius: 10px;
+  background: var(--oc-surface);
+  color: var(--oc-ink);
+}
+input::placeholder, textarea::placeholder { color: #6c7e74; opacity: 1; }
+input:focus-visible, select:focus-visible, textarea:focus-visible,
+button:focus-visible, a:focus-visible { outline: 3px solid var(--oc-accent); outline-offset: 3px; }
+.tag { background: var(--oc-success-bg); color: var(--oc-success-ink); font-weight: 600; }
+.tag.neutral { background: #eef2ef; color: var(--oc-muted); }
+.tag.status-warning { background: var(--oc-warning-bg); color: var(--oc-warning-ink); }
+.tag.status-danger { background: var(--oc-danger-bg); color: var(--oc-danger-ink); }
+.sidebar { background: linear-gradient(180deg, #f5faf7, #fff 55%); border-color: var(--oc-line); }
+.sidebar nav a { min-height: 44px; display: flex; align-items: center; }
+.sidebar nav a.active { color: var(--oc-success-ink); background: var(--oc-success-bg); box-shadow: inset 3px 0 var(--oc-accent); }
+.sidebar-bottom { border-top: 1px solid var(--oc-line); margin-top: auto; }
+.workspace-label { color: var(--oc-muted); font-weight: 650; }
+.topbar { border-color: var(--oc-line); }
+.account-link { border: 1px solid var(--oc-line); border-radius: 24px; padding: 5px 12px 5px 5px; min-height: 46px; }
+/* Admin uses the same tokens and controls as the investor portal. */
+.admin-shell .main-content { width: 100%; }
+.admin-shell .topbar > span { color: var(--oc-success-ink); background: var(--oc-success-bg); border-radius: 20px; padding: 6px 12px; font-weight: 600; }
+.admin-shell .page-heading { padding-bottom: 22px; border-bottom: 1px solid var(--oc-line); }
+.admin-shell .page-heading p { max-width: 680px; }
+.admin-shell .admin-filter { box-shadow: none; gap: 14px; border-color: var(--oc-line); }
+.admin-shell .table-wrap { padding: 0; border-color: var(--oc-line); }
+.admin-shell table { font-size: .875rem; }
+.admin-shell th { background: var(--oc-soft); color: #405d4d; font-weight: 650; padding: 15px 20px; border-bottom-color: var(--oc-line); }
+.admin-shell td { padding: 19px 20px; vertical-align: middle; }
+.admin-shell tbody tr:hover { background: #f8fbf9; }
+.admin-shell tbody tr:focus-within { background: var(--oc-soft); }
+.admin-shell td a { font-weight: 600; }
+.admin-shell td small { color: var(--oc-muted); }
+.admin-shell .tag { white-space: nowrap; padding: 5px 11px; font-size: .75rem; }
+.admin-shell .admin-metrics .metric { border-top: 3px solid #c7dfd1; padding: 22px; }
+.admin-shell .admin-metrics .metric:first-child { border-top-color: var(--oc-accent); }
+.admin-shell .admin-metrics .metric strong { font-size: 1.9rem; }
+.admin-shell .admin-pagination { padding: 14px; border: 1px solid var(--oc-line); border-radius: var(--oc-radius); background: var(--oc-surface); }
+.admin-shell .admin-details dt { color: var(--oc-muted); }
+.admin-shell .admin-details dd { color: var(--oc-ink); }
+@media(max-width:760px) {
+  .sidebar-bottom { margin-top: 16px; padding-top: 16px; }
+  .admin-shell .topbar > span { flex-basis: auto; }
+  .admin-shell .page-heading { padding-bottom: 18px; margin-bottom: 20px; }
+  .admin-shell .admin-filter { padding: 16px; }
+  .admin-shell .admin-filter label { min-width: 0; width: 100%; flex-basis: 100%; }
+  .admin-shell .table-wrap { padding: 0; }
+  .admin-shell th, .admin-shell td { padding: 14px 16px; }
+  .admin-shell .admin-metrics .metric { padding: 20px; }
+}
+
+/* Iteration 20.2 — mobile record cards and viewport-bounded admin navigation. */
+@media(max-width:760px) {
+  .admin-shell .table-wrap { overflow: visible; border: 0; background: transparent; }
+  .admin-shell table, .admin-shell tbody { display: block; width: 100%; }
+  /* Retain column headers for assistive technology. */
+  .admin-shell thead { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .admin-shell tbody { display: grid; gap: 16px; }
+  .admin-shell tbody tr { display: block; min-width: 0; padding: 4px 16px; border: 1px solid var(--oc-line); border-radius: var(--oc-radius); background: var(--oc-surface); }
+  .admin-shell td { display: grid; grid-template-columns: minmax(0, 1fr); gap: 5px; min-width: 0; max-width: none; padding: 12px 0; overflow-wrap: anywhere; border-bottom: 1px solid var(--oc-line); }
+  .admin-shell td::before { content: attr(data-label); font-size: .75rem; font-weight: 600; color: var(--oc-muted); }
+  .admin-shell td small { margin-top: 0; }
+  .admin-shell td .tag { justify-self: start; white-space: normal; }
+  .admin-shell tbody tr td:last-child { border-bottom: 0; }
+  .admin-shell .sidebar { position: sticky; top: 0; z-index: 10; gap: 0; max-height: 100vh; max-height: 100dvh; background: var(--oc-surface); }
+  .admin-shell .sidebar-heading { flex-shrink: 0; }
+  .admin-shell .menu-open .navigation-content { max-height: min(520px, calc(100vh - 100px)); max-height: min(520px, calc(100dvh - 100px)); overflow-y: auto; overscroll-behavior: contain; margin-top: 12px; padding: 4px; gap: 12px; }
+  .admin-shell .sidebar nav { gap: 2px; }
+  .admin-shell .sidebar nav a { padding: 8px 12px; }
+  .admin-shell .sidebar-bottom { display: grid; gap: 10px; margin-top: 0; padding-top: 12px; }
+  .admin-shell .sidebar-bottom > span { max-width: none; }
+}

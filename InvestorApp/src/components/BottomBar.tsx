@@ -1,11 +1,19 @@
-import React, { useEffect, useMemo, useState, useContext } from 'react';
-import { View, Pressable, Text, StyleSheet, Modal, Image, Alert } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import type { RootStackParamList } from '../navigation/AppNavigator';
-import { performLogout } from '../services/authLogout';
+import React, {useEffect, useMemo, useState, useContext} from 'react';
+import {
+  View,
+  Pressable,
+  Text,
+  StyleSheet,
+  Modal,
+  Image,
+  Alert,
+} from 'react-native';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import type {RootStackParamList} from '../navigation/AppNavigator';
+import {performLogout} from '../services/authLogout';
 import theme from '../constants/theme';
-import { navigationRef } from '../navigation/navigationRef';
-import { AuthContext } from '../contexts/AuthContext';
+import {navigationRef} from '../navigation/navigationRef';
+import {AuthContext} from '../contexts/AuthContext';
 
 export const BOTTOM_BAR_HEIGHT = 84;
 
@@ -46,9 +54,18 @@ const BTN = ({
   onPress,
   isMore = false,
 }: BtnProps) => (
-  <Pressable style={styles.btn} onPress={onPress}>
+  <Pressable
+    accessibilityRole="tab"
+    accessibilityLabel={label}
+    accessibilityState={{selected: !!active}}
+    style={styles.btn}
+    onPress={onPress}>
     {isMore ? (
-      <Text style={[styles.moreIcon, { color: active ? theme.colors.primary : theme.colors.textSecondary }]}>
+      <Text
+        style={[
+          styles.moreIcon,
+          {color: active ? theme.colors.primary : theme.colors.textSecondary},
+        ]}>
         ⋯
       </Text>
     ) : (
@@ -59,7 +76,11 @@ const BTN = ({
       />
     )}
 
-    <Text style={[styles.label, { color: active ? theme.colors.primary : theme.colors.textSecondary }]}>
+    <Text
+      style={[
+        styles.label,
+        {color: active ? theme.colors.primary : theme.colors.textSecondary},
+      ]}>
       {label}
     </Text>
   </Pressable>
@@ -73,13 +94,13 @@ function safeNavigate(name: keyof RootStackParamList) {
 
 function safeResetToLogin() {
   if (navigationRef.isReady()) {
-    navigationRef.reset({ index: 0, routes: [{ name: 'Login' as never }] });
+    navigationRef.reset({index: 0, routes: [{name: 'Login' as never}]});
   }
 }
 
 export default function BottomBar() {
   const insets = useSafeAreaInsets();
-  const { isGuest, signOut } = useContext(AuthContext);
+  const {isGuest, signOut} = useContext(AuthContext);
 
   const [open, setOpen] = useState(false);
   const [routeName, setRouteName] = useState<string | undefined>(undefined);
@@ -87,7 +108,7 @@ export default function BottomBar() {
   const guestBlock = () => {
     Alert.alert(
       'Account required',
-      'Please create an account or log in to use this feature.'
+      'Please create an account or log in to use this feature.',
     );
   };
 
@@ -117,13 +138,17 @@ export default function BottomBar() {
   const bottomPad = Math.max(insets.bottom, 8);
   const barHeight = BOTTOM_BAR_HEIGHT + bottomPad;
 
-  const isActive = useMemo(() => (name: string) => routeName === name, [routeName]);
+  const isActive = useMemo(
+    () => (name: string) => routeName === name,
+    [routeName],
+  );
 
   return (
     <>
-      <View style={[styles.wrap, { paddingBottom: bottomPad, height: barHeight }]}>
+      <View
+        style={[styles.wrap, {paddingBottom: bottomPad, height: barHeight}]}>
         <BTN
-          label=" "
+          label="Home"
           iconActive={homeGreen}
           iconInactive={homeGray}
           active={isActive('Home')}
@@ -131,7 +156,7 @@ export default function BottomBar() {
         />
 
         <BTN
-          label=" "
+          label="Explore"
           iconActive={propertyGreen}
           iconInactive={propertyGray}
           active={isActive('Properties')}
@@ -139,7 +164,7 @@ export default function BottomBar() {
         />
 
         <BTN
-          label=" "
+          label="Market"
           iconActive={marketGreen}
           iconInactive={marketGray}
           active={isActive('ShareMarketplaces')}
@@ -147,7 +172,7 @@ export default function BottomBar() {
         />
 
         <BTN
-          label=" "
+          label="Chat"
           iconActive={supportGreen}
           iconInactive={supportGray}
           active={isActive('Chat')}
@@ -155,22 +180,21 @@ export default function BottomBar() {
         />
 
         <BTN
-          label=" "
+          label="Profile"
           iconActive={personalGreen}
           iconInactive={personalGray}
           active={isActive('Profile')}
           onPress={() => guardedNavigate('Profile')}
         />
 
-        <BTN
-          label="More"
-          active={open}
-          onPress={() => setOpen(true)}
-          isMore
-        />
+        <BTN label="More" active={open} onPress={() => setOpen(true)} isMore />
       </View>
 
-      <Modal transparent visible={open} animationType="fade" onRequestClose={() => setOpen(false)}>
+      <Modal
+        transparent
+        visible={open}
+        animationType="fade"
+        onRequestClose={() => setOpen(false)}>
         <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
           <View style={styles.sheet} pointerEvents="box-none">
             <View style={styles.sheetBody}>
@@ -179,8 +203,7 @@ export default function BottomBar() {
                 onPress={() => {
                   setOpen(false);
                   guardedNavigate('MyInvestments');
-                }}
-              >
+                }}>
                 <Image source={historyIcon} style={styles.sheetIcon} />
                 <Text style={styles.sheetText}>History</Text>
               </Pressable>
@@ -190,8 +213,7 @@ export default function BottomBar() {
                 onPress={() => {
                   setOpen(false);
                   guardedNavigate('MyFinance');
-                }}
-              >
+                }}>
                 <Image source={statsIcon} style={styles.sheetIcon} />
                 <Text style={styles.sheetText}>Statistics</Text>
               </Pressable>
@@ -201,8 +223,7 @@ export default function BottomBar() {
                 onPress={() => {
                   setOpen(false);
                   guardedNavigate('Withdraw');
-                }}
-              >
+                }}>
                 <Image source={withdrawIcon} style={styles.sheetIcon} />
                 <Text style={styles.sheetText}>Withdraw</Text>
               </Pressable>
@@ -221,10 +242,9 @@ export default function BottomBar() {
                   }
 
                   await performLogout(() => safeResetToLogin());
-                }}
-              >
+                }}>
                 <Image source={logoutIcon} style={styles.sheetIcon} />
-                <Text style={[styles.sheetText, { color: theme.colors.danger }]}>
+                <Text style={[styles.sheetText, {color: theme.colors.danger}]}>
                   {isGuest ? 'Log In / Create Account' : 'Logout'}
                 </Text>
               </Pressable>
@@ -255,7 +275,7 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOpacity: 0.08,
     shadowRadius: 12,
-    shadowOffset: { width: 0, height: -2 },
+    shadowOffset: {width: 0, height: -2},
     elevation: 12,
     zIndex: 100,
   },
@@ -264,14 +284,15 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 56,
+    minWidth: 0,
+    minHeight: 48,
     paddingTop: 8,
     gap: 4,
   },
 
   icon: {
-    width: 56,
-    height: 56,
+    width: 32,
+    height: 32,
   },
 
   moreIcon: {

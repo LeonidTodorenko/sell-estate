@@ -154,7 +154,8 @@ const UploadKycScreen = () => {
       const res = await launchImageLibrary({
         mediaType: 'photo',
         includeBase64: true,
-        quality: 0.85,
+        // Native picker accepts .85; its declaration only enumerates tenths.
+        quality: 0.85 as import('react-native-image-picker').PhotoQuality,
       });
 
       if (res.assets?.length) {
@@ -172,7 +173,8 @@ const UploadKycScreen = () => {
       const res = await launchCamera({
         mediaType: 'photo',
         includeBase64: true,
-        quality: 0.85,
+        // Native picker accepts .85; its declaration only enumerates tenths.
+        quality: 0.85 as import('react-native-image-picker').PhotoQuality,
         saveToPhotos: false,
       });
 

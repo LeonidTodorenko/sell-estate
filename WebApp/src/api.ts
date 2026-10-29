@@ -1,4 +1,5 @@
 import { demoTopUpContract } from './financial-contracts';
+import { isAdminSession } from './admin-contracts';
 import { isExpired, normalizeSession } from './session';
 import type { Session } from './types';
 import { authPaths, confirmationPath, registrationPayload, resetPayload, forgotPayload, type Registration } from './onboarding-contracts';
@@ -31,7 +32,7 @@ export class ApiError extends Error {
   status: number;
   constructor(message: string, status: number) { super(message); this.status = status; }
 }
-async function request<T>(path: string, token?: string, body?: unknown, signal?: AbortSignal): Promise<T> {
+async function request<T>(path: string, token?: string, body?: unknown, signal?: AbortSignal, method?: string): Promise<T> {
   const controller = new AbortController();
   const cancel = () => controller.abort();
   if (signal?.aborted) cancel();
@@ -39,7 +40,7 @@ async function request<T>(path: string, token?: string, body?: unknown, signal?:
   const timer = setTimeout(cancel, 45000);
   try {
     const response = await fetch(`${API_BASE_URL}${path}`, {
-      method: body === undefined ? 'GET' : 'POST', credentials: 'omit', signal: controller.signal,
+      method: method || (body === undefined ? 'GET' : 'POST'), credentials: 'omit', signal: controller.signal,
       headers: { Accept: 'application/json', ...(body === undefined ? {} : { 'Content-Type': 'application/json' }), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
@@ -173,4 +174,33 @@ export async function financialWrite(expected: Session, path: string, body: unkn
   financialPending = true;
   try { return await accountWrite(expected, path, body); }
   finally { financialPending = false; }
+}
+
+// A closed action list, current admin session and no automatic POST retries.
+export async function adminWrite(expected: Session, action: 'role' | 'block' | 'unblock' | 'approve', id: string, role?: number) {
+  let current = session;
+  const allowed = () => isAdminSession(current) && current?.user.id === expected.user.id && isAdminSession(expected);
+  if (!allowed()) throw new ApiError('Administrator access is required.', 403);
+  if (current && isExpired(current)) current = await refresh();
+  if (!allowed() || !current) throw new ApiError('Your administrator session changed. Reload this page.', 403);
+  const target = encodeURIComponent(id);
+  if (!id || (action !== 'approve' && id === current.user.id)) throw new ApiError('You cannot change your own account here.', 403);
+  if (action === 'role' && role !== 0 && role !== 1) throw new ApiError('Only Investor and Moderator roles are available here.', 403);
+  const path = action === 'role' ? `/admin/users/${target}/set-role` : action === 'approve' ? `/kyc/${target}/approve` : `/users/${target}/${action}`;
+  return request(path, current.accessToken, action === 'role' ? { role } : {});
+}
+
+// Property writes use a closed route set and never replay after an uncertain response.
+export async function propertyWrite(expected: Session, action: 'update' | 'add-image' | 'delete-image', id: string, body?: unknown) {
+  let current = session;
+  const allowed = () => isAdminSession(expected) && isAdminSession(current) && current?.user.id === expected.user.id;
+  if (!allowed()) throw new ApiError('Administrator access is required.', 403);
+  if (current && isExpired(current)) current = await refresh();
+  if (!allowed() || !current || !id) throw new ApiError('Your administrator session changed. Reload this page.', 403);
+  const target = encodeURIComponent(id);
+  const path = action === 'delete-image' ? `/properties/images/${target}` : `/properties/${target}${action === 'add-image' ? '/images' : ''}`;
+  const result = await request(path, current.accessToken, body, undefined, action === 'update' ? 'PUT' : action === 'delete-image' ? 'DELETE' : 'POST');
+  if (!allowed() || session?.user.id !== expected.user.id || !isAdminSession(session)) throw new ApiError('Account changed. Verify the saved state before retrying.', 403);
+  window.dispatchEvent(new Event('property-images-changed'));
+  return result;
 }

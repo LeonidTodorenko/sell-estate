@@ -236,7 +236,7 @@ const InlinePasswordField = ({
       <Ionicons
         name={secure ? "eye-off-outline" : "eye-outline"}
         size={18}
-        color="#6B7280"
+        color="#52675e"
       />
     </Pressable>
   </View>
@@ -762,9 +762,9 @@ const ShareMarketplaceScreen = () => {
                 onPress={() => openExtendModal(item)}
                 width="full"
                 showArrow={false}
-                bgColor="#111827"
+                bgColor="#18382c"
                 textColor="#FFFFFF"
-                borderColor="#111827"
+                borderColor="#18382c"
                 paddingVertical={10}
                 style={styles.salesActionButton}
               />
@@ -781,9 +781,9 @@ const ShareMarketplaceScreen = () => {
               }
               width="full"
               showArrow={false}
-              bgColor="#111827"
+              bgColor="#18382c"
               textColor="#FFFFFF"
-              borderColor="#111827"
+              borderColor="#18382c"
               paddingVertical={10}
               style={styles.singleActionButton}
             />
@@ -811,9 +811,9 @@ const ShareMarketplaceScreen = () => {
               onPress={() => openBidModal(item)}
               width="full"
               showArrow={false}
-              bgColor="#10B981"
+              bgColor="#098653"
               textColor="#FFFFFF"
-              borderColor="#10B981"
+              borderColor="#098653"
               paddingVertical={10}
               style={styles.actionButtonHalf}
             />
@@ -968,9 +968,9 @@ const ShareMarketplaceScreen = () => {
                     onPress={submitBid}
                     width="full"
                     showArrow={false}
-                    bgColor="#10B981"
+                    bgColor="#098653"
                     textColor="#FFFFFF"
-                    borderColor="#10B981"
+                    borderColor="#098653"
                     paddingVertical={12}
                     style={styles.modalConfirmBtn}
                   />
@@ -1040,9 +1040,9 @@ const ShareMarketplaceScreen = () => {
                 onPress={handleBuyNow}
                 width="full"
                 showArrow={false}
-                bgColor="#10B981"
+                bgColor="#098653"
                 textColor="#FFFFFF"
-                borderColor="#10B981"
+                borderColor="#098653"
                 paddingVertical={12}
                 style={styles.modalConfirmBtn}
               />
@@ -1091,9 +1091,9 @@ const ShareMarketplaceScreen = () => {
                 onPress={handleCancelOffer}
                 width="full"
                 showArrow={false}
-                bgColor="#10B981"
+                bgColor="#098653"
                 textColor="#FFFFFF"
-                borderColor="#10B981"
+                borderColor="#098653"
                 paddingVertical={12}
                 style={styles.modalDualBtn}
               />
@@ -1145,9 +1145,9 @@ const ShareMarketplaceScreen = () => {
                 onPress={handleExtendOffer}
                 width="full"
                 showArrow={false}
-                bgColor="#10B981"
+                bgColor="#098653"
                 textColor="#FFFFFF"
-                borderColor="#10B981"
+                borderColor="#098653"
                 paddingVertical={12}
                 style={styles.modalConfirmBtn}
               />
@@ -1208,7 +1208,7 @@ const styles = StyleSheet.create({
   },
   totalValueLabel: {
     color: theme.colors.textSecondary,
-    fontSize: 10,
+    fontSize: 12,
   },
   totalValueText: {
     color: theme.colors.text,
@@ -1218,8 +1218,8 @@ const styles = StyleSheet.create({
   },
 
   headerTitle: {
-    fontSize: 18,
-    fontWeight: "600",
+    fontSize: 24,
+    fontWeight: "700",
     color: theme.colors.text,
   },
 
@@ -1565,7 +1565,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: "#F3F4F6",
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: "#dce7e0",
     paddingHorizontal: 12,
     marginBottom: 14,
     color: theme.colors.text,
@@ -1581,7 +1581,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: "#F3F4F6",
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: "#dce7e0",
     paddingHorizontal: 12,
     paddingRight: 42,
     color: theme.colors.text,
@@ -1685,7 +1685,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: "#F3F4F6",
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: "#dce7e0",
     paddingHorizontal: 12,
     justifyContent: "center",
     marginBottom: 14,

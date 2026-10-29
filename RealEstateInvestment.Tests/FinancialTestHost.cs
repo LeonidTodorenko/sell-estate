@@ -38,14 +38,21 @@ internal sealed class FinancialTestHost : IDisposable
     public IServiceProvider Services => server.Services;
 
     public FinancialTestHost(Action<IServiceCollection>? configure = null,
-        Microsoft.EntityFrameworkCore.Diagnostics.IInterceptor? interceptor = null)
+        Microsoft.EntityFrameworkCore.Diagnostics.IInterceptor? interceptor = null, string? isolatedPostgres = null)
     {
+        if (isolatedPostgres != null)
+        {
+            var safe = new Npgsql.NpgsqlConnectionStringBuilder(isolatedPostgres);
+            if (safe.Host != "127.0.0.1" || safe.Database != "qa262b_isolated" || safe.Port != 15433)
+                throw new InvalidOperationException("QA requires the named local restored database");
+        }
         connection.Open();
         server = new TestServer(new WebHostBuilder().ConfigureServices(services =>
         {
             services.AddDbContext<AppDbContext>(o =>
             {
-                o.UseSqlite(connection);
+                if (isolatedPostgres == null) o.UseSqlite(connection);
+                else o.UseNpgsql(isolatedPostgres);
                 if (interceptor != null) o.AddInterceptors(interceptor);
             });
             services.AddSingleton<ISuperUserService>(new StubSuperUser(Admin));
@@ -127,7 +134,7 @@ internal sealed class FinancialTestHost : IDisposable
     private static User Normal(Guid id, string pin, string role = "investor") => new()
     {
         Id = id, FullName = "Test", Email = $"{id}@example.invalid", ClientNumber = id.ToString(),
-        PasswordHash = "plain-" + pin, SecretWord = "test", PinCode = pin,
+        PasswordHash = PasswordHasher.HashPassword("plain-" + pin), SecretWord = "test", PinCode = pin,
         IsEmailConfirmed = true, WalletBalance = 1000, Role = role,
         UserRole = role == "admin" ? UserRole.Admin : UserRole.Investor
     };

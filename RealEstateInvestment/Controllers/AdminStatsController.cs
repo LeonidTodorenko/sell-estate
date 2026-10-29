@@ -32,9 +32,9 @@ namespace RealEstateInvestment.Controllers
         public async Task<IActionResult> GetStats()
         {
             var investors = await _context.Users.CountAsync(u => u.Role == "investor");
-            var totalInvestments = await _context.Investments.SumAsync(i => i.InvestedAmount);
+            var totalInvestments = await ExactStatsSum.InvestmentsAsync(_context);
             var totalProperties = await _context.Properties.CountAsync();
-            var totalRentalIncome = await _context.RentalIncomes.SumAsync(r => (decimal?)r.Amount) ?? 0;
+            var totalRentalIncome = await ExactStatsSum.RentAsync(_context);
             var pendingWithdrawals = await _context.WithdrawalRequests.CountAsync(w => w.Status == "pending");
             var pendingKyc = await _context.Users.CountAsync(u => u.KycStatus == "pending");
 

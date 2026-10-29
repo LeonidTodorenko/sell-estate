@@ -45,7 +45,7 @@ export async function fetchPropertiesWithExtras(limitExtras = 8): Promise<Proper
 
       const rawMedia = Array.isArray(mediaRes.data) ? mediaRes.data : [];
  
-     const normalizedMedia = rawMedia.map((m: any) => {
+     const normalizedMedia = rawMedia.map((m: ApiMedia): PropertyMedia => {
         const raw = m.type;  
         const typeString = String(raw).toLowerCase(); // "2" | "video" | "image"
 

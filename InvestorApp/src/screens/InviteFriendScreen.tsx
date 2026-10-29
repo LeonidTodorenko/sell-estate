@@ -1,5 +1,5 @@
 // screens/InviteFriendScreen.tsx
-import React, { useEffect, useMemo, useState } from 'react';
+import React, {useEffect, useMemo, useState} from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,12 @@ import BlueButton from '../components/BlueButton';
 import api from '../api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import ErrorState from '../components/ErrorState';
+import ScreenLoader from '../components/ScreenLoader';
+import {clubPercent} from '../utils/clubDisplay';
+
+// These requests are represented by local loading/error UI.
+const localRequestUI = {silentLoading: true, silentError: true} as any;
 
 type InviteRow = {
   id: string;
@@ -57,9 +63,9 @@ function getInviteStatusMeta(item: InviteRow): InviteVisualStatus {
     return {
       kind: 'success',
       text: item.acceptedAt
-        ? `Invested: $1,000 · ${formatShortDate(item.acceptedAt)}`
+        ? `Accepted · ${formatShortDate(item.acceptedAt)}`
         : `Accepted · ${formatShortDate(item.createdAt)}`,
-      color: '#11A36A',
+      color: '#098653',
       icon: 'checkmark',
     };
   }
@@ -81,7 +87,7 @@ function getInviteStatusMeta(item: InviteRow): InviteVisualStatus {
   return {
     kind: 'pending',
     text: `Registered: ${formatShortDate(item.createdAt)}`,
-    color: '#A1A1AA',
+    color: '#52675e',
     icon: 'time',
   };
 }
@@ -107,12 +113,7 @@ const HowItWorksItem = ({
   return (
     <View style={styles.howRow}>
       <View style={styles.howLeft}>
-        <View
-          style={[
-            styles.howDot,
-            done && styles.howDotDone,
-          ]}
-        >
+        <View style={[styles.howDot, done && styles.howDotDone]}>
           <View style={styles.howDotInner} />
         </View>
         {!isLast && <View style={styles.howLine} />}
@@ -129,14 +130,24 @@ export default function InviteFriendScreen() {
   const [list, setList] = useState<InviteRow[]>([]);
   const [clubInfo, setClubInfo] = useState<ClubInfo | null>(null);
   const [isDemo, setIsDemo] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   const loadInvites = async () => {
     try {
-      const { data } = await api.get('/referrals/my-invites');
-      setList(Array.isArray(data) ? data : []);
+      const {data} = await api.get('/referrals/my-invites', localRequestUI);
+      setList(
+        Array.isArray(data)
+          ? [...data].sort(
+              (a, b) =>
+                new Date(b.createdAt).getTime() -
+                new Date(a.createdAt).getTime(),
+            )
+          : [],
+      );
     } catch (e: any) {
       console.error(e);
-      Alert.alert('Error', 'Failed to load invites');
+      setLoadError(true);
     }
   };
 
@@ -149,20 +160,29 @@ export default function InviteFriendScreen() {
       const userId = parsed.userId as string;
       if (!userId) return;
 
-      const { data } = await api.get(`/share-offers/${userId}/club-info`);
+      const {data} = await api.get(`/share-offers/${userId}/club-info`, localRequestUI);
       setClubInfo(data);
     } catch (e: any) {
       console.error(e);
+      setLoadError(true);
     }
   };
 
   const loadAll = async () => {
-    const stored = await AsyncStorage.getItem('user');
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      setIsDemo(parsed.isDemo === true || parsed.user?.isDemo === true);
+    setLoading(true);
+    setLoadError(false);
+    try {
+      const stored = await AsyncStorage.getItem('user');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        setIsDemo(parsed.isDemo === true || parsed.user?.isDemo === true);
+      }
+      await Promise.all([loadInvites(), loadClubInfo()]);
+    } catch (_) {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
     }
-    await Promise.all([loadInvites(), loadClubInfo()]);
   };
 
   useEffect(() => {
@@ -171,7 +191,10 @@ export default function InviteFriendScreen() {
 
   const sendInvite = async () => {
     if (isDemo) {
-      Alert.alert('Demo Mode', 'Referral invitations are read-only in the sandbox. No email will be sent.');
+      Alert.alert(
+        'Demo Mode',
+        'Referral invitations are read-only in the sandbox. No email will be sent.',
+      );
       return;
     }
     if (!email.trim()) {
@@ -179,22 +202,19 @@ export default function InviteFriendScreen() {
       return;
     }
 
-    if (clubInfo && !clubInfo.canInvite) {
+    if (!clubInfo?.canInvite) {
       Alert.alert(
         'Invitation not available',
-        'Referral invites are available starting from total assets of 10 000 USD.',
+        'Invitations are unavailable under your current account terms.',
       );
       return;
     }
 
     setSending(true);
     try {
-      const { data } = await api.post('/referrals/invite', { email: email.trim() });
+      const {data} = await api.post('/referrals/invite', {email: email.trim()}, localRequestUI);
 
-      Alert.alert(
-        'Invite sent',
-        `Code: ${data.code}\nLink:\n${data.link}`,
-      );
+      Alert.alert('Invite sent', `Code: ${data.code}\nLink:\n${data.link}`);
 
       setEmail('');
       await loadInvites();
@@ -213,7 +233,11 @@ export default function InviteFriendScreen() {
       return 'Referral bonus size and duration depend on your status.';
     }
 
-    return `You get: Referral bonus size and duration depend on your status: from ${(clubInfo.referrerRewardPercent * 100).toFixed(0)}% for ${clubInfo.referrerRewardYears} year${clubInfo.referrerRewardYears > 1 ? 's' : ''}.`;
+    return `Your reward terms: ${clubPercent(
+      clubInfo.referrerRewardPercent,
+    )} for ${
+      clubInfo.referrerRewardYears
+    } years. These are conditions, not earned rewards.`;
   }, [clubInfo]);
 
   const friendBenefitText = useMemo(() => {
@@ -221,50 +245,52 @@ export default function InviteFriendScreen() {
       return 'Your friend gets a reduced marketplace fee.';
     }
 
-    return `Your friend gets: reduced fee ${(clubInfo.withReferralFee * 100).toFixed(0)}% (instead of ${(clubInfo.baseFee * 100).toFixed(0)}%)`;
+    return `Your current marketplace fee terms: ${clubPercent(
+      clubInfo.baseFee,
+    )} standard / ${clubPercent(
+      clubInfo.withReferralFee,
+    )} with referral. Your friend’s terms depend on their own account.`;
   }, [clubInfo]);
 
-  const renderHistoryItem = ({ item }: { item: InviteRow }) => {
+  const renderHistoryItem = ({item}: {item: InviteRow}) => {
     const meta = getInviteStatusMeta(item);
 
     return (
       <View style={styles.historyRow}>
         <View style={styles.historyAvatar}>
-          <Text style={styles.historyAvatarText}>{getInitials(item.inviteeEmail)}</Text>
+          <Text style={styles.historyAvatarText}>
+            {getInitials(item.inviteeEmail)}
+          </Text>
         </View>
 
         <View style={styles.historyContent}>
-          <Text style={styles.historyEmail} numberOfLines={1}>
-            {item.inviteeEmail}
-          </Text>
+          <Text style={styles.historyEmail}>{item.inviteeEmail}</Text>
           <Text
             style={[
               styles.historyMeta,
               meta.kind === 'failed' && styles.historyMetaFailed,
-            ]}
-          >
+            ]}>
             {meta.text}
           </Text>
         </View>
 
         <View
-          style={[
-            styles.historyStatusCircle,
-            { backgroundColor: meta.color },
-          ]}
-        >
+          style={[styles.historyStatusCircle, {backgroundColor: meta.color}]}>
           <Ionicons name={meta.icon as any} size={14} color="#FFFFFF" />
         </View>
       </View>
     );
   };
 
+  if (loading) return <ScreenLoader />;
+  if (loadError)
+    return <ErrorState title="Unable to load referrals" onRetry={loadAll} />;
+
   return (
     <ScrollView
       style={styles.container}
       contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}
-    >
+      showsVerticalScrollIndicator={false}>
       <View style={styles.heroCard}>
         <Image
           source={require('../assets/images/freepik__3d1.png')}
@@ -281,12 +307,15 @@ export default function InviteFriendScreen() {
 
         {!clubInfo?.canInvite && (
           <Text style={styles.blockedText}>
-            Referral invites become available from total assets of $10,000.
+            Invitations are unavailable under your current account terms.
           </Text>
         )}
 
         {isDemo && (
-          <Text style={styles.blockedText}>Demo Mode: referral history is read-only and invitations are not sent.</Text>
+          <Text style={styles.blockedText}>
+            Demo Mode: referral history is read-only and invitations are not
+            sent.
+          </Text>
         )}
 
         <StyledInput
@@ -298,15 +327,19 @@ export default function InviteFriendScreen() {
           keyboardType="email-address"
         />
 
+        <Text style={styles.heroTextSecondary}>
+          Creating an invitation costs $10 and sends an email. Review the
+          address before sending.
+        </Text>
         <BlueButton
           title={sending ? 'Sending...' : 'Send Invite'}
           onPress={sendInvite}
-          disabled={isDemo || sending || (clubInfo !== null && !clubInfo.canInvite)}
+          disabled={isDemo || sending || !clubInfo?.canInvite}
           width="full"
           showArrow={false}
-          bgColor="#11A36A"
+          bgColor="#098653"
           textColor="#FFFFFF"
-          borderColor="#11A36A"
+          borderColor="#098653"
           paddingVertical={13}
           style={styles.sendButton}
         />
@@ -317,7 +350,7 @@ export default function InviteFriendScreen() {
 
         <HowItWorksItem title="Send your referral link to a friend" />
         <HowItWorksItem title="Friend registers" />
-        <HowItWorksItem title="Friend invests from $1,000" />
+        <HowItWorksItem title="Friend completes the referral conditions" />
         <HowItWorksItem
           title="You earn a commission on their net profit – percentage and duration depend on your status"
           isLast
@@ -333,11 +366,13 @@ export default function InviteFriendScreen() {
         ) : (
           <FlatList
             data={list}
-            keyExtractor={(x) => x.id}
+            keyExtractor={x => x.id}
             renderItem={renderHistoryItem}
             scrollEnabled={false}
-            ItemSeparatorComponent={() => <View style={styles.historyDivider} />}
-            contentContainerStyle={{ paddingTop: 8 }}
+            ItemSeparatorComponent={() => (
+              <View style={styles.historyDivider} />
+            )}
+            contentContainerStyle={{paddingTop: 8}}
           />
         )}
       </View>
@@ -348,7 +383,7 @@ export default function InviteFriendScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ECECEC',
+    backgroundColor: '#f0f7f3',
   },
 
   content: {
@@ -358,7 +393,7 @@ const styles = StyleSheet.create({
 
   heroCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 28,
+    borderRadius: 12,
     paddingHorizontal: 16,
     paddingTop: 18,
     paddingBottom: 18,
@@ -368,7 +403,7 @@ const styles = StyleSheet.create({
 
   heroImage: {
     width: '100%',
-    height: 215,
+    height: 140,
     marginBottom: 10,
   },
 
@@ -376,7 +411,7 @@ const styles = StyleSheet.create({
     fontSize: 23,
     lineHeight: 30,
     fontWeight: '700',
-    color: '#11A36A',
+    color: '#098653',
     textAlign: 'center',
     marginBottom: 14,
   },
@@ -426,7 +461,7 @@ const styles = StyleSheet.create({
 
   infoCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 28,
+    borderRadius: 12,
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 8,
@@ -435,7 +470,7 @@ const styles = StyleSheet.create({
 
   historyCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 28,
+    borderRadius: 12,
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 16,
@@ -465,7 +500,7 @@ const styles = StyleSheet.create({
     height: 14,
     borderRadius: 7,
     borderWidth: 1.5,
-    borderColor: '#11A36A',
+    borderColor: '#098653',
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
@@ -473,8 +508,8 @@ const styles = StyleSheet.create({
   },
 
   howDotDone: {
-    backgroundColor: '#11A36A',
-    borderColor: '#11A36A',
+    backgroundColor: '#098653',
+    borderColor: '#098653',
   },
 
   howDotInner: {

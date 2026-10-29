@@ -29,6 +29,7 @@ await context.route(`${apiOrigin}/api/**`, async route => {
     if (path === '/admin/stats/logs') return send({total:0,page:1,pageSize:20,items:[]});
     return send([]);
   }
+  if (path.startsWith('/kyc/user/')) return send([]);
   if (path === '/admin/stats') return send({investors:12,totalInvestments:125000,totalProperties:4,totalRentalIncome:8200,pendingWithdrawals:2,pendingKyc:3});
   if (path === '/admin/users' && url.searchParams.get('query')) {
     assert.equal(url.searchParams.get('query'),'Jane + Ops');

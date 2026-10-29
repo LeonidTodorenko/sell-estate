@@ -72,6 +72,8 @@ namespace RealEstateInvestment.Services
                         TransactionType.Withdrawal => -tx.Amount,
                         TransactionType.Buyback => -tx.Amount,
                         TransactionType.ShareMarketBuy => -tx.Amount,
+                        TransactionType.CancelListingFee or TransactionType.ShareMarketFee => -tx.Amount,
+                        TransactionType.InvestmentRefund or TransactionType.ReferralReward or TransactionType.ClubFeeIncome => tx.Amount,
                         _ => 0m
                     };
                     runningTotalAll += deltaAll;
@@ -84,6 +86,8 @@ namespace RealEstateInvestment.Services
                         TransactionType.Withdrawal => -tx.Amount,
                         TransactionType.Buyback => -tx.Amount,
                         TransactionType.ShareMarketBuy => -tx.Amount,
+                        TransactionType.CancelListingFee or TransactionType.ShareMarketFee => -tx.Amount,
+                        TransactionType.InvestmentRefund or TransactionType.ReferralReward or TransactionType.ClubFeeIncome => tx.Amount,
                         // RentIncome игнорируем
                         _ => 0m
                     };
@@ -155,7 +159,9 @@ namespace RealEstateInvestment.Services
                   - totalInvestments
                   - totalShareBuys
                   - totalWithdrawals
-                  - totalBuybacks;
+                  - totalBuybacks
+                  + monthTx.Where(t => t.Type == TransactionType.InvestmentRefund || t.Type == TransactionType.ReferralReward || t.Type == TransactionType.ClubFeeIncome).Sum(t => t.Amount)
+                  - monthTx.Where(t => t.Type == TransactionType.CancelListingFee || t.Type == TransactionType.ShareMarketFee).Sum(t => t.Amount);
 
                 // === 4) Сформируем текущие холдинги (по объектам) ===
                 var rawHoldings = await _db.Investments
@@ -628,6 +634,8 @@ namespace RealEstateInvestment.Services
                 case TransactionType.ShareMarketBuy:
                 case TransactionType.Buyback:
                 case TransactionType.ReferralCodePurchase:
+                case TransactionType.CancelListingFee:
+                case TransactionType.ShareMarketFee:
                     return true;
 
                 default:

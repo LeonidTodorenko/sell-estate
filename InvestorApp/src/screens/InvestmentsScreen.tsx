@@ -196,7 +196,7 @@ const InvestmentCard: React.FC<InvestmentCardProps> = ({
   const listingType =
     property?.listingType === "rent" ? "For Rent" : "For Sale";
   const statusDotColor =
-    property?.listingType === "rent" ? "#5B8DEF" : "#10B981";
+    property?.listingType === "rent" ? "#5B8DEF" : "#098653";
 
   const commissioningText = property?.expectedCompletionDate
     ? new Date(property.expectedCompletionDate).toLocaleDateString("en-US", {
@@ -460,7 +460,7 @@ To airport: 25 minutes`;
                         <Ionicons
                           name="lock-closed-outline"
                           size={13}
-                          color="#A3A3A3"
+                          color="#52675e"
                         />
                         <Text style={styles.shareMetaText}>
                           {investment.marketShares} shares
@@ -513,9 +513,9 @@ To airport: 25 minutes`;
           }
           width="full"
           showArrow={false}
-          bgColor="#10B981"
+          bgColor="#098653"
           textColor="#FFFFFF"
-          borderColor="#10B981"
+          borderColor="#098653"
           paddingVertical={12}
           style={styles.cardButtonHalf}
         />
@@ -909,7 +909,7 @@ const InvestmentsScreen = () => {
         onRefresh={refetch}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
-        ListHeaderComponent={<DemoBadge visible={isDemo} />}
+        ListHeaderComponent={<View style={{gap: 8, marginBottom: 16}}><Text style={{fontSize: 28, fontWeight: "700", color: theme.colors.text}}>Portfolio</Text><Text style={{color: theme.colors.textSecondary}}>Your property investments and ownership.</Text><DemoBadge visible={isDemo} /></View>}
         ListEmptyComponent={
           !isLoading ? (
             <View style={styles.emptyState}>
@@ -964,7 +964,7 @@ const InvestmentsScreen = () => {
                 onPress={closeSellModal}
                 style={styles.sheetCloseButton}
               >
-                <Ionicons name="close" size={24} color="#111827" />
+                <Ionicons name="close" size={24} color="#18382c" />
               </Pressable>
             </View>
 
@@ -1077,7 +1077,7 @@ const InvestmentsScreen = () => {
                                 : "eye-off-outline"
                             }
                             size={20}
-                            color="#6B7280"
+                            color="#52675e"
                           />
                         </Pressable>
                       </View>
@@ -1087,9 +1087,9 @@ const InvestmentsScreen = () => {
                         onPress={handleSellToPlatform}
                         width="full"
                         showArrow={false}
-                        bgColor="#10B981"
+                        bgColor="#098653"
                         textColor="#FFFFFF"
-                        borderColor="#10B981"
+                        borderColor="#098653"
                         paddingVertical={12}
                         style={styles.modalPrimaryBtn}
                       />
@@ -1229,7 +1229,7 @@ const InvestmentsScreen = () => {
                           showSellPassword ? "eye-outline" : "eye-off-outline"
                         }
                         size={20}
-                        color="#6B7280"
+                        color="#52675e"
                       />
                     </Pressable>
                   </View>
@@ -1249,9 +1249,9 @@ const InvestmentsScreen = () => {
                       onPress={submitListing}
                       width="full"
                       showArrow={false}
-                      bgColor="#10B981"
+                      bgColor="#098653"
                       textColor="#FFFFFF"
-                      borderColor="#10B981"
+                      borderColor="#098653"
                       paddingVertical={12}
                       style={styles.modalSubmitBtn}
                     />
@@ -1274,7 +1274,7 @@ const styles = StyleSheet.create({
     padding: 24,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#ECECEC",
+    backgroundColor: "#f0f7f3",
   },
 
   loadingText: {
@@ -1304,7 +1304,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 16,
     paddingTop: 12,
-    backgroundColor: "#ECECEC",
+    backgroundColor: "#f0f7f3",
   },
 
   listContent: {
@@ -1312,11 +1312,11 @@ const styles = StyleSheet.create({
   },
 
   card: {
-    backgroundColor: "#F7F7F7",
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "#EAEAEA",
+    borderColor: "#dce7e0",
     padding: 14,
-    borderRadius: 28,
+    borderRadius: 12,
     marginBottom: 18,
   },
 
@@ -1554,7 +1554,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontSize: 16,
     fontWeight: "700",
-    color: "#10B981",
+    color: "#098653",
   },
 
   aboutCard: {
@@ -1621,13 +1621,13 @@ const styles = StyleSheet.create({
   shareMetaText: {
     marginLeft: 5,
     fontSize: 13,
-    color: "#A3A3A3",
+    color: "#52675e",
     fontWeight: "500",
   },
 
   metaDot: {
     marginHorizontal: 6,
-    color: "#A3A3A3",
+    color: "#52675e",
   },
 
   shareSummaryRight: {
@@ -1644,7 +1644,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontSize: 13,
     fontWeight: "600",
-    color: "#10B981",
+    color: "#098653",
   },
 
   shareLoss: {
@@ -1677,7 +1677,7 @@ const styles = StyleSheet.create({
   toggleExpandText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#111827",
+    color: "#18382c",
   },
 
 
@@ -1710,7 +1710,7 @@ const styles = StyleSheet.create({
   },
 
   sellSheet: {
-    backgroundColor: "#F7F7F7",
+    backgroundColor: "#FFFFFF",
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     paddingHorizontal: 16,
@@ -1737,7 +1737,7 @@ const styles = StyleSheet.create({
 
   sellDivider: {
     height: 1,
-    backgroundColor: "#E5E7EB",
+    backgroundColor: "#dce7e0",
     marginBottom: 18,
   },
 
@@ -1829,7 +1829,7 @@ const styles = StyleSheet.create({
   sellPriceValue: {
     fontSize: 24,
     fontWeight: "800",
-    color: "#10B981",
+    color: "#098653",
   },
 
   modalPrimaryBtn: {
@@ -1848,7 +1848,7 @@ const styles = StyleSheet.create({
 
   modalInput: {
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: "#dce7e0",
     paddingHorizontal: 12,
     paddingVertical: 12,
     marginBottom: 12,
@@ -1939,7 +1939,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#ECECEC",
+    backgroundColor: "#f0f7f3",
   },
 
   modalCancelFullBtn: {
@@ -1947,7 +1947,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#E5E7EB",
+    backgroundColor: "#dce7e0",
     marginBottom: 4,
   },
 

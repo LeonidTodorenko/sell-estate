@@ -49,12 +49,12 @@ namespace RealEstateInvestment.Controllers
             if (!string.IsNullOrEmpty(seller.PinCode))
             {
                 if (request.PinOrPassword != seller.PinCode &&
-                    request.PinOrPassword != seller.PasswordHash)
+                    !PasswordHasher.VerifyPassword(request.PinOrPassword, seller.PasswordHash))
                     return BadRequest("Invalid PIN");
             }
             else
             {
-                if (request.PinOrPassword != seller.PasswordHash)
+                if (!PasswordHasher.VerifyPassword(request.PinOrPassword, seller.PasswordHash))
                     return BadRequest("Invalid password");
             }
 
@@ -226,12 +226,12 @@ namespace RealEstateInvestment.Controllers
             if (!string.IsNullOrEmpty(user.PinCode))
             {
                 if (request.PinOrPassword != user.PinCode &&
-                    request.PinOrPassword != user.PasswordHash)
+                    !PasswordHasher.VerifyPassword(request.PinOrPassword, user.PasswordHash))
                     return BadRequest("Invalid PIN");
             }
             else
             {
-                if (request.PinOrPassword != user.PasswordHash)
+                if (!PasswordHasher.VerifyPassword(request.PinOrPassword, user.PasswordHash))
                     return BadRequest("Invalid password");
             }
 
@@ -387,12 +387,12 @@ namespace RealEstateInvestment.Controllers
             // PIN / пароль
             if (!string.IsNullOrEmpty(buyer.PinCode))
             {
-                if (req.PinOrPassword != buyer.PinCode && req.PinOrPassword != buyer.PasswordHash)
+                if (req.PinOrPassword != buyer.PinCode && !PasswordHasher.VerifyPassword(req.PinOrPassword, buyer.PasswordHash))
                     return BadRequest("Invalid PIN");
             }
             else
             {
-                if (req.PinOrPassword != buyer.PasswordHash)
+                if (!PasswordHasher.VerifyPassword(req.PinOrPassword, buyer.PasswordHash))
                     return BadRequest("Invalid password");
             }
 
@@ -407,199 +407,10 @@ namespace RealEstateInvestment.Controllers
             if (buyer.WalletBalance < totalCost)
                 return BadRequest("Insufficient balance");
 
-            // === 1. Покупатель платит полную цену ===
-            buyer.WalletBalance -= totalCost;
-
-            // === 2. Считаем себестоимость и прибыль продавца ===
-            // При создании оффера мы посчитали LockedInvestedAmount для всех выставленных шеров
-            decimal costBasis = offer.LockedInvestedAmount;
-            decimal profit = totalCost - costBasis;
-
-            decimal platformFee = 0m;
-            decimal referralReward = 0m;
-            decimal clubIncome = 0m;
-
-            // === 3. Если прибыль > 0 — применяем клубную / реферальную комиссию ===
-            if (profit > 0m)
-            {
-                // totalAssets продавца -> статус клуба
-                decimal totalAssets = await CalculateTotalAssets(seller.Id);
-                var status = UserFeeHelper.GetStatus(totalAssets);
-                var (baseFeePercent, withReferralFeePercent) = UserFeeHelper.GetUserFeePercents(status);
-
-                // реферальная связь (если продавца кто-то пригласил)
-                var referral = await _context.Referrals
-                    .Where(r => r.RefereeUserId == seller.Id && r.RewardValidUntil > DateTime.UtcNow)
-                    .FirstOrDefaultAsync();
-
-                bool hasReferrer = referral != null;
-                decimal effectiveFeePercent = hasReferrer ? withReferralFeePercent : baseFeePercent;
-
-                platformFee = Math.Round(profit * effectiveFeePercent, 2);
-                if (platformFee < 0) platformFee = 0;
-
-                // делим комиссию между реферером и клубом (суперпользователь)
-                referralReward = 0m;
-                clubIncome = platformFee;
-
-                var superUserId = _superUserService.GetSuperUserId();
-                var superUser = await _context.Users.FindAsync(superUserId);
-                if (superUser == null)
-                    return BadRequest("Super user not configured");
-
-                if (hasReferrer && referral!.ReferrerRewardPercent > 0m && platformFee > 0m)
-                {
-                    referralReward = Math.Round(platformFee * referral.ReferrerRewardPercent, 2);
-                    clubIncome = platformFee - referralReward;
-                    if (clubIncome < 0) clubIncome = 0;
-                }
-
-                // рефереру
-                if (referralReward > 0m)
-                {
-                    var refUser = await _context.Users.FindAsync(referral!.InviterUserId);
-                    if (refUser != null)
-                    {
-                        refUser.WalletBalance += referralReward;
-
-                        _context.UserTransactions.Add(new UserTransaction
-                        {
-                            Id = Guid.NewGuid(),
-                            UserId = refUser.Id,
-                            Type = TransactionType.ReferralReward,
-                            Amount = referralReward,
-                            PropertyId = property.Id,
-                            PropertyTitle = property.Title,
-                            Timestamp = DateTime.UtcNow,
-                            Notes = $"Referral reward from share sale profit of user {seller.Email} on '{property.Title}'"
-                        });
-                    }
-                }
-
-                // клуб (суперпользователь)
-                if (clubIncome > 0m)
-                {
-                    var superUserId2 = _superUserService.GetSuperUserId();
-                    var superUser2 = await _context.Users.FindAsync(superUserId2);
-                    if (superUser2 == null)
-                        return BadRequest("Super user not configured");
-
-                    superUser2.WalletBalance += clubIncome;
-
-                    _context.UserTransactions.Add(new UserTransaction
-                    {
-                        Id = Guid.NewGuid(),
-                        UserId = superUser2.Id,
-                        Type = TransactionType.ClubFeeIncome,
-                        Amount = clubIncome,
-                        PropertyId = property.Id,
-                        PropertyTitle = property.Title,
-                        Timestamp = DateTime.UtcNow,
-                        Notes = $"Club fee from share sale profit of user {seller.Email} on '{property.Title}'"
-                    });
-                }
-            }
-
-            // === 4. Продавец получает сумму после вычета комиссии ===
-            decimal sellerReceives = totalCost - platformFee;
-            seller.WalletBalance += sellerReceives;
-
-            // === 5. Оффер закрываем (лот целиком продан) ===
-            offer.SharesForSale = 0;
-            offer.IsActive = false;
-
-            // === 6. Добавляем покупателю инвестицию ===
-            var buyerInvestment = await _context.Investments
-                .FirstOrDefaultAsync(i => i.UserId == buyerId && i.PropertyId == offer.PropertyId);
-
-            if (buyerInvestment == null)
-            {
-                buyerInvestment = new Investment
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = buyerId,
-                    PropertyId = offer.PropertyId,
-                    Shares = sharesToBuy,
-                    InvestedAmount = totalCost,
-                    CreatedAt = DateTime.UtcNow
-                };
-                _context.Investments.Add(buyerInvestment);
-            }
-            else
-            {
-                buyerInvestment.Shares += sharesToBuy;
-                buyerInvestment.InvestedAmount += totalCost;
-            }
-
-            // === 7. Trade history ===
-            _context.ShareTransactions.Add(new ShareTransaction
-            {
-                BuyerId = buyer.Id,
-                SellerId = seller.Id,
-                PropertyId = offer.PropertyId,
-                Shares = sharesToBuy,
-                PricePerShare = offer.BuyoutPricePerShare ?? 0,
-                Timestamp = DateTime.UtcNow
-            });
-
-            // === 8. Сообщения и UserTransactions (как раньше, только Notes чуть богаче) ===
-            _context.Messages.Add(new Message
-            {
-                RecipientId = seller.Id,
-                Title = "Your lot is sold",
-                Content = $"Item \"{property.Title}\" was sold. Sum: {totalCost:F2} USD. " +
-                          $"Net after fees: {sellerReceives:F2} USD."
-            });
-
-            _context.UserTransactions.Add(new UserTransaction
-            {
-                Id = Guid.NewGuid(),
-                UserId = seller.Id,
-                Type = TransactionType.ShareMarketSell,
-                Amount = totalCost, // полная сумма сделки
-                Shares = sharesToBuy,
-                PropertyId = property.Id,
-                PropertyTitle = property.Title,
-                Timestamp = DateTime.UtcNow,
-                Notes = $"Share market sell. CostBasis={costBasis:F2}, Profit={profit:F2}, PlatformFee={platformFee:F2}"
-            });
-
-            _context.UserTransactions.Add(new UserTransaction
-            {
-                Id = Guid.NewGuid(),
-                UserId = buyer.Id,
-                Type = TransactionType.ShareMarketBuy,
-                Amount = totalCost,
-                Shares = sharesToBuy,
-                PropertyId = property.Id,
-                PropertyTitle = property.Title,
-                Timestamp = DateTime.UtcNow,
-                Notes = "Share market buy"
-            });
-
-            // уведомления участникам торгов (оставляем как было)
-            var bidParticipants = await _context.ShareOfferBids
-                .Where(b => b.OfferId == offer.Id && b.BidderId != buyer.Id)
-                .Select(b => b.BidderId)
-                .Distinct()
-                .ToListAsync();
-
-            foreach (var bidderId in bidParticipants)
-            {
-                _context.Messages.Add(new Message
-                {
-                    RecipientId = bidderId,
-                    Title = "Lot is sold",
-                    Content = $"Lot \"{property.Title}\", the item you bid on was sold to another user."
-                });
-            }
-
-            _context.ActionLogs.Add(new ActionLog
-            {
-                UserId = buyerId,
-                Action = "BuyShare",
-                Details = $"Offer={id}, Shares={sharesToBuy}, Total={totalCost:F2}, Profit={profit:F2}, Fee={platformFee:F2}"
-            });
+            try {
+                await new ShareOfferSettlement(_context, _superUserService)
+                    .Settle(offer, buyer, seller, sharesToBuy, offer.BuyoutPricePerShare.Value);
+            } catch (InvalidOperationException ex) { return BadRequest(ex.Message); }
 
             await _context.SaveChangesAsync();
             await financialTransaction.CommitAsync();
@@ -666,18 +477,21 @@ namespace RealEstateInvestment.Controllers
 
             if (!string.IsNullOrEmpty(seller.PinCode))
             {
-                if (req.PinOrPassword != seller.PinCode && req.PinOrPassword != seller.PasswordHash)
+                if (req.PinOrPassword != seller.PinCode && !PasswordHasher.VerifyPassword(req.PinOrPassword, seller.PasswordHash))
                     return BadRequest("Invalid PIN");
             }
             else
             {
-                if (req.PinOrPassword != seller.PasswordHash)
+                if (!PasswordHasher.VerifyPassword(req.PinOrPassword, seller.PasswordHash))
                     return BadRequest("Invalid password");
             }
 
             // find comission
             var cancelFeeSetting = await _context.SystemSettings.FirstOrDefaultAsync(s => s.Key == "CancelListingFee");
-            var fee = cancelFeeSetting != null ? decimal.Parse(cancelFeeSetting.Value) : 0;
+            var fee = 0m;
+            if (cancelFeeSetting != null && (!decimal.TryParse(cancelFeeSetting.Value,
+                System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out fee) || fee < 0))
+                return BadRequest("Invalid cancellation fee configuration");
 
             // check balance
             if (seller.WalletBalance < fee)
@@ -693,30 +507,14 @@ namespace RealEstateInvestment.Controllers
             seller.WalletBalance -= fee;
             superUser.WalletBalance += fee;
 
-            var investments = await _context.Investments
-                .Where(i => i.UserId == offer.SellerId && i.PropertyId == offer.PropertyId)
-                .OrderBy(i => i.CreatedAt)
-                .ToListAsync();
-
-            if (investments.Any())
-            {
-                investments[0].Shares += offer.SharesForSale;
-                investments[0].InvestedAmount += offer.LockedInvestedAmount;
+            await new ShareOfferSettlement(_context, _superUserService).ReturnRemainder(offer);
+            if (fee > 0) {
+                _context.UserTransactions.AddRange(
+                    new UserTransaction { Id = Guid.NewGuid(), UserId = seller.Id, Type = TransactionType.CancelListingFee,
+                        Amount = fee, PropertyId = offer.PropertyId, Timestamp = DateTime.UtcNow, Notes = $"Cancel offer {id}" },
+                    new UserTransaction { Id = Guid.NewGuid(), UserId = superUser.Id, Type = TransactionType.ClubFeeIncome,
+                        Amount = fee, PropertyId = offer.PropertyId, Timestamp = DateTime.UtcNow, Notes = $"Cancel offer {id}" });
             }
-            else
-            {
-                _context.Investments.Add(new Investment
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = offer.SellerId,
-                    PropertyId = offer.PropertyId,
-                    Shares = offer.SharesForSale,
-                    InvestedAmount = offer.LockedInvestedAmount,
-                    CreatedAt = DateTime.UtcNow
-                });
-            }
-
-            offer.IsActive = false;
             _context.ActionLogs.Add(new ActionLog
             {
                 UserId = User.GetUserId(),
@@ -777,12 +575,12 @@ namespace RealEstateInvestment.Controllers
 
             if (!string.IsNullOrEmpty(seller.PinCode))
             {
-                if (req.PinOrPassword != seller.PinCode && req.PinOrPassword != seller.PasswordHash)
+                if (req.PinOrPassword != seller.PinCode && !PasswordHasher.VerifyPassword(req.PinOrPassword, seller.PasswordHash))
                     return BadRequest("Invalid PIN");
             }
             else
             {
-                if (req.PinOrPassword != seller.PasswordHash)
+                if (!PasswordHasher.VerifyPassword(req.PinOrPassword, seller.PasswordHash))
                     return BadRequest("Invalid password");
             }
 
@@ -839,12 +637,12 @@ namespace RealEstateInvestment.Controllers
 
             if (!string.IsNullOrEmpty(bidder.PinCode))
             {
-                if (request.PinOrPassword != bidder.PinCode && request.PinOrPassword != bidder.PasswordHash)
+                if (request.PinOrPassword != bidder.PinCode && !PasswordHasher.VerifyPassword(request.PinOrPassword, bidder.PasswordHash))
                     return BadRequest("Invalid PIN");
             }
             else
             {
-                if (request.PinOrPassword != bidder.PasswordHash)
+                if (!PasswordHasher.VerifyPassword(request.PinOrPassword, bidder.PasswordHash))
                     return BadRequest("Invalid password");
             }
 

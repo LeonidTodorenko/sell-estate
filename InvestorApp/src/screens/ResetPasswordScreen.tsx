@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text,   Alert, StyleSheet } from 'react-native';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import api from '../api';
 import StyledInput from '../components/StyledInput';
@@ -11,13 +12,18 @@ type ResetPasswordScreenRouteProp = RouteProp<RootStackParamList, 'ResetPassword
 
 const ResetPasswordScreen = () => {
   const route = useRoute<ResetPasswordScreenRouteProp>();
-  const navigation = useNavigation();
-  const { token } = route.params;
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'ResetPassword'>>();
+  const token = route.params?.token;
 
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
   const handleReset = async () => {
+    if (!token) {
+      Alert.alert('Error', 'Reset token is missing');
+      return;
+    }
+
     if (!newPassword || !confirmPassword) {
       Alert.alert('Error', 'Please fill in all fields');
       return;

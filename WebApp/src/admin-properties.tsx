@@ -1,0 +1,67 @@
+import { useRef, useState } from 'react';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { api, getSession, propertyWrite } from './api';
+import { isAdminSession } from './admin-contracts';
+import { date, imageUrl, money } from './format';
+import type { Property, PropertyImage } from './types';
+import { Empty, Heading, Resource, useResource } from './ui';
+
+export function AdminProperties() {
+  const resource = useResource<Property[]>('/properties');
+  const [query,setQuery] = useState(''), [status,setStatus] = useState('');
+  return <><Heading title="Properties" description="Review the collection, edit property information and manage gallery images."/><Link to="/admin/applications">Review investment applications →</Link><div className="filters panel"><label>Property or location<input value={query} onChange={e=>setQuery(e.target.value)}/></label><label>Status<select value={status} onChange={e=>setStatus(e.target.value)}><option value="">All statuses</option>{['pending','available','sold','rented','declined'].map(s=><option key={s}>{s}</option>)}</select></label><button onClick={()=>{setQuery('');setStatus('');}}>Clear filters</button></div><Resource resource={resource}>{items=>{const rows=items.filter(p=>(!status||p.status===status)&&`${p.title} ${p.location} ${p.id}`.toLowerCase().includes(query.trim().toLowerCase())); return <><p aria-live="polite">{rows.length} of {items.length} properties</p>{rows.length ? <section className="panel table-wrap"><table><thead><tr><th>Property</th><th>Status</th><th>Price</th><th>Shares available</th><th>Manage</th></tr></thead><tbody>{rows.map(p=><tr key={p.id}><td data-label="Property"><Link to={`/admin/properties/${encodeURIComponent(p.id)}`}>{p.title}</Link><small>{p.location}</small></td><td data-label="Status">{p.status} · {p.listingType}</td><td data-label="Price">{money(p.price)}</td><td data-label="Shares available">{p.availableShares} / {p.totalShares}</td><td data-label="Manage"><Link to={`/admin/applications?property=${encodeURIComponent(p.id)}`}>Applications</Link></td></tr>)}</tbody></table></section>:<Empty title="No matching properties"/>}</>;}}</Resource></>;
+}
+
+function PropertyEditor({property:p,reload}:{property:Property;reload:()=>void}) {
+  const [title,setTitle]=useState(p.title),[location,setLocation]=useState(p.location),[about,setAbout]=useState(p.about||''),[yieldText,setYield]=useState(p.expectedYieldText||'');
+  const [busy,setBusy]=useState(false),[locked,setLocked]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState('');
+  const pending=useRef(false);
+  const images=useResource<PropertyImage[]>(`/properties/${encodeURIComponent(p.id)}/images`);
+  const [file,setFile]=useState(''),[fileName,setFileName]=useState('');
+  async function change(action:'update'|'add-image'|'delete-image', imageId?:string) {
+    const session=getSession();
+    if(pending.current||locked||!session||!isAdminSession(session))return;
+    if(!window.confirm(`${action==='update'?'Save information changes':action==='add-image'?`Add image ${fileName}`:'Permanently delete this gallery image'} for ${p.title} (${p.id})?`))return;
+    pending.current=true;setBusy(true);setError('');setMessage('');
+    try {
+      const fresh=(await api<Property[]>('/properties')).find(item=>item.id===p.id);
+      if(!fresh||JSON.stringify(fresh)!==JSON.stringify(p))throw Error('Property changed. Reload before saving.');
+      if(action==='delete-image') {
+        const current=await api<PropertyImage[]>(`/properties/${encodeURIComponent(p.id)}/images`);
+        if(!current.some(i=>i.id===imageId))throw Error('Image changed or was removed. Reload first.');
+      }
+      await propertyWrite(session,action,imageId||p.id,action==='update'?{...fresh,title:title.trim(),location:location.trim(),about:about.trim()||null,expectedYieldText:yieldText.trim()||null}:action==='add-image'?{base64Image:file}:undefined);
+      setLocked(true);setMessage('Saved. Reload to review the current data.');
+    }catch(e){setLocked(true);setError(`${e instanceof Error?e.message:'Save failed.'} Reload and verify the current state before retrying.`);}
+    finally{pending.current=false;setBusy(false);}
+  }
+  async function selectFile(selected?:File) {
+    setFile('');setFileName('');setError('');
+    if(!selected)return;
+    if(!['image/png','image/jpeg','image/webp'].includes(selected.type)||selected.size>5*1024*1024){setError('Choose a PNG, JPEG or WebP image up to 5 MB.');return;}
+    try {
+      const raw=await new Promise<string>((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result));r.onerror=reject;r.readAsDataURL(selected);});
+      const img=new Image();img.src=raw;await img.decode();
+      if(img.width*img.height>40_000_000)throw Error('Image dimensions are too large.');
+      setFile(raw);setFileName(selected.name);
+    }catch{setError('This image could not be decoded. Choose another file.');}
+  }
+  const disabled=busy||locked||!isAdminSession(getSession());
+  return <><section className="panel admin-details"><h2>Property overview</h2><dl><dt>Property ID</dt><dd className="identifier">{p.id}</dd><dt>Status / listing</dt><dd>{p.status} / {p.listingType}</dd><dt>Price</dt><dd>{money(p.price)}</dd><dt>Available shares</dt><dd>{p.availableShares} / {p.totalShares}</dd><dt>Completion</dt><dd>{date(p.expectedCompletionDate)}</dd><dt>Planned sale</dt><dd>{date(p.plannedSaleDate)}</dd></dl><Link to={`/admin/applications?property=${encodeURIComponent(p.id)}`}>View applications →</Link></section><form className="panel property-editor" onSubmit={e=>{e.preventDefault();void change('update');}}><h2>Edit property information</h2><fieldset disabled={disabled}><label>Title<input required maxLength={200} value={title} onChange={e=>setTitle(e.target.value)}/></label><label>Location<input required maxLength={500} value={location} onChange={e=>setLocation(e.target.value)}/></label><label>About<textarea maxLength={10000} value={about} onChange={e=>setAbout(e.target.value)}/></label><label>Expected yield text<input maxLength={1000} value={yieldText} onChange={e=>setYield(e.target.value)}/></label><p className="muted">Price, shares, payment terms and status remain visible in the overview. This form edits descriptive information.</p><button className="button" disabled={!title.trim()||!location.trim()||(title===p.title&&location===p.location&&about===(p.about||'')&&yieldText===(p.expectedYieldText||''))}>Review and save</button></fieldset></form><section className="panel"><h2>Gallery images</h2><Resource resource={images}>{items=>items.length?<div className="admin-gallery">{items.map(i=><article key={i.id}>{imageUrl(i.base64Data)?<img src={imageUrl(i.base64Data)} alt={`Property image ${i.id}`}/>:<p>Image preview unavailable</p>}<small className="identifier">{i.id}</small><button disabled={disabled} onClick={()=>change('delete-image',i.id)}>Delete image</button></article>)}</div>:<Empty title="No gallery images"/>}</Resource><label>Add gallery image · PNG, JPEG or WebP, up to 5 MB<input type="file" accept="image/png,image/jpeg,image/webp" disabled={disabled} onChange={e=>void selectFile(e.target.files?.[0])}/></label>{file&&<img className="upload-preview" src={file} alt="New image preview"/>}<button disabled={disabled||!file} onClick={()=>change('add-image')}>Add image</button></section>{busy&&<p role="status">Saving…</p>}{message&&<p role="status">{message}</p>}{error&&<p role="alert" className="error">{error}</p>}<button disabled={busy} onClick={reload}>Reload property</button></>;
+}
+export function AdminProperty(){const {id=''}=useParams();const resource=useResource<Property[]>('/properties');const [revision,setRevision]=useState(0);return <><Link to="/admin/properties">← Back to properties</Link><Heading title="Property management" description="Review current data before confirming each change."/><Resource resource={resource}>{items=>{const p=items.find(i=>i.id===id);return p?<PropertyEditor key={`${p.id}-${revision}`} property={p} reload={()=>{setRevision(r=>r+1);resource.retry();}}/>:<Empty title="Property not found"/>;}}</Resource></>;}
+
+interface Application {id:string;userId:string;propertyId:string;requestedAmount:number;requestedShares:number;approvedAmount:number|null;approvedShares:number|null;status:string|null;isPriority:boolean;stepNumber:number;createdAt:string}
+function ApplicationList({id}:{id:string}) {
+ const resource=useResource<Application[]>(`/applications/property/${encodeURIComponent(id)}`);
+ const [status,setStatus]=useState(''),[query,setQuery]=useState(''),[priority,setPriority]=useState(false);
+ return <><div className="filters panel"><label>Application or user ID<input value={query} onChange={e=>setQuery(e.target.value)}/></label><label>Application status<select value={status} onChange={e=>setStatus(e.target.value)}><option value="">All statuses</option>{['pending','accepted','partial','rejected','carried'].map(s=><option key={s}>{s}</option>)}</select></label><label className="checkbox"><input type="checkbox" checked={priority} onChange={e=>setPriority(e.target.checked)}/>Priority only</label><button onClick={()=>{setQuery('');setStatus('');setPriority(false);}}>Clear filters</button><button onClick={resource.retry}>Reload applications</button></div><Resource resource={resource}>{items=>{const rows=items.filter(a=>(!status||(a.status||'pending')===status)&&(!priority||a.isPriority)&&`${a.id} ${a.userId}`.toLowerCase().includes(query.trim().toLowerCase()));return <><p aria-live="polite">{rows.length} of {items.length} applications</p>{rows.length?<section className="panel table-wrap"><table><thead><tr><th>Application</th><th>User</th><th>Requested</th><th>Approved</th><th>Status</th><th>Created</th></tr></thead><tbody>{rows.map(a=><tr key={a.id}><td data-label="Application"><span className="identifier">{a.id}</span><small>Step {a.stepNumber} · {a.isPriority?'Priority':'Standard'}</small></td><td data-label="User"><Link className="identifier" to={`/admin/users/${encodeURIComponent(a.userId)}`}>{a.userId}</Link></td><td data-label="Requested">{money(a.requestedAmount)}<small>{a.requestedShares} shares</small></td><td data-label="Approved">{a.approvedAmount==null?'—':money(a.approvedAmount)}<small>{a.approvedShares==null?'—':`${a.approvedShares} shares`}</small></td><td data-label="Status">{a.status||'pending'}</td><td data-label="Created">{date(a.createdAt)}</td></tr>)}</tbody></table></section>:<Empty title="No matching applications"/>}</>;}}</Resource></>;
+}
+export function InvestmentApplications(){const properties=useResource<Property[]>('/properties');const [params,setParams]=useSearchParams();const id=params.get('property')||'';return <><Heading title="Investment applications" description="Review requests by property, status, investor and priority."/><p className="panel">Applications are processed automatically at payment plan due dates. Manual approval and rejection are unavailable.</p><Resource resource={properties}>{items=><><label>Property<select value={id} onChange={e=>setParams(e.target.value?{property:e.target.value}:{})}><option value="">Choose a property</option>{items.map(p=><option key={p.id} value={p.id}>{p.title}</option>)}</select></label>{id&&items.some(p=>p.id===id)?<><Link to={`/admin/properties/${encodeURIComponent(id)}`}>Manage property →</Link><ApplicationList key={id} id={id}/></>:<Empty title="Choose a property to view applications"/>}</>}</Resource></>;}
+
+export function InvestmentRecords({items}:{items:import('./admin-contracts').AdminInvestment[]}) {
+ const [query,setQuery]=useState(''),[minimum,setMinimum]=useState(''),[from,setFrom]=useState(''),[to,setTo]=useState('');
+ const invalid=Boolean(from&&to&&from>to);
+ const rows=items.filter(i=>`${i.id} ${i.userId} ${i.propertyId}`.toLowerCase().includes(query.trim().toLowerCase())&&(!minimum||i.investedAmount>=Number(minimum))&&(!from||i.createdAt.slice(0,10)>=from)&&(!to||i.createdAt.slice(0,10)<=to));
+ return <><div className="filters panel"><label>Investment, user or property ID<input value={query} onChange={e=>setQuery(e.target.value)}/></label><label>Minimum amount (USD)<input type="number" min="0" value={minimum} onChange={e=>setMinimum(e.target.value)}/></label><label>From<input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label><label>To<input type="date" value={to} onChange={e=>setTo(e.target.value)}/></label><button onClick={()=>{setQuery('');setMinimum('');setFrom('');setTo('');}}>Clear filters</button></div>{invalid?<p role="alert">The end date must be on or after the start date.</p>:<><p aria-live="polite">{rows.length} of {items.length} records</p>{rows.length?<section className="panel table-wrap"><table><thead><tr><th>Investment</th><th>User</th><th>Property</th><th>Shares</th><th>Amount</th><th>Created</th></tr></thead><tbody>{rows.map(i=><tr key={i.id}><td data-label="Investment" className="identifier">{i.id}</td><td data-label="User"><Link className="identifier" to={`/admin/users/${encodeURIComponent(i.userId)}`}>{i.userId}</Link></td><td data-label="Property"><Link className="identifier" to={`/admin/properties/${encodeURIComponent(i.propertyId)}`}>{i.propertyId}</Link></td><td data-label="Shares">{i.shares}</td><td data-label="Amount">{money(i.investedAmount)}</td><td data-label="Created">{date(i.createdAt)}</td></tr>)}</tbody></table></section>:<Empty title="No matching investments"/>}</>}</>;
+}

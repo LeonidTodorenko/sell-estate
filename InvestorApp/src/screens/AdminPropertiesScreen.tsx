@@ -11,7 +11,7 @@ import BlueButton from '../components/BlueButton';
 import theme from '../constants/theme';
 //import PaymentPlanScreen from '../components/PaymentPlanScreen';
 
-global.Buffer = global.Buffer || require('buffer').Buffer;
+// Buffer is imported explicitly by consumers; no global mutation is needed.
 
 interface PropertyImage {
   id: string;

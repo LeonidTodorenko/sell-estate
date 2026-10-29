@@ -12,6 +12,9 @@
         ReferralCodePurchase,
 
         ReferralReward,   // реферальный бонус пригласителю
-        ClubFeeIncome     // клубная комиссия, которая идёт суперпользователю
+        ClubFeeIncome,     // клубная комиссия, которая идёт суперпользователю
+        CancelListingFee,
+        ShareMarketFee,
+        InvestmentRefund
     }
 }

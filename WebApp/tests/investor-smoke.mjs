@@ -15,6 +15,7 @@ await context.route('https://sell-estate.onrender.com/api/**', async route => {
   const request = route.request(), path = new URL(request.url()).pathname.slice(4);
   calls.push({ path, method: request.method() });
   const send = (data, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(data) });
+  if (path.startsWith('/notifications/')) return send([]);
   if (path.endsWith('/images')) return send([]);
   if (path === '/share-offers/active') return send([]);
   if (path.startsWith('/messages/unread-count/')) return send({count:2});

@@ -1,35 +1,30 @@
 import React from 'react';
-import {
-    View,
-    ActivityIndicator,
-    StyleSheet,
-} from 'react-native';
+import {View, ActivityIndicator, Text, StyleSheet} from 'react-native';
 
 import theme from '../constants/theme';
 
 export default function ScreenLoader() {
-    return (
-        <View style={styles.container}>
-            <ActivityIndicator
-                size="large"
-                color={theme.colors.primary}
-            />
-        </View>
-    );
+  return (
+    <View
+      style={styles.container}
+      accessibilityRole="progressbar"
+      accessibilityLabel="Loading data">
+      <ActivityIndicator size="large" color={theme.colors.primary} />
+      <Text style={{marginTop: 12, color: theme.colors.textSecondary}}>
+        Loading…
+      </Text>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
 
-    container:{
+    justifyContent: 'center',
 
-        flex:1,
+    alignItems: 'center',
 
-        justifyContent:'center',
-
-        alignItems:'center',
-
-        backgroundColor:theme.colors.background
-
-    }
-
+    backgroundColor: theme.colors.background,
+  },
 });

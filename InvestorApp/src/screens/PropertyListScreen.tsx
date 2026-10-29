@@ -67,9 +67,6 @@ import ScreenLoader from '../components/ScreenLoader';
 //     videoUrl?: string | null;
 // }
 
-interface UserMap {
-  [key: string]: string;
-}
 
 type Slide =
   | { kind: 'image'; id: string; uri: string }
@@ -88,7 +85,6 @@ type Slide =
 type PropertyCardProps = {
   item: Property;
   navigation: NativeStackNavigationProp<RootStackParamList>;
-  userMap: UserMap;
   openImage: (images: string[], initialIndex: number) => void;
   openVideo: (url: string) => void;
   expanded: boolean;
@@ -106,7 +102,6 @@ type PropertyCardProps = {
 const PropertyCard: React.FC<PropertyCardProps> = ({
   item,
   navigation,
-  userMap,
   openImage,
   openVideo,
   expanded,
@@ -318,7 +313,7 @@ const presentationPdfName = item.presentationPdfName?.trim() || 'Object Presenta
 
           {item.priorityInvestorId && (
             <Text style={styles.priorityInvestorText}>
-              ⭐ Priority Investor: {userMap[item.priorityInvestorId] || item.priorityInvestorId}
+              ⭐ Assigned to a priority investor
             </Text>
           )}
         </View>
@@ -497,34 +492,6 @@ const presentationPdfName = item.presentationPdfName?.trim() || 'Object Presenta
   );
 };
 
-async function fetchPriorityUserMap(): Promise<UserMap> {
-  const userResponses = await api.get(
-    '/properties/with-stats',
-    { silentLoading: true } as any
-  );
-
-  const userIds = userResponses.data
-    .filter((p: Property) => p.priorityInvestorId)
-    .map((p: Property) => p.priorityInvestorId);
-
-  const uniqueIds = [...new Set(userIds)];
-  const map: UserMap = {};
-
-  if (uniqueIds.length > 0) {
-    const usersRes = await Promise.all(
-      uniqueIds.map((id) =>
-        api.get(`/users/${id}`, { silentLoading: true } as any)
-      )
-    );
-
-    usersRes.forEach((res) => {
-      const user = res.data;
-      map[user.id] = user.fullName;
-    });
-  }
-
-  return map;
-}
 
 const PropertyListScreen = () => {
   const [videoError, setVideoError] = useState<any>(null);
@@ -551,14 +518,6 @@ const PropertyListScreen = () => {
   queryFn: () => fetchPropertiesWithExtras(20),
   staleTime: 60_000,
   gcTime: 10 * 60_000,
-});
-const {
-  data: userMap = {},
-} = useQuery({
-  queryKey: ['properties', 'priorityUserMap'],
-  queryFn: fetchPriorityUserMap,
-  staleTime: 5 * 60_000,
-  gcTime: 30 * 60_000,
 });
 
 useEffect(() => {
@@ -765,7 +724,6 @@ useEffect(() => {
             <PropertyCard
             item={item}
             navigation={navigation}
-            userMap={userMap}
             openImage={openImage}
             openVideo={openVideo}
             expanded={expandedPropertyId === item.id}

@@ -367,4 +367,6 @@ app.MapGet("/support", () =>
     """, "text/html");
 });
 
+app.MapGet("/health", () => Results.Ok(new { status = "ok", release = "26.2A", passwordCompatibility = "identity-v3-210000-legacy" }));
+
 app.Run();

@@ -31,7 +31,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
         return;
       }
 
-      const refreshed = await tryRefresh(stored.refreshToken).catch(() => null);
+      const refreshed = await tryRefresh(stored.refreshToken ?? undefined).catch(() => null);
       const effective = refreshed ?? stored;
 
       if (effective?.accessToken) {

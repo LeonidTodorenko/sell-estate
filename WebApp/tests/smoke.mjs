@@ -17,6 +17,8 @@ let mode = 'normal', refreshCount = 0, loginDemo = false;
 await context.route('https://sell-estate.onrender.com/api/**', async route => {
   const request = route.request(), path = new URL(request.url()).pathname.replace('/api', '');
   const send = (data, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(data), headers: { 'Access-Control-Allow-Origin': '*' } });
+  if (path.startsWith('/applications/user/')) return send([]);
+  if (path.startsWith('/notifications/')) return send([]);
   if (path === '/auth/login') return mode === 'bad-login' ? send({ message: 'Invalid email or password' }, 401) : send(auth(loginDemo));
   if (path.startsWith('/messages/unread-count/')) return send({count:2});
   if (path === '/auth/refresh') { refreshCount++; await new Promise(resolve => setTimeout(resolve, 100)); return send({ accessToken: token(), refreshToken: 'rotated' }); }

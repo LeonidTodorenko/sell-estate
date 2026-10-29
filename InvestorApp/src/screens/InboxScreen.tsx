@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, {useMemo, useState} from 'react';
 import {
   View,
   Text,
@@ -15,8 +15,9 @@ import api from '../api';
 import theme from '../constants/theme';
 import AnimatedCard from '../components/AnimatedCard';
 import ErrorState from '../components/ErrorState';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import LastUpdated from '../components/LastUpdated';
+import InboxNotifications from '../components/InboxNotifications';
 
 // одна иконка для всех
 import bellIcon from '../assets/images/history14.png';
@@ -85,6 +86,7 @@ async function fetchInbox(): Promise<Message[]> {
 
 const InboxScreen = () => {
   const queryClient = useQueryClient();
+  const [unreadOnly, setUnreadOnly] = useState(false);
 
   const {
     data: messages = [],
@@ -112,18 +114,18 @@ const InboxScreen = () => {
     },
 
     onMutate: async (id: string) => {
-      await queryClient.cancelQueries({ queryKey: ['inbox'] });
+      await queryClient.cancelQueries({queryKey: ['inbox']});
 
       const previousMessages =
         queryClient.getQueryData<Message[]>(['inbox']) ?? [];
 
       queryClient.setQueryData<Message[]>(['inbox'], (current = []) =>
-        current.map((message) =>
-          message.id === id ? { ...message, isRead: true } : message
-        )
+        current.map(message =>
+          message.id === id ? {...message, isRead: true} : message,
+        ),
       );
 
-      return { previousMessages };
+      return {previousMessages};
     },
 
     onError: (_error, _id, context) => {
@@ -133,10 +135,10 @@ const InboxScreen = () => {
     },
 
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['inbox'] });
-      queryClient.invalidateQueries({ queryKey: ['unreadMessages'] });
-      queryClient.invalidateQueries({ queryKey: ['profile'] });
-      queryClient.invalidateQueries({ queryKey: ['home'] });
+      queryClient.invalidateQueries({queryKey: ['inbox']});
+      queryClient.invalidateQueries({queryKey: ['unreadMessages']});
+      queryClient.invalidateQueries({queryKey: ['profile']});
+      queryClient.invalidateQueries({queryKey: ['home']});
     },
   });
 
@@ -153,23 +155,23 @@ const InboxScreen = () => {
     const groups: Record<string, Message[]> = {};
 
     messages
+      .filter(message => !unreadOnly || !message.isRead)
       .slice()
       .sort(
         (a, b) =>
-          new Date(b.createdAt).getTime() -
-          new Date(a.createdAt).getTime()
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       )
-      .forEach((msg) => {
+      .forEach(msg => {
         const key = new Date(msg.createdAt).toDateString();
         if (!groups[key]) groups[key] = [];
         groups[key].push(msg);
       });
 
-    return Object.values(groups).map((group) => ({
+    return Object.values(groups).map(group => ({
       title: formatSectionTitle(group[0].createdAt),
       data: group,
     }));
-  }, [messages]);
+  }, [messages, unreadOnly]);
 
   if (isLoading) {
     return (
@@ -182,7 +184,7 @@ const InboxScreen = () => {
   if (isError && messages.length === 0) {
     return (
       <ErrorState
-        title="Unable to load notifications"
+        title="Unable to load inbox"
         description="Please check your connection and try again."
         onRetry={() => refetch()}
         isRetrying={isFetching}
@@ -194,7 +196,7 @@ const InboxScreen = () => {
     <View style={styles.screen}>
       <SectionList
         sections={sections}
-        keyExtractor={(item) => item.id}
+        keyExtractor={item => item.id}
         stickySectionHeadersEnabled={false}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
@@ -205,47 +207,95 @@ const InboxScreen = () => {
             tintColor={theme.colors.primary}
           />
         }
-        renderSectionHeader={({ section }) => (
+        renderSectionHeader={({section}) => (
           <Text style={styles.section}>{section.title}</Text>
         )}
-        renderItem={({ item, index, section }) => (
+        renderItem={({item, index, section}) => (
           <AnimatedCard delay={Math.min(index, 5) * 55}>
-          <Pressable onPress={() => handlePress(item)} style={styles.row}>
-            {/* LEFT */}
-            <View style={styles.left}>
-              <View style={styles.iconCircle}>
-                <Image source={bellIcon} style={styles.icon} />
+            <Pressable
+              onPress={() => handlePress(item)}
+              style={[
+                styles.row,
+                !item.isRead && {
+                  backgroundColor: '#e6f4ec',
+                  borderRadius: 12,
+                  paddingHorizontal: 8,
+                },
+              ]}>
+              {/* LEFT */}
+              <View style={styles.left}>
+                <View style={styles.iconCircle}>
+                  <Image source={bellIcon} style={styles.icon} />
+                </View>
+
+                <View style={styles.textBlock}>
+                  <Text style={styles.title}>{item.title}</Text>
+                  <Text style={styles.subtitle} numberOfLines={2}>
+                    {item.content}
+                  </Text>
+                </View>
               </View>
 
-              <View style={styles.textBlock}>
-                <Text style={styles.title}>{item.title}</Text>
-                <Text style={styles.subtitle} numberOfLines={2}>
-                  {item.content}
-                </Text>
+              {/* RIGHT */}
+              <View style={styles.right}>
+                {!item.isRead && <View style={styles.dot} />}
+
+                <Text style={styles.time}>{formatTime(item.createdAt)}</Text>
               </View>
-            </View>
 
-            {/* RIGHT */}
-            <View style={styles.right}>
-              {!item.isRead && <View style={styles.dot} />}
-
-              <Text style={styles.time}>{formatTime(item.createdAt)}</Text>
-            </View>
-
-            {/* divider */}
-            {index !== section.data.length - 1 && (
-              <View style={styles.divider} />
-            )}
-          </Pressable>
+              {/* divider */}
+              {index !== section.data.length - 1 && (
+                <View style={styles.divider} />
+              )}
+            </Pressable>
           </AnimatedCard>
         )}
         ListEmptyComponent={
           <View style={styles.empty}>
             <Text style={styles.emptyTitle}>You're all caught up</Text>
-            <Text style={styles.emptyText}>New notifications will appear here.</Text>
+            <Text style={styles.emptyText}>
+              New messages will appear here. Pull down to refresh.
+            </Text>
           </View>
         }
-        ListHeaderComponent={<LastUpdated timestamp={dataUpdatedAt} style={styles.updated} />}
+        ListFooterComponent={<InboxNotifications />}
+        ListHeaderComponent={
+          <View style={{gap: 12, paddingTop: 16}}>
+            <Text
+              style={{
+                fontSize: 28,
+                fontWeight: '700',
+                color: theme.colors.text,
+              }}>
+              Inbox
+            </Text>
+            <Text style={{color: theme.colors.textSecondary}}>
+              {messages.filter(m => !m.isRead).length} unread messages
+            </Text>
+            <View style={{flexDirection: 'row', gap: 8}}>
+              {[false, true].map(value => (
+                <Pressable
+                  key={String(value)}
+                  accessibilityRole="button"
+                  accessibilityState={{selected: unreadOnly === value}}
+                  onPress={() => setUnreadOnly(value)}
+                  style={{
+                    minHeight: 44,
+                    padding: 12,
+                    borderRadius: 12,
+                    backgroundColor: unreadOnly === value ? '#e6f4ec' : '#fff',
+                    borderWidth: 1,
+                    borderColor: theme.colors.border,
+                  }}>
+                  <Text style={{color: theme.colors.text}}>
+                    {value ? 'Unread' : 'All'}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+            <LastUpdated timestamp={dataUpdatedAt} style={styles.updated} />
+          </View>
+        }
       />
     </View>
   );
@@ -267,7 +317,7 @@ const styles = StyleSheet.create({
 
   section: {
     fontSize: 18,
-    color: '#A3A3A3',
+    color: '#52675e',
     marginTop: 18,
     marginBottom: 12,
   },
@@ -313,7 +363,7 @@ const styles = StyleSheet.create({
   subtitle: {
     marginTop: 4,
     fontSize: 15,
-    color: '#A3A3A3',
+    color: '#52675e',
   },
 
   right: {
@@ -340,7 +390,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     height: 1,
-    backgroundColor: '#ECECEC',
+    backgroundColor: '#f0f7f3',
   },
 
   loader: {
@@ -360,6 +410,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: theme.colors.textSecondary,
   },
-  emptyTitle: { fontSize: 18, fontWeight: '600', color: theme.colors.text, marginBottom: 6 },
-  updated: { marginTop: 10, textAlign: 'right' },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: theme.colors.text,
+    marginBottom: 6,
+  },
+  updated: {marginTop: 10, textAlign: 'right'},
 });

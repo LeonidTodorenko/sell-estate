@@ -175,9 +175,9 @@ function getClubBadge(status?: string) {
     case 'Expert':
       return { text: 'EX', bg: '#C0C6D4', textColor: '#1F2937', label: 'Expert' };
     case 'Visionary':
-      return { text: 'VS', bg: '#D4A73D', textColor: '#111827', label: 'Visionary' };
+      return { text: 'VS', bg: '#D4A73D', textColor: '#18382c', label: 'Visionary' };
     case 'VIP':
-      return { text: 'VI', bg: '#6EE7D8', textColor: '#111827', label: 'VIP' };
+      return { text: 'VI', bg: '#6EE7D8', textColor: '#18382c', label: 'VIP' };
     default:
       return { text: 'EP', bg: '#60A5FA', textColor: '#FFFFFF', label: 'Explorer' };
   }
@@ -316,9 +316,9 @@ const ListingCard = ({
           title="More details"
           onPress={onPress}
           showArrow={false}
-          bgColor="#111827"
+          bgColor="#18382c"
           textColor={theme.colors.white}
-          borderColor="#111827"
+          borderColor="#18382c"
           paddingVertical={8}
           paddingHorizontal={8}
           style={styles.listingDetailsButton}
@@ -1098,12 +1098,12 @@ const styles = StyleSheet.create({
   },
 
   heroBlock: {
-    backgroundColor: '#14191D',
+    backgroundColor: '#18382c',
     paddingTop: theme.spacing.lg,
     paddingHorizontal: theme.spacing.lg,
     paddingBottom: theme.spacing.lg,
     marginHorizontal: -theme.spacing.lg,
-    marginTop: -theme.spacing.lg,
+    marginTop: 0,
     marginBottom: theme.spacing.xl,
   },
 
@@ -1605,7 +1605,7 @@ clubBadgeFallback: {
   lastUpdated: { textAlign: 'right', marginHorizontal: theme.spacing.lg, marginTop: 6 },
   activityCard: { backgroundColor: '#FFFFFF', borderRadius: 18, paddingHorizontal: 16 },
   activityRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14 },
-  activityDivider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#E5E7EB' },
+  activityDivider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#dce7e0' },
   activityText: { flex: 1, paddingRight: 12 },
   activityTitle: { color: theme.colors.text, fontSize: 16, fontWeight: '600' },
   activityMeta: { color: theme.colors.textSecondary, fontSize: 13, marginTop: 3 },
@@ -1638,7 +1638,7 @@ chartTab: {
 },
 
 chartTabActive: {
-  backgroundColor: '#111827',
+  backgroundColor: '#18382c',
 },
 
 chartTabText: {

@@ -7,6 +7,7 @@ import type { PropertyImage, Session } from './types';
 // Share requests across repeated holdings. Clear on account changes; cap retained media.
 const cache = new Map<string, Promise<PropertyImage[]>>();
 subscribeSession(() => cache.clear());
+window.addEventListener('property-images-changed', () => cache.clear());
 function loadImages(id: string) {
   let request = cache.get(id);
   if (!request) {

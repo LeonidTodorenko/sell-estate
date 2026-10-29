@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using Newtonsoft.Json;
@@ -68,7 +68,7 @@ namespace RealEstateInvestment.Controllers
                 if (user == null)
                     return await LoginDemoAsync(request);
 
-                if (user.PasswordHash != request.Password)    // production passwords are currently stored as plain text
+                if (!PasswordHasher.VerifyPassword(request.Password, user.PasswordHash))
                     return Unauthorized(new { message = "Invalid email or password" });
 
                 if (user.IsDeleted == true)
@@ -76,6 +76,9 @@ namespace RealEstateInvestment.Controllers
 
                 if (!user.IsEmailConfirmed)
                     return BadRequest(new { message = "Please confirm your email first." });
+
+                if (PasswordHasher.NeedsRehash(user.PasswordHash))
+                    user.PasswordHash = PasswordHasher.HashPassword(request.Password);
 
                 // подчистим старьё только этого пользователя
                 await CleanupExpiredRefreshTokens(user.Id);
@@ -180,11 +183,13 @@ namespace RealEstateInvestment.Controllers
                 demoUser.IsBlocked ||
                 demoUser.IsDeleted == true ||
                 (demoUser.ExpiresAt.HasValue && demoUser.ExpiresAt.Value <= now) ||
-                !PasswordHasher.VerifyPassword(request.Password, demoUser.PasswordHash))
+                !PasswordHasher.VerifyDemoPassword(request.Password, demoUser.PasswordHash))
             {
                 return Unauthorized(new { message = "Invalid email or password" });
             }
 
+            if (PasswordHasher.DemoNeedsRehash(demoUser.PasswordHash))
+                demoUser.PasswordHash = PasswordHasher.HashPassword(request.Password);
             demoUser.LastActiveAt = now;
             var accessToken = GenerateJwtToken(
                 demoUser.Id,

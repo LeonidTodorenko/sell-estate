@@ -111,7 +111,7 @@ export type RootStackParamList = {
   ChangePassword: undefined;
   AdminLogs: undefined;
   ForgotPassword: undefined;
-  ResetPassword: undefined;
+  ResetPassword: { token: string };
   PaymentPlan: { propertyId: string, readonly: boolean };
   Inbox: undefined;
   AdminMessages: undefined;
@@ -223,7 +223,7 @@ export default function AppNavigator() {
           />
         <Stack.Screen name="Register" component={RegisterScreen} options={{ title: 'Create Account' }} />
         <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profile' }} />
-        <Stack.Screen name="Investments" component={InvestmentsScreen} options={{ title: 'Investment' }} />
+        <Stack.Screen name="Investments" component={InvestmentsScreen} options={{ title: 'Portfolio' }} />
         <Stack.Screen name="Properties" component={PropertyListScreen} options={{ title: 'Properties' }} />
         <Stack.Screen name="BuyShares" component={BuySharesScreen} options={{ title: 'Confirm Purchase' }} />
         <Stack.Screen name="Withdraw" component={WithdrawScreen} options={{ title: 'Withdraw Funds' }} />
@@ -253,7 +253,7 @@ export default function AppNavigator() {
         <Stack.Screen name="PaymentPlan" component={PaymentPlanScreen} options={{ title: 'Payment Plan' }} />
         <Stack.Screen name="Inbox" component={InboxScreen} options={{ title: 'Inbox' }} />
         <Stack.Screen name="AdminMessages" component={AdminMessagesScreen} options={{ title: 'Admin Messages' }} />
-        <Stack.Screen name="ShareMarketplaces" component={ShareMarketplaceScreen} options={{ title: 'Market' }} />
+        <Stack.Screen name="ShareMarketplaces" component={ShareMarketplaceScreen} options={{ title: 'Marketplace' }} />
         <Stack.Screen name="InvestmentApplications" component={InvestmentApplicationScreen} options={{ title: 'Investment Applications' }} />
         <Stack.Screen name="SellMyShares" component={SellMyShareScreen} options={{ title: 'Sell My Shares' }} />
         <Stack.Screen name="AdminSystemSettings" component={AdminSystemSettingsScreen} options={{ title: 'Admin System Settings' }} />
@@ -261,20 +261,20 @@ export default function AppNavigator() {
         <Stack.Screen name="SuperUser" component={SuperUserScreen} options={{ title: 'Super User' }} />
         <Stack.Screen name="UserTransactions" component={UserTransactionsScreen} options={{ title: 'Transactions History' }} />
         <Stack.Screen name="Personal" component={PersonalScreen} options={{ title: 'Personal' }} />
-        <Stack.Screen name="Chat" component={ChatScreen} options={{ title: 'Support' }} />
+        <Stack.Screen name="Chat" component={ChatScreen} options={{ title: 'Chat', contentStyle: { paddingBottom: 0 } }} />
         <Stack.Screen name="AdminChat" component={AdminChatScreen} options={{ title: 'Chat' }} />
         <Stack.Screen name="MyInvestments" component={MyInvestmentsScreen} options={{ title: 'Stack history' }} />
         <Stack.Screen name="MyFinance" component={MyFinanceScreen} options={{ headerShown: false }} />
         <Stack.Screen name="RentHistory" component={RentHistoryScreen} options={{ title: 'Rent History ' }} />
         <Stack.Screen name="MyRentIncome" component={MyRentIncomeScreen} options={{ title: 'Rental Income ' }} />
         <Stack.Screen name="Home" component={MainHomeScreen} options={{ title: 'Home ' }} />
-        <Stack.Screen name="InviteFriend" component={InviteFriendScreen} options={{ title: 'Invite a Friend' }} />
+        <Stack.Screen name="InviteFriend" component={InviteFriendScreen} options={{ title: 'Referrals' }} />
         <Stack.Screen name="MonthlyReports" component={MonthlyReportsScreen} options={{ title: 'Monthly Reports' }} />
         <Stack.Screen name="UserEdit" component={UserEditScreen} options={{ title: 'User Edit' }} />
          <Stack.Screen name="UsersLists" component={UsersListScreen} options={{ title: 'Users List' }} />
          <Stack.Screen name="AdminFinanceFlows" component={AdminFinanceFlowsScreen} options={{ title: 'Finance Flows' }} />
           <Stack.Screen name="AdminFinanceMonth" component={AdminFinanceMonthScreen} options={{ title: 'Finance Month' }} />
-          <Stack.Screen name="Status" component={StatusScreen} options={{ title: 'Status' }} />
+          <Stack.Screen name="Status" component={StatusScreen} options={{ title: 'Club status' }} />
           <Stack.Screen name="AddCard" component={AddCardScreen} options={{ title: 'Add Card ' }} />
            <Stack.Screen name="About" component={AboutScreen} options={{ title: 'About App ' }} />
             <Stack.Screen name="Terms" component={TermsScreen} options={{ title: 'Terms of Service' }} />

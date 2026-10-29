@@ -1,3 +1,4 @@
+import { Buffer } from 'buffer';
 import { decode as atob } from 'base-64'; 
 
 export function parseJwt<T = any>(token?: string | null): T | null {

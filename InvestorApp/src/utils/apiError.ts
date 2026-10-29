@@ -87,18 +87,11 @@ export function handleApiError(
 
   Alert.alert(title, text.slice(0, maxLen));
 
- console.log(contextMessage ?? 'API Error', {
-  message: error?.message,
-  code: error?.code,
-  name: error?.name,
-  url: (error as any)?.config?.url,
-});
-
-console.log('API Error raw:', safeStringify(error));
- 
-   console.log('status', error?.response?.status);
-      console.log('headers', error?.response?.headers);
-      console.log('data', error?.response?.data);
-      console.log('message', error?.message);
-
+ // Do not log Axios errors: their config includes credentials and tokens.
+ if (__DEV__) {
+   console.log('API request failed', {
+     status: error?.response?.status,
+     code: error?.code,
+   });
+ }
 }

@@ -11,7 +11,7 @@ import Haptics from '../services/HapticsService';
 
 //import { Buffer } from 'buffer';
 
-global.Buffer = global.Buffer || require('buffer').Buffer;
+// Buffer is imported explicitly by consumers; no global mutation is needed.
 
 const EditProfileScreen = () => {
     const { setLoading } = useLoading();
