@@ -14,18 +14,7 @@ namespace RealEstateInvestment.Controllers
         [HttpPost("simulate-payment")]
         public IActionResult SimulatePayment([FromBody] decimal amount)
         {
-            // todo
-            //_context.ActionLogs.Add(new ActionLog
-            //{
-            //    UserId = new Guid("2273adeb-483c-4104-a3a9-585b3dad9e27"), // todo add admin guid later
-            //    Action = "SimulatePayment",
-            //    Details = "SimulatePayment"  
-            //});
-            return Ok(new
-            {
-                message = "Payment was successful",
-                transactionId = Guid.NewGuid()
-            });
+            return StatusCode(410, new { message = "Use /api/payments to create a verified wallet payment." });
         }
     }
 }

@@ -17,6 +17,7 @@ namespace RealEstateInvestment.Data
         // =========================================================
 
         public DbSet<User> Users { get; set; }
+        public DbSet<WalletPayment> Payments { get; set; }
 
         public DbSet<Property> Properties { get; set; }
 
@@ -99,6 +100,20 @@ namespace RealEstateInvestment.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            modelBuilder.Entity<WalletPayment>(b =>
+            {
+                b.ToTable("SandboxPayments");
+                b.Property(x => x.Amount).HasColumnName("AmountRub");
+                b.Property(x => x.ExchangeRate).HasPrecision(18, 8);
+                b.Property(x => x.FeeAmount).HasPrecision(18, 2);
+                b.HasIndex(x => x.SettlementReference).IsUnique();
+                b.HasKey(x => x.Id);
+                b.HasIndex(x => new { x.UserId, x.RequestKey }).IsUnique();
+                b.HasIndex(x => x.ProviderId).IsUnique();
+                b.Property(x => x.Amount).HasPrecision(18, 2);
+                b.Property(x => x.WalletAmount).HasPrecision(18, 2);
+                b.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
+            });
 
             // =====================================================
             // UTC conversion for all DateTime / DateTime?

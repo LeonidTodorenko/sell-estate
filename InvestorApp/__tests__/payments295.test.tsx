@@ -1,0 +1,34 @@
+import React from 'react';
+import TestRenderer,{act} from 'react-test-renderer';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {AppState,Linking} from 'react-native';
+import AddFunds from '../src/screens/AddFunds';
+import api from '../src/api';
+jest.mock('../src/api',()=>({__esModule:true,default:{get:jest.fn(),post:jest.fn()}}));
+jest.mock('../src/services/sessionStorage',()=>({loadSession:jest.fn(async()=>({user:{id:'qa-user'},isDemo:false}))}));
+jest.mock('../src/components/BlueButton',()=> 'PaymentButton');
+jest.mock('@react-native-picker/picker',()=>{const p:any='PaymentPicker';return {Picker:Object.assign(function Picker(props:any){return require('react').createElement(p,props,props.children);},{Item:'PaymentOption'})};});
+jest.mock('@tanstack/react-query',()=>({useQueryClient:()=>({invalidateQueries:jest.fn(async()=>undefined)})}));
+const config={enabled:true,chargeCurrency:'RUB',walletCurrency:'USD',exchangeRate:80,feePercent:2.5,minAmount:1,maxAmount:10000,testMode:true,bankInstructions:''};
+const pending={id:'qa-payment',requestKey:'key',method:'yookassa',amount:100,walletAmount:1.21,feeAmount:2.5,chargeCurrency:'RUB',walletCurrency:'USD',exchangeRate:80,status:'pending',credited:false,confirmationUrl:'https://yookassa.ru/checkout/test',createdAt:'2026-10-30T00:00:00Z',testMode:true};
+beforeEach(async()=>{await AsyncStorage.clear();jest.clearAllMocks();Object.defineProperty(AppState,'currentState',{value:'active',writable:true});(api.get as jest.Mock).mockImplementation(async(path:string)=>({data:path.endsWith('/config')?config:path==='/payments'?[]:pending}));});
+test('uncertain creation survives remount and retries with the same amount and key',async()=>{
+ (api.post as jest.Mock).mockRejectedValueOnce(new Error('Response lost')).mockResolvedValueOnce({data:pending});
+ let view!:TestRenderer.ReactTestRenderer;await act(async()=>{view=TestRenderer.create(<AddFunds/>);});
+ await act(async()=>{view.root.findAllByType('PaymentButton' as any).find(x=>x.props.title==='Continue to payment')!.props.onPress();});
+ const first=(api.post as jest.Mock).mock.calls[0][1];expect(first.client).toBe('android');expect(first.amount).toBe(100);
+ await act(async()=>view.unmount());await act(async()=>{view=TestRenderer.create(<AddFunds/>);});
+ await act(async()=>{view.root.findAllByType('PaymentButton' as any).find(x=>x.props.title==='Recover payment')!.props.onPress();});
+ expect((api.post as jest.Mock).mock.calls[1][1]).toEqual(first);
+ await act(async()=>view.unmount());
+});
+test('checkout opens the system browser and return triggers verification without a wallet write',async()=>{
+ await AsyncStorage.setItem('ownersclub.payment.qa-user',JSON.stringify({requestKey:'key',amount:100,method:'yookassa',id:pending.id}));
+ let callback:(s:string)=>void=()=>{};const listener=jest.spyOn(AppState,'addEventListener').mockImplementation((_event,fn:any)=>{callback=fn;return {remove:jest.fn()};});
+ const open=jest.spyOn(Linking,'openURL').mockResolvedValue(undefined);let view!:TestRenderer.ReactTestRenderer;
+ await act(async()=>{view=TestRenderer.create(<AddFunds/>);});
+ await act(async()=>{view.root.findAllByType('PaymentButton' as any).find(x=>x.props.title==='Open secure payment page')!.props.onPress();});expect(open).toHaveBeenCalledWith(pending.confirmationUrl);
+ (api.get as jest.Mock).mockClear();await act(async()=>callback('active'));
+ expect(api.get).toHaveBeenCalledWith('/payments/qa-payment',expect.anything());expect(api.post).not.toHaveBeenCalled();
+ await act(async()=>view.unmount());listener.mockRestore();open.mockRestore();
+});

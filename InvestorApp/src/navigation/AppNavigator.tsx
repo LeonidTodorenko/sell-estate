@@ -202,6 +202,7 @@ export default function AppNavigator() {
   return (
         <SafeAreaProvider>
       <NavigationContainer theme={MyTheme}
+        linking={{prefixes:['ownersclub://'],config:{initialRouteName:'Gate',screens:{TopUp:'payments/return'}}}}
         ref={navigationRef}
         onReady={() => setRouteName(navigationRef.getCurrentRoute()?.name)}
         onStateChange={() => setRouteName(navigationRef.getCurrentRoute()?.name)}
@@ -240,7 +241,7 @@ export default function AppNavigator() {
         <Stack.Screen name="PropertyForm" component={PropertyFormScreen} options={{ title: 'Property Form' }} />
         <Stack.Screen name="PropertyDetail" component={PropertyDetailScreen} options={{ title: 'Property details' }} />
         <Stack.Screen name="UploadKyc" component={UploadKycScreen} options={{ title: 'Upload KYC' }} />
-        <Stack.Screen name="TopUp" component={TopUpScreen} options={{ title: 'Transfer Money' }} />
+        <Stack.Screen name="TopUp" component={TopUpScreen} options={{ title: 'Add Funds' }} />
         <Stack.Screen name="PropertyMap" component={PropertyMapScreen} options={{ title: 'Map' }} />
         <Stack.Screen name="UserKycView" component={UserKycViewScreen} options={{ title: 'User Kyc' }} />
         <Stack.Screen name="AdminKycView" component={AdminKycViewScreen} options={{ title: 'Admin Kyc' }} />

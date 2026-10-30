@@ -172,6 +172,10 @@ builder.Services.AddSingleton<CaptchaService>();
 builder.Services.AddScoped<ISuperUserService, SuperUserService>();
  
 builder.Services.AddHttpClient();
+builder.Services.Configure<PaymentOptions>(builder.Configuration.GetSection("Payments"));
+builder.Services.AddHttpClient<IYooKassaPayments, YooKassaPaymentClient>(c => c.Timeout = TimeSpan.FromSeconds(25))
+    .RemoveAllLoggers();
+builder.Services.AddScoped<PaymentService>();
 builder.Services.AddScoped<SettingsService>();
 builder.Services.AddScoped<ICashFlowService, CashFlowService>();
 builder.Services.AddScoped<IFirebaseNotificationService, FirebaseNotificationService>();

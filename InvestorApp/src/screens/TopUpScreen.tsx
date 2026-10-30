@@ -11,6 +11,8 @@ import theme from '../constants/theme';
 import Haptics from '../services/HapticsService';
 import { loadSession } from '../services/sessionStorage';
 
+import AddFunds from './AddFunds';
+
 const DEMO_TOP_UP_LIMIT = 100000;
 
 const TopUpScreen = () => {
@@ -103,6 +105,8 @@ const TopUpScreen = () => {
       </View>
     );
   }
+
+  if (!isDemo) return <AddFunds />;
 
   return (
     <View style={styles.container}>
