@@ -129,16 +129,17 @@ public sealed class PaymentService(AppDbContext db, IYooKassaPayments gateway, I
             throw new InvalidOperationException("Sandbox payment verification failed");
     }
 
-    public async Task Reconcile(Guid id, string providerId, CancellationToken ct)
+    public async Task<string> Reconcile(Guid id, string providerId, CancellationToken ct, Action? verified = null)
     {
         if (!options.Value.Ready) throw new InvalidOperationException("Sandbox payments are disabled");
         var p = await db.Set<WalletPayment>().AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct);
-        if (p == null || p.Method != "yookassa") return;
+        if (p == null || p.Method != "yookassa") return "ignored";
         var r = await gateway.Get(providerId, ct); // payload status/amount are never trusted
         Validate(p, r);
         if (r.Id != providerId) throw new InvalidOperationException("Provider ID mismatch");
-        if (r.Status != "succeeded" && r.Status != "canceled") return;
         if (r.Status == "succeeded" && !r.Paid) throw new InvalidOperationException("Unpaid successful payment");
+        verified?.Invoke();
+        if (r.Status != "succeeded" && r.Status != "canceled") return "ignored";
         await using var tx = await db.Database.BeginTransactionAsync(ct);
         // Database compare-and-set wins once across workers, duplicate requests and webhook retries.
         var won = await db.Set<WalletPayment>().Where(x => x.Id == id && x.CreditedAt == null && x.Status != "canceled")
@@ -159,5 +160,6 @@ public sealed class PaymentService(AppDbContext db, IYooKassaPayments gateway, I
             await db.SaveChangesAsync(ct);
         }
         await tx.CommitAsync(ct);
+        return won == 0 ? "duplicate" : r.Status == "succeeded" ? "settlement" : "ignored";
     }
 }
