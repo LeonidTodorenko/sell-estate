@@ -12,7 +12,7 @@ namespace RealEstateInvestment.Controllers;
 [ApiController]
 [Route("api/payments")]
 public sealed class WalletPaymentsController(AppDbContext db, PaymentService service,
-    IOptions<PaymentOptions> settings) : ControllerBase
+    IOptions<PaymentOptions> settings, ILogger<WalletPaymentsController> logger) : ControllerBase
 {
     [Authorize, HttpGet("config")]
     public IActionResult Config() { var o=settings.Value; return Ok(new { enabled=o.Ready&&!User.IsDemo(),
@@ -54,20 +54,47 @@ public sealed class WalletPaymentsController(AppDbContext db, PaymentService ser
     [AllowAnonymous, HttpPost("webhook"), HttpPost("yookassa-sandbox/webhook"), RequestSizeLimit(16384)]
     public async Task<IActionResult> Webhook([FromBody] JsonElement payload, CancellationToken ct)
     {
-        if (!settings.Value.Ready) return StatusCode(503);
-        if (payload.ValueKind != JsonValueKind.Object) return BadRequest();
-        if (!payload.TryGetProperty("event", out var ev) || ev.ValueKind != JsonValueKind.String || ev.GetString() is not ("payment.succeeded" or "payment.canceled")) return Ok();
-        if (!payload.TryGetProperty("object", out var obj) || obj.ValueKind != JsonValueKind.Object || !obj.TryGetProperty("id", out var pid) ||
-            pid.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(pid.GetString()) || pid.GetString()!.Length > 100) return BadRequest();
-        var providerId = pid.GetString()!;
-        var id = await db.Payments.Where(x => x.ProviderId == providerId).Select(x => (Guid?)x.Id).SingleOrDefaultAsync(ct);
-        // Handles a webhook arriving before create-payment response persistence.
-        if (id == null && obj.TryGetProperty("metadata", out var meta) && meta.ValueKind == JsonValueKind.Object && meta.TryGetProperty("ownersclub_payment_id", out var hint) &&
-            hint.ValueKind == JsonValueKind.String && Guid.TryParse(hint.GetString(), out var parsed)) id = parsed;
-        if (id == null) return Ok();
-        try { await service.Reconcile(id.Value, providerId, ct); return Ok(); }
-        catch (Exception e) when (e is HttpRequestException or InvalidOperationException or JsonException or FormatException or TaskCanceledException or DbUpdateException)
-        { return StatusCode(503); } // Let provider retry. No credential, body or exception logging.
+        var receivedAt = DateTimeOffset.UtcNow;
+        var eventName = "unsupported";
+        string? safeProviderId = null;
+        var verification = "not_attempted";
+        var decision = "ignored";
+        try
+        {
+            if (!settings.Value.Ready) { decision = "retry"; return StatusCode(503); }
+            if (payload.ValueKind != JsonValueKind.Object) return BadRequest();
+            if (!payload.TryGetProperty("event", out var ev) || ev.ValueKind != JsonValueKind.String ||
+                ev.GetString() is not ("payment.succeeded" or "payment.canceled")) return Ok();
+            eventName = ev.GetString()!;
+            if (!payload.TryGetProperty("object", out var obj) || obj.ValueKind != JsonValueKind.Object ||
+                !obj.TryGetProperty("id", out var pid) || pid.ValueKind != JsonValueKind.String ||
+                string.IsNullOrWhiteSpace(pid.GetString()) || pid.GetString()!.Length > 100) return BadRequest();
+            var providerId = pid.GetString()!;
+            // Only canonical provider UUIDs enter logs. Untrusted strings may contain PII or log injection.
+            if (Guid.TryParseExact(providerId, "D", out var providerUuid)) safeProviderId = providerUuid.ToString("D");
+            decision = "retry";
+            var id = await db.Payments.Where(x => x.ProviderId == providerId).Select(x => (Guid?)x.Id).SingleOrDefaultAsync(ct);
+            // Handles a webhook arriving before create-payment response persistence.
+            if (id == null && obj.TryGetProperty("metadata", out var meta) && meta.ValueKind == JsonValueKind.Object &&
+                meta.TryGetProperty("ownersclub_payment_id", out var hint) && hint.ValueKind == JsonValueKind.String &&
+                Guid.TryParse(hint.GetString(), out var parsed)) id = parsed;
+            if (id == null) { decision = "ignored"; return Ok(); }
+            verification = "failed";
+            decision = "retry";
+            decision = await service.Reconcile(id.Value, providerId, ct, () => verification = "verified");
+            if (verification == "failed") verification = "not_attempted";
+            return Ok();
+        }
+        catch (Exception e) when (e is HttpRequestException or InvalidOperationException or JsonException or
+            FormatException or TaskCanceledException or DbUpdateException)
+        { decision = "retry"; return StatusCode(503); }
+        finally
+        {
+            // Fixed template and allowlisted values only: never headers, body, user data or exceptions.
+            logger.LogInformation(new EventId(2970, "PaymentWebhook"),
+                "PaymentWebhook RequestTimestamp={RequestTimestamp} Event={WebhookEvent} ProviderPaymentId={ProviderPaymentId} Verification={Verification} Decision={Decision}",
+                receivedAt, eventName, safeProviderId, verification, decision);
+        }
     }
 
     [Authorize, HttpGet]
