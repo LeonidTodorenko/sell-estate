@@ -1,5 +1,7 @@
  
 import axios from 'axios';
+import { parseJwt } from './services/auth';
+import { jwtOwner } from './services/purchaseIntentCore';
 import { Platform } from 'react-native';
 import { saveSession, loadSession, clearSession } from './services/sessionStorage';
 import { handleApiError } from './utils/apiError'; 
@@ -100,6 +102,11 @@ if (!extra.silentLoading) {
   }
 
   await ensureTokenLoaded();
+  // Check immediately before dispatch, including after the common refresh interceptor.
+  const investmentOwner = (config as any).investmentOwner;
+  if (investmentOwner && jwtOwner(parseJwt(accessTokenInMemory)) !== investmentOwner) {
+    throw new Error('The active JWT account changed. Return to the original account to retry the saved purchase.');
+  }
   if (accessTokenInMemory && config.headers) {
     config.headers.Authorization = `Bearer ${accessTokenInMemory}`;
   }

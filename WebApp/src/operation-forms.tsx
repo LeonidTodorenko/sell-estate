@@ -1,4 +1,6 @@
-import { useRef, useState, type FormEvent } from 'react';
+import { purchaseInvestment, savedInvestment } from './investment-purchase';
+import type { PurchaseIntent } from './purchase-intent';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { ApiError, financialWrite } from './api';
 import { money } from './format';
@@ -29,8 +31,22 @@ const sharesField: Field = { name: 'shares', label: 'Shares', min: 1 };
 function positive(value: string, whole = false) { const n = Number(value); if (!Number.isFinite(n) || n <= 0 || (whole && !Number.isSafeInteger(n))) throw new Error('Enter a positive valid amount or whole number of shares.'); return n; }
 function future(value: string) { const n = Date.parse(value); if (!Number.isFinite(n) || n <= Date.now()) throw new Error('Choose a future expiration date.'); return new Date(n).toISOString(); }
 export function InvestmentForm({session,propertyId,available,price}:{session:Session;propertyId:string;available:number;price:number}) {
- if (available <= 0 || !Number.isFinite(price) || price <= 0) return <p>No shares available for an application.</p>;
- return <OperationForm session={session} title="Apply for shares" description="The server checks the payment plan, available shares and wallet balance. Submission may create an application or investment according to the current payment stage; allocation is not guaranteed." fields={[{...sharesField,max:available}]} contract={v=>({path:'/investments/apply',body:{propertyId,requestedShares:positive(v.shares,true)}})} summary={v=>`Apply for ${v.shares} shares. Indicative property value: ${money(Number(v.shares)*price)}. The server determines the required payment and allocation.`}/>;
+ const [saved,setSaved]=useState<PurchaseIntent|null>(null), [ready,setReady]=useState(false), [shares,setShares]=useState(''), [secret,setSecret]=useState(''), [error,setError]=useState(''), [busy,setBusy]=useState(false), [done,setDone]=useState(false), [review,setReview]=useState(false);
+ const lock=useRef(false);
+ useEffect(()=>{let live=true;setReady(false);savedInvestment(session).then(p=>{if(live){setSaved(p);if(p)setShares(String(p.payload.requestedShares));setReady(true);}}).catch(e=>{if(live)setError(e.message);});return()=>{live=false;};},[session]);
+ async function submit(e:FormEvent){e.preventDefault();if(lock.current||!ready||done)return;lock.current=true;setBusy(true);setError('');try{
+   const payload=saved?.payload ?? {propertyId,requestedShares:positive(shares,true)};
+   if(!saved && (payload.requestedShares>available || !Number.isFinite(price) || price<=0))throw new Error('Shares are unavailable.');
+   if(!secret.trim())throw new Error('Enter PIN or password.');
+   if(!review){setReview(true);return;}
+   await purchaseInvestment(session,{propertyId:payload.propertyId,requestedShares:payload.requestedShares},secret);setSaved(null);setDone(true);
+ }catch(e){setError(e instanceof Error?e.message:'Unable to submit.');try{const p=await savedInvestment(session);setSaved(p);if(p)setShares(String(p.payload.requestedShares));}catch{setReady(false);}}
+ finally{if(review){setSecret('');setReview(false);}setBusy(false);lock.current=false;}}
+ return <details className="operation"><summary>Apply for shares</summary>{done?<p role="status">Request accepted. Check <Link to="/applications">applications</Link> and <Link to="/transactions">transactions</Link>. <button onClick={() => window.dispatchEvent(new Event('financial-data-changed'))}>Refresh account data</button></p>:<form onSubmit={submit}>
+ {saved&&<p role="status">Unresolved purchase: {saved.payload.requestedShares} shares, property {saved.payload.propertyId}. Reference: {saved.id}. {saved.conflict?'409 conflict. Do not retry or create a new purchase. Contact support with this reference to reconcile the outcome.':'Re-enter the same PIN/password to retry this purchase. A new purchase is blocked.'}</p>}
+ <fieldset disabled={!ready||busy||!!saved?.conflict}><label>Shares<input required type="number" min="1" step="1" disabled={!!saved||review} value={shares} onChange={e=>setShares(e.target.value)}/></label><label>PIN or password<input required type="password" autoComplete="off" value={secret} onChange={e=>setSecret(e.target.value)}/></label>
+ {review&&<p>Confirm {shares} shares for property {saved?.payload.propertyId??propertyId}. The server determines payment and allocation.</p>}
+ <button className="button">{busy?'Submitting…':review?'Confirm purchase':saved?'Review saved purchase':'Review purchase'}</button></fieldset></form>}{error&&<p role="alert" className="error">{error}</p>}</details>;
 }
 export function CreateOfferForm({session,propertyId,shares}:{session:Session;propertyId:string;shares:number}) {
  return <OperationForm session={session} title="Create offer" description="Listing removes these shares from available holdings while the offer is active. Cancellation may charge a fee." fields={[{...sharesField,max:shares},{name:'start',label:'Starting price per share (USD)',min:0.01,step:'0.01'},{name:'buyout',label:'Buyout price per share (USD, optional)',min:0.01,step:'0.01',optional:true},{name:'expires',label:'Expires (local time)',type:'datetime-local'}]} contract={v=>({path:'/share-offers',body:{propertyId,sharesForSale:positive(v.shares,true),startPricePerShare:positive(v.start),buyoutPricePerShare:v.buyout?positive(v.buyout):null,expirationDate:future(v.expires)}})} summary={v=>`List ${v.shares} shares at ${money(Number(v.start))} starting price per share; ${v.buyout?money(Number(v.buyout)):'no'} buyout price. Expires ${v.expires.replace('T',' ')} local time.`}/>;

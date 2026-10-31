@@ -1,6 +1,7 @@
 import { demoTopUpContract } from './financial-contracts';
 import { isAdminSession } from './admin-contracts';
-import { isExpired, normalizeSession } from './session';
+import { jwtOwner } from './purchase-intent';
+import { parseJwt, isExpired, normalizeSession } from './session';
 import type { Session } from './types';
 import { authPaths, confirmationPath, registrationPayload, resetPayload, forgotPayload, type Registration } from './onboarding-contracts';
 
@@ -32,7 +33,7 @@ export class ApiError extends Error {
   status: number;
   constructor(message: string, status: number) { super(message); this.status = status; }
 }
-async function request<T>(path: string, token?: string, body?: unknown, signal?: AbortSignal, method?: string): Promise<T> {
+async function request<T>(path: string, token?: string, body?: unknown, signal?: AbortSignal, method?: string, extraHeaders?: Record<string, string>): Promise<T> {
   const controller = new AbortController();
   const cancel = () => controller.abort();
   if (signal?.aborted) cancel();
@@ -41,7 +42,7 @@ async function request<T>(path: string, token?: string, body?: unknown, signal?:
   try {
     const response = await fetch(`${API_BASE_URL}${path}`, {
       method: method || (body === undefined ? 'GET' : 'POST'), credentials: 'omit', signal: controller.signal,
-      headers: { Accept: 'application/json', ...(body === undefined ? {} : { 'Content-Type': 'application/json' }), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      headers: { ...extraHeaders, Accept: 'application/json', ...(body === undefined ? {} : { 'Content-Type': 'application/json' }), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     const raw = await response.text();
@@ -202,5 +203,18 @@ export async function propertyWrite(expected: Session, action: 'update' | 'add-i
   const result = await request(path, current.accessToken, body, undefined, action === 'update' ? 'PUT' : action === 'delete-image' ? 'DELETE' : 'POST');
   if (!allowed() || session?.user.id !== expected.user.id || !isAdminSession(session)) throw new ApiError('Account changed. Verify the saved state before retrying.', 403);
   window.dispatchEvent(new Event('property-images-changed'));
+  return result;
+}
+
+// The investment controller owns this UUID contract; deposit/marketplace writes do not use it.
+export async function investmentWrite(expected: Session, body: unknown, id: string) {
+  let current = session;
+  const matches = (s: Session | null) => s?.user.id === expected.user.id && !s?.isDemo;
+  if (!matches(current)) throw new ApiError('The active account changed.', 401);
+  if (current && isExpired(current)) current = await refresh();
+  if (!current || !matches(current)) throw new ApiError('Sign in to the original account.', 401);
+  if (jwtOwner(parseJwt(current.accessToken)) !== expected.user.id.toLowerCase()) throw new ApiError('JWT account mismatch.', 401);
+  const result = await request<{message:string}>('/investments/apply', current.accessToken, body, undefined, 'POST', {'Idempotency-Key':id});
+  if (result?.message !== 'Application submitted') throw new ApiError('Unexpected purchase response. Retry the saved purchase.', 0);
   return result;
 }

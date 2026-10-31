@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,8 @@ import {
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { purchaseInvestment, savedInvestment } from '../services/investmentPurchase';
+import type { PurchaseIntent } from '../services/purchaseIntentCore';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../api';
@@ -52,7 +53,6 @@ type BuySharesData = {
 };
 
 type InvestmentPayload = {
-  userId: string;
   propertyId: string;
   requestedShares: number;
   requestedAmount: number;
@@ -172,7 +172,17 @@ const BuySharesScreen = () => {
   const propertyNameFromRoute = route.params.propertyName;
 
   // Локально оставляем только значения формы и состояние success-экрана.
+  const [saved, setSaved] = useState<PurchaseIntent | null>(null);
+  const [intentReady, setIntentReady] = useState(false);
+  const purchaseLock = useRef(false);
   const [shares, setShares] = useState('');
+  useEffect(() => {
+    let live=true;
+    setIntentReady(false);
+    savedInvestment().then(p=>{if(live){setSaved(p);if(p)setShares(String(p.payload.requestedShares));setIntentReady(true);}})
+      .catch(e=>{if(live)Alert.alert('Purchase unavailable',e.message);});
+    return()=>{live=false;};
+  }, [propertyId]);
   const [pinOrPassword, setPinOrPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
@@ -217,11 +227,11 @@ const BuySharesScreen = () => {
    */
   const investMutation = useMutation({
     mutationFn: async (payload: InvestmentPayload) => {
-      return api.post('/investments/apply', payload, {
-        silentLoading: true,
-      } as any);
+      return purchaseInvestment({propertyId:payload.propertyId,requestedShares:payload.requestedShares},payload.pinOrPassword);
     },
+    retry: false,
     onSuccess: async (_response, variables) => {
+      setSaved(null);
       Haptics.success();
       setSuccessShares(variables.requestedShares);
       setSuccessAmount(variables.requestedAmount);
@@ -239,7 +249,9 @@ const BuySharesScreen = () => {
         queryClient.invalidateQueries({ queryKey: ['buyShares', propertyId] }),
       ]);
     },
-    onError: (mutationError: any) => {
+    onSettled: () => { purchaseLock.current=false; setPinOrPassword(''); },
+    onError: async (mutationError: any) => {
+      try { setSaved(await savedInvestment()); } catch { setIntentReady(false); }
       Haptics.error();
       const responseData = mutationError?.response?.data;
       const message =
@@ -257,24 +269,9 @@ const BuySharesScreen = () => {
     requestedAmount: number,
   ) => {
     try {
-      const stored = await AsyncStorage.getItem('user');
-      if (!stored) {
-        Haptics.error();
-        Alert.alert('Error', 'No user found');
-        return;
-      }
-
-      const user = JSON.parse(stored);
-      const userId = user?.userId ?? user?.id ?? user?.user?.id;
-
-      if (!userId) {
-        Haptics.error();
-        Alert.alert('Error', 'User identifier was not found');
-        return;
-      }
-
+      if(purchaseLock.current || !intentReady)return;
+      purchaseLock.current=true;
       investMutation.mutate({
-        userId,
         propertyId,
         requestedShares,
         requestedAmount,
@@ -290,7 +287,15 @@ const BuySharesScreen = () => {
   };
 
   const handleBuy = () => {
-    if (investMutation.isPending) return;
+    if (investMutation.isPending || purchaseLock.current || !intentReady) return;
+    if(saved){
+      if(saved.conflict){Alert.alert('Purchase conflict','Do not create a new purchase. Contact support with reference '+saved.id);return;}
+      if(saved.payload.propertyId!==propertyId){
+        Alert.alert('Unresolved purchase','Return to the saved property to retry. Reference: '+saved.id,[{text:'Return to saved purchase',onPress:()=>navigation.navigate('BuyShares',{propertyId:saved.payload.propertyId})}]);return;
+      }
+      if(!pinOrPassword.trim()){Alert.alert('Validation','Re-enter the same PIN/password.');return;}
+      executeBuy(saved.payload.requestedShares, Number(sharePrice??0)*saved.payload.requestedShares);return;
+    }
 
     if (!/^\d+$/.test(shares)) {
       Alert.alert('Validation', 'Only whole number of shares allowed (1, 2, 3...)');
@@ -298,7 +303,7 @@ const BuySharesScreen = () => {
     }
 
     const requestedShares = Number.parseInt(shares, 10);
-    if (!requestedShares || requestedShares <= 0) {
+    if (!Number.isSafeInteger(requestedShares) || requestedShares <= 0) {
       Alert.alert('Validation', 'Enter a valid number of shares (whole number > 0)');
       return;
     }
@@ -345,7 +350,7 @@ const BuySharesScreen = () => {
     executeBuy(requestedShares, requestedAmount);
   };
 
-  const submitting = investMutation.isPending;
+  const submitting = investMutation.isPending || !intentReady;
 
   // Начальная загрузка: запросы идут с silentLoading, поэтому показываем локальный loader.
   if (isLoading) {
@@ -358,7 +363,7 @@ const BuySharesScreen = () => {
   }
 
   // Ошибка загрузки с возможностью повторить запрос.
-  if (isError || !data) {
+  if ((isError || !data) && !saved) {
     return (
       <View style={styles.queryStateContainer}>
         <Text style={styles.queryStateTitle}>Failed to load property</Text>
@@ -488,6 +493,8 @@ const BuySharesScreen = () => {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
+        {saved && <Text accessibilityRole="alert">Unresolved investment: {saved.payload.requestedShares} shares, property {saved.payload.propertyId}. Reference: {saved.id}. Only the saved purchase can be retried with the same PIN/password. {saved.conflict ? '409: contact support to reconcile this purchase.' : ''}</Text>}
+
         <View style={styles.propertyCard}>
           <View style={styles.propertyCardLeft}>
             {previewUri ? (
@@ -520,6 +527,7 @@ const BuySharesScreen = () => {
           placeholder=""
           keyboardType="numeric"
           value={shares}
+          editable={!saved && !submitting}
           onChangeText={setShares}
         />
 
