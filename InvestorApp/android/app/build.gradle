@@ -73,6 +73,16 @@ def enableProguardInReleaseBuilds = true
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
  
+// Release credentials are supplied locally; never fall back to the debug identity.
+def releaseStore = System.getenv("OWNERSCLUB_RELEASE_STORE_FILE")
+def releaseStorePassword = System.getenv("OWNERSCLUB_RELEASE_STORE_PASSWORD")
+def releaseAlias = System.getenv("OWNERSCLUB_RELEASE_KEY_ALIAS")
+def releaseKeyPassword = System.getenv("OWNERSCLUB_RELEASE_KEY_PASSWORD")
+def hasReleaseSigning = releaseStore && releaseStorePassword && releaseAlias && releaseKeyPassword
+if (gradle.startParameter.taskNames.any { it.toLowerCase().contains("release") } && !hasReleaseSigning) {
+    throw new GradleException("OwnersClub RELEASE blocked: supply OWNERSCLUB_RELEASE_STORE_FILE, OWNERSCLUB_RELEASE_STORE_PASSWORD, OWNERSCLUB_RELEASE_KEY_ALIAS and OWNERSCLUB_RELEASE_KEY_PASSWORD. Debug signing is prohibited for release.")
+}
+
 android {
     ndkVersion rootProject.ext.ndkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion
@@ -89,10 +99,18 @@ android {
         applicationId "com.investorapp"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 5
-        versionName "0.5.1"
+        versionCode 6
+        versionName "0.6.0"
     }
     signingConfigs {
+        release {
+            if (hasReleaseSigning) {
+                storeFile file(releaseStore)
+                storePassword releaseStorePassword
+                keyAlias releaseAlias
+                keyPassword releaseKeyPassword
+            }
+        }
         debug {
             storeFile file('debug.keystore')
             storePassword 'android'
@@ -104,16 +122,21 @@ android {
         debug {
             signingConfig signingConfigs.debug
         }
-		release {
-		  //  todo поменял инструкции для сжатия
-		  //signingConfig signingConfigs.debug
-          //  minifyEnabled enableProguardInReleaseBuilds
-          //  proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
-		  signingConfig signingConfigs.debug
-		  minifyEnabled true
-		  shrinkResources true
-		  proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
-		}
+        release {
+            signingConfig signingConfigs.release
+            debuggable false
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+        }
+        // Internal distribution only: preserve the certificate of the installed test APKs.
+        // React Native bundles JS because this variant is not in debuggableVariants.
+        internalQa {
+            initWith release
+            signingConfig signingConfigs.debug
+            matchingFallbacks = ['release']
+            versionNameSuffix '-internal'
+        }
     }
 	splits {
 	  abi {

@@ -5,9 +5,9 @@ type Store = { getItem(key: string): Promise<string | null>; setItem(key: string
 export type PurchaseIntent = { id: string; payload: Payload; credential: string; uncertain: boolean; conflict?: boolean };
 export const pendingMessage = 'An investment purchase is unresolved. Retry the saved purchase with the same PIN/password. Do not create another purchase. Check applications and transactions; contact support if it remains unresolved.';
 export const conflictMessage = 'Purchase conflict (409). The saved key has been retained. Do not create a new purchase; reconcile this purchase with support using its reference.';
-export function jwtOwner(claims: Record<string, unknown> | null): string {
+export function jwtOwner(claims: Record<string, unknown> | null, allowDemo = false): string {
   const id = claims?.['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ?? claims?.sub ?? claims?.nameid;
-  if (typeof id !== 'string' || !id || claims?.isDemo === true || claims?.isDemo === 'true') throw new Error('Investment retry protection requires an authenticated live account. Demo purchases are unavailable.');
+  if (typeof id !== 'string' || !id || (!allowDemo && (claims?.isDemo === true || claims?.isDemo === 'true'))) throw new Error('Investment retry protection requires an authenticated account.');
   return id.toLowerCase();
 }
 function digest(value: string) {

@@ -36,9 +36,6 @@ namespace RealEstateInvestment.Controllers
             if (await FinancialActor.ValidateAsync(User, _context) is { } actorError) return actorError;
             req.UserId = User.GetUserId(); // Compatibility field; JWT is the authority.
 
-            if (User.IsDemo())
-                return await ApplicateForDemoInvestment(req);
-
             Guid? operationId = null;
             if (Request.Headers.TryGetValue("Idempotency-Key", out var key))
             {
@@ -46,6 +43,9 @@ namespace RealEstateInvestment.Controllers
                     return BadRequest("Idempotency-Key must be a non-empty UUID");
                 operationId = parsed;
             }
+            if (User.IsDemo())
+                return await ApplicateForDemoInvestment(req, operationId);
+
             await using var financialTransaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
 
             if (req.RequestedShares <= 0)
@@ -197,7 +197,7 @@ namespace RealEstateInvestment.Controllers
             return Ok(new { message = "Application submitted" });
         }
 
-        private async Task<IActionResult> ApplicateForDemoInvestment(InvestmentApplicationWithPin req)
+        private async Task<IActionResult> ApplicateForDemoInvestment(InvestmentApplicationWithPin req, Guid? operationId)
         {
             var demoUserId = User.GetUserId();
             if (demoUserId == Guid.Empty)
@@ -214,14 +214,30 @@ namespace RealEstateInvestment.Controllers
             if (!FinancialActor.VerifyDemoSecret(demoUser, req.PinOrPassword))
                 return BadRequest(new { message = "Invalid PIN" });
 
+            var operationContext = $"investment/apply; StepNumber={req.StepNumber}";
+            if (operationId.HasValue)
+            {
+                var prior = await _context.DemoUserTransactions.AsNoTracking()
+                    .SingleOrDefaultAsync(t => t.Id == operationId.Value);
+                if (prior != null)
+                {
+                    if (prior.DemoUserId != demoUserId || prior.PropertyId != req.PropertyId ||
+                        prior.Type != TransactionType.Investment || prior.Shares != req.RequestedShares || prior.Notes != operationContext)
+                        return Conflict("Idempotency-Key was already used for another operation");
+                    return Ok(new { message = "Application submitted" });
+                }
+            }
+
             var property = await _context.Properties.AsNoTracking()
                 .Include(p => p.PaymentPlans)
                 .FirstOrDefaultAsync(p => p.Id == req.PropertyId);
             if (property == null) return NotFound(new { message = "Property not found" });
             if (property.PaymentPlans == null || property.PaymentPlans.Count == 0)
                 return BadRequest(new { message = "No payment plan found" });
-            if (property.TotalShares <= 0)
-                return BadRequest(new { message = "Property share capacity is invalid" });
+            if (property.Status is "declined" or "sold" or "rented")
+                return Conflict("Property is closed for investment");
+            if (property.TotalShares <= 0 || property.Price <= 0)
+                return BadRequest(new { message = "Property price or share capacity is invalid" });
 
             var now = DateTime.UtcNow;
             var steps = property.PaymentPlans.OrderBy(x => x.EventDate).ToList();
@@ -273,13 +289,15 @@ namespace RealEstateInvestment.Controllers
                 }
             }
 
+            var journalId = operationId ?? Guid.NewGuid();
             _context.DemoUserTransactions.Add(new DemoUserTransaction
             {
+                Id = journalId,
                 DemoUserId = demoUserId, Type = TransactionType.Investment, Amount = expectedAmount,
                 Shares = req.RequestedShares, PropertyId = property.Id, PropertyTitle = property.Title,
-                Timestamp = now, Notes = isFirstStep ? "Demo investment application" : "Demo investment"
+                Timestamp = now, Notes = operationContext
             });
-            _context.DemoActionLogs.Add(new DemoActionLog { DemoUserId = demoUserId, Action = "ApplicateForInvestment", Details = $"Property={property.Id}; Shares={req.RequestedShares}; Amount={expectedAmount:F2}" });
+            _context.DemoActionLogs.Add(new DemoActionLog { DemoUserId = demoUserId, Action = "ApplicateForInvestment", Details = System.Text.Json.JsonSerializer.Serialize(new { transactionId = journalId, affectedUser = demoUserId, propertyId = property.Id, shares = req.RequestedShares, amount = expectedAmount, stepNumber = req.StepNumber }) });
             demoUser.LastActiveAt = now;
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();

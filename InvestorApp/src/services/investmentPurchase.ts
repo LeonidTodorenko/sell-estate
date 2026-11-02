@@ -8,17 +8,20 @@ function uuid() { return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,
 const intents = createPurchaseIntents(AsyncStorage, uuid);
 async function owner() {
   const session = await loadSession();
-  const id = jwtOwner(parseJwt(session?.accessToken));
-  if (!session || session.isDemo || String(session.user?.id??session.user?.userId).toLowerCase() !== id) throw new Error('The account does not match its JWT. Sign in again.');
-  return id;
+  const id = jwtOwner(parseJwt(session?.accessToken), true);
+  if (!session || String(session.user?.id??session.user?.userId).toLowerCase() !== id) throw new Error('The account does not match its JWT. Sign in again.');
+  const claims = parseJwt(session.accessToken);
+  if ((claims?.isDemo === true || claims?.isDemo === 'true') !== !!session.isDemo) throw new Error('The account does not match its JWT. Sign in again.');
+  return { id, demo: claims?.isDemo === true || claims?.isDemo === 'true' };
 }
-export async function savedInvestment() { return intents.read(await owner()); }
+export async function savedInvestment() { return intents.read((await owner()).id); }
 export async function purchaseInvestment(payload: {propertyId:string;requestedShares:number}, secret:string) {
-  const id=await owner();
+  const {id,demo}=await owner();
   return intents.submit(id,payload,secret,async intent=>{
-    if(await owner()!==id)throw new Error('The active account changed.');
+    const current=await owner();
+    if(current.id!==id || current.demo!==demo)throw new Error('The active account changed.');
     const response=await api.post('/investments/apply',{...intent.payload,pinOrPassword:secret},{
-      headers:{'Idempotency-Key':intent.id}, investmentOwner:id, silentLoading:true, silentError:true,
+      headers:{'Idempotency-Key':intent.id}, investmentOwner:id, investmentDemo:demo, silentLoading:true, silentError:true,
     } as any);
     if(response.data?.message!=='Application submitted')throw new Error('Unexpected purchase response. Retry the saved purchase.');
     return response;

@@ -1,3 +1,4 @@
+import { AdminInvestmentIntents } from './admin-intents';
 import {useEffect,useRef,useState} from 'react';
 import {api,financialWrite} from './api';
 import type {Session} from './types';
@@ -48,7 +49,7 @@ export function AdminPayments({session}:{session:Session}){
  const load=()=>api<typeof rows>('/payments/admin/queue').then(setRows);
  useEffect(()=>{void load().catch(()=>setError('Payment queue unavailable.'));},[]);
  async function review(id:string,action:string,reference:string,verified:boolean,receivedAmount?:number,receivedCurrency?:string,paymentLink?:string){if(busy)return;setBusy(true);setError('');try{await financialWrite(session,`/payments/admin/${id}/review`,{action,reference,fundsIndependentlyVerified:verified,receivedAmount,receivedCurrency,paymentLink:paymentLink||null});await load();}catch(e){setError(e instanceof Error?e.message:'Review failed.');}finally{setBusy(false);}}
- return <><h1>Payments & requests</h1><p>Confirm receipt using independent bank or provider records. A request or screenshot is insufficient. Never enter card details.</p><button disabled={busy} onClick={()=>void load().catch(()=>setError('Queue unavailable.'))}>Refresh</button>{error&&<p role="alert">{error}</p>}{rows.map(r=><ReviewRow key={r.payment.id} row={r} busy={busy} review={review}/>)}</>;
+ return <><h1>Payments & requests</h1><AdminInvestmentIntents session={session}/><p>Confirm receipt using independent bank or provider records. A request or screenshot is insufficient. Never enter card details.</p><button disabled={busy} onClick={()=>void load().catch(()=>setError('Queue unavailable.'))}>Refresh</button>{error&&<p role="alert">{error}</p>}{rows.map(r=><ReviewRow key={r.payment.id} row={r} busy={busy} review={review}/>)}</>;
 }
 function ReviewRow({row,busy,review}:{row:{payment:WalletPayment;userId:string};busy:boolean;review:(id:string,action:string,reference:string,verified:boolean,receivedAmount?:number,receivedCurrency?:string,paymentLink?:string)=>Promise<void>}){
  const [reference,setReference]=useState(''),[verified,setVerified]=useState(false),[received,setReceived]=useState(''),[currency,setCurrency]=useState(''),[link,setLink]=useState('');const p=row.payment;

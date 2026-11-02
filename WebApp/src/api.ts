@@ -209,11 +209,11 @@ export async function propertyWrite(expected: Session, action: 'update' | 'add-i
 // The investment controller owns this UUID contract; deposit/marketplace writes do not use it.
 export async function investmentWrite(expected: Session, body: unknown, id: string) {
   let current = session;
-  const matches = (s: Session | null) => s?.user.id === expected.user.id && !s?.isDemo;
+  const matches = (s: Session | null) => s?.user.id === expected.user.id && s?.isDemo === expected.isDemo;
   if (!matches(current)) throw new ApiError('The active account changed.', 401);
   if (current && isExpired(current)) current = await refresh();
   if (!current || !matches(current)) throw new ApiError('Sign in to the original account.', 401);
-  if (jwtOwner(parseJwt(current.accessToken)) !== expected.user.id.toLowerCase()) throw new ApiError('JWT account mismatch.', 401);
+  if (jwtOwner(parseJwt(current.accessToken), true) !== expected.user.id.toLowerCase()) throw new ApiError('JWT account mismatch.', 401);
   const result = await request<{message:string}>('/investments/apply', current.accessToken, body, undefined, 'POST', {'Idempotency-Key':id});
   if (result?.message !== 'Application submitted') throw new ApiError('Unexpected purchase response. Retry the saved purchase.', 0);
   return result;

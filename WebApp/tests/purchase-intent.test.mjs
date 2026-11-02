@@ -56,3 +56,8 @@ test('success clears durable state and next explicit purchase gets a new key',as
  await c.submit('a',payload,'pin',async i=>{first=i.id;return 'ok';});
  await c.submit('a',payload,'pin',async i=>{assert.notEqual(i.id,first);return 'ok';});assert.equal(f.data.size,0);
 });
+test('demo JWT support is explicit and still requires an identity',()=>{
+ assert.equal(jwtOwner({sub:'DEMO-A',isDemo:'true'},true),'demo-a');
+ assert.throws(()=>jwtOwner({isDemo:true},true));
+ assert.throws(()=>jwtOwner({sub:'a',isDemo:'true'}));
+});

@@ -8,8 +8,10 @@ const intents = createPurchaseIntents({
   removeItem: async k => { localStorage.removeItem(k); },
 }, () => crypto.randomUUID());
 function owner(session: Session) {
-  const id = jwtOwner(parseJwt(session.accessToken));
-  if (session.isDemo || id !== session.user.id.toLowerCase()) throw new Error('The account does not match its JWT. Sign in again.');
+  const claims = parseJwt(session.accessToken);
+  const id = jwtOwner(claims, true);
+  const demo = claims?.isDemo === true || claims?.isDemo === 'true';
+  if (id !== session.user.id.toLowerCase() || demo !== !!session.isDemo) throw new Error('The account does not match its JWT. Sign in again.');
   return id;
 }
 export async function savedInvestment(session: Session) { return intents.read(owner(session)); }

@@ -27,40 +27,13 @@ namespace RealEstateInvestment.Controllers
             return Ok(investments);
         }
 
-        // Approve investment
+        // Legacy endpoints bypass the financial ledger and are unsafe for reconciliation.
         [HttpPost("{id}/approve")]
-        public async Task<IActionResult> ApproveInvestment(Guid id)
-        {
-            var investment = await _context.Investments.FindAsync(id);
-            if (investment == null) return NotFound(new { message = "Investment not found" });
+        public IActionResult ApproveInvestment(Guid id) => StatusCode(StatusCodes.Status410Gone,
+            new { message = "Use investment intent diagnostics and independent reconciliation. No financial change was made." });
 
-            _context.ActionLogs.Add(new ActionLog
-            {
-                UserId = new Guid("2273adeb-483c-4104-a3a9-585b3dad9e27"), // todo add admin guid later,
-                Action = "ApproveInvestment",
-                Details = "Approve Investment id: " + id.ToString()
-            });
-            
-            await _context.SaveChangesAsync();
-            return Ok(new { message = "Investment approved" });
-        }
-
-        // Reject investment
         [HttpPost("{id}/reject")]
-        public async Task<IActionResult> RejectInvestment(Guid id)
-        {
-            var investment = await _context.Investments.FindAsync(id);
-            if (investment == null) return NotFound(new { message = "Investment not found" });
-
-            _context.Investments.Remove(investment);
-            _context.ActionLogs.Add(new ActionLog
-            {
-                UserId = new Guid("2273adeb-483c-4104-a3a9-585b3dad9e27"), // todo add admin guid later,
-                Action = "RejectInvestment",
-                Details = "Reject Investment id: " + id.ToString()
-            });
-            await _context.SaveChangesAsync();
-            return Ok(new { message = "Investment rejected" });
-        }
+        public IActionResult RejectInvestment(Guid id) => StatusCode(StatusCodes.Status410Gone,
+            new { message = "Deleting ownership without a reconciled financial refund is disabled. No financial change was made." });
     }
 }

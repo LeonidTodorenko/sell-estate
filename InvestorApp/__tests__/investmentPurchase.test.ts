@@ -31,3 +31,13 @@ test('different payload cannot send when a durable investment is unresolved',asy
  await expect(purchaseInvestment(payload,'1234')).rejects.toThrow();
  await expect(purchaseInvestment({...payload,requestedShares:3},'1234')).rejects.toThrow('unresolved');expect(sent).toHaveLength(1);
 });
+test('demo purchase attaches its saved UUID and demo JWT; live-token mode switch is blocked',async()=>{
+ const demoToken='h.'+require('buffer').Buffer.from(JSON.stringify({sub:'d',isDemo:'true'})).toString('base64url')+'.s';
+ (loadSession as jest.Mock).mockResolvedValue({accessToken:demoToken,isDemo:true,user:{id:'d'}});
+ setAccessToken(demoToken);
+ await purchaseInvestment(payload,'4444');
+ expect(sent).toHaveLength(1);expect(sent[0].headers.get('Authorization')).toBe('Bearer '+demoToken);
+ expect(sent[0].headers.get('Idempotency-Key')).toMatch(/^[a-f0-9-]{36}$/);
+ setAccessToken(token('d'));
+ await expect(purchaseInvestment(payload,'4444')).rejects.toThrow('JWT account changed');expect(sent).toHaveLength(1);
+});

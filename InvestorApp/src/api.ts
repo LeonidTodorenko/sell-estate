@@ -104,7 +104,8 @@ if (!extra.silentLoading) {
   await ensureTokenLoaded();
   // Check immediately before dispatch, including after the common refresh interceptor.
   const investmentOwner = (config as any).investmentOwner;
-  if (investmentOwner && jwtOwner(parseJwt(accessTokenInMemory)) !== investmentOwner) {
+  if (investmentOwner && (jwtOwner(parseJwt(accessTokenInMemory), true) !== investmentOwner ||
+      (parseJwt(accessTokenInMemory)?.isDemo === true || parseJwt(accessTokenInMemory)?.isDemo === 'true') !== !!(config as any).investmentDemo)) {
     throw new Error('The active JWT account changed. Return to the original account to retry the saved purchase.');
   }
   if (accessTokenInMemory && config.headers) {
