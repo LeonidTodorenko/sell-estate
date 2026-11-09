@@ -15,7 +15,7 @@ async function owner() {
   return { id, demo: claims?.isDemo === true || claims?.isDemo === 'true' };
 }
 export async function savedInvestment() { return intents.read((await owner()).id); }
-export async function purchaseInvestment(payload: {propertyId:string;requestedShares:number}, secret:string) {
+export async function purchaseInvestment(payload: {propertyId:string;requestedShares:number;paymentPlanId?:string;stepNumber?:number}, secret:string) {
   const {id,demo}=await owner();
   return intents.submit(id,payload,secret,async intent=>{
     const current=await owner();

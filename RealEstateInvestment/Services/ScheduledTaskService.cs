@@ -1,3 +1,7 @@
+using System.Text.Json;
+using System.Security.Cryptography;
+using System.Text;
+using RealEstateInvestment.Helpers;
     using RealEstateInvestment.Models;
     using RealEstateInvestment.Data;
     using Microsoft.EntityFrameworkCore;
@@ -30,9 +34,10 @@
 
 
 
-                        //todo отключили пока
+                        Console.WriteLine("OwnersClub 30.4.1 scheduler tick started");
                         await RunScheduledProperyStatusTask();
                         await RunExpiredShareOfferProcessing();
+                        Console.WriteLine("OwnersClub 30.4.1 scheduler tick completed");
                     }
                     catch (Exception ex)
                     {
@@ -99,7 +104,7 @@
                 {
                     var discovery = discoveryScope.ServiceProvider.GetRequiredService<AppDbContext>();
                     propertyIds = await discovery.Properties.AsNoTracking()
-                        .Where(p => p.Status != "sold" && p.Status != "declined")
+                        .Where(p => p.Status != "sold" && p.Status != "declined" && p.Status != "rented")
                         .Select(p => p.Id).ToListAsync();
                 }
 
@@ -115,12 +120,20 @@
                         // re-reads committed state; never retry using this tracked context.
                         Console.WriteLine($"Application round conflict for {propertyId}; deferred to next tick: {ex.Message}");
                     }
+                    catch (ReservationConflict ex)
+                    {
+                        await RecordConflict(propertyId, ex);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Application round failed for {propertyId}: {ex.GetType().Name}");
+                    }
                 }
             }
 
             private static bool IsFinancialConflict(Exception? ex) => ex != null &&
                 (ex is DbUpdateConcurrencyException ||
-                 ex is Npgsql.PostgresException { SqlState: "40001" or "40P01" } ||
+                 ex is Npgsql.PostgresException { SqlState: "40001" or "40P01" or "23505" } ||
                  IsFinancialConflict(ex.InnerException));
 
             private async Task ProcessApplicationRound(Guid propertyId)
@@ -133,80 +146,78 @@
                     var now = DateTime.UtcNow;
                     var property = await context.Properties.Include(p => p.PaymentPlans)
                         .SingleOrDefaultAsync(p => p.Id == propertyId);
-                    if (property == null || property.Status == "sold" || property.Status == "declined") return;
-                    if (property.PaymentPlans == null || property.PaymentPlans.Count == 0) return;
+                    if (property == null || property.Status == "sold" || property.Status == "declined" || property.Status == "rented") return;
+                    var plans = InvestmentStages.Ordered(property.PaymentPlans);
+                    var pending = await context.InvestmentApplications
+                        .Where(a => a.PropertyId == property.Id && (a.Status == "pending" || a.Status == "carried"))
+                        .OrderBy(a => a.Id).ToListAsync();
+                    if (pending.Count == 0) return;
+                    foreach (var a in pending.Where(a => a.StepNumber < 1 || a.StepNumber > plans.Count))
+                        throw new ReservationConflict(a.Id, "Stage no longer exists");
 
-                    var step = property.PaymentPlans.Where(p => p.DueDate <= now && p.Paid == 0)
-                        .OrderBy(p => p.DueDate).ThenBy(p => p.Id).FirstOrDefault();
-                    if (step == null) return;
-
-                    // Preserve Min(EventDate): nulls are ignored if a dated step exists.
-                    // Resolve equal/all-null dates by DueDate and Id so only ONE step is first.
-                    var minEventDate = property.PaymentPlans.Min(p => p.EventDate);
-                    var firstStep = property.PaymentPlans.Where(p => p.EventDate == minEventDate)
-                        .OrderBy(p => p.DueDate).ThenBy(p => p.Id).First();
-                    if (step.Id != firstStep.Id) return;
-
-                    var applications = await context.InvestmentApplications
-                        .Where(a => a.PropertyId == property.Id && a.Status == "pending")
-                        .OrderByDescending(a => a.IsPriority).ThenBy(a => a.CreatedAt).ToListAsync();
-                    if (applications.Count == 0) return;
-
-                    var totalRequested = applications.Sum(a => a.RequestedAmount);
-                    var accepted = totalRequested >= step.Total;
-                    foreach (var app in applications)
+                    for (var index = 0; index < plans.Count; index++)
                     {
-                        var user = await context.Users.FindAsync(app.UserId);
-                        // Never commit a partially processed round with an orphan reservation.
-                        if (user == null) throw new InvalidOperationException($"Application {app.Id} has no user.");
-                        Message message;
-                        if (accepted)
+                        var step = plans[index];
+                        if (step.DueDate > now) continue;
+                        var applications = pending.Where(a => a.StepNumber == index + 1).ToList();
+                        if (applications.Count == 0) continue;
+                        if (step.Total < 0 || step.Paid < 0)
+                            throw new ReservationConflict(applications[0].Id, "Invalid stage accounting");
+                        // Preflight every source before mutating any application in this property.
+                        foreach (var app in applications)
                         {
-                            // Total is a minimum threshold. Accept ALL pending reservations;
-                            // wallet and shares were already reserved by /investments/apply.
-                            context.Investments.Add(new Investment
-                            {
-                                UserId = app.UserId, PropertyId = app.PropertyId,
-                                Shares = app.RequestedShares, InvestedAmount = app.RequestedAmount, CreatedAt = now
-                            });
-                            app.Status = "accepted";
-                            app.ApprovedShares = app.RequestedShares;
-                            app.ApprovedAmount = app.RequestedAmount;
-                            message = new Message
-                            {
-                                Title = "Your investment application was approved",
-                                Content = $"You were allocated {app.RequestedShares} shares for property {property.Title}.",
-                                RecipientId = app.UserId
-                            };
-                            notifications.Add(message);
+                            if (!await InvestmentReservationProof.Proven(context, app))
+                                throw new ReservationConflict(app.Id, "No unique matching original debit or reservation already settled");
+                            if (!await context.Users.AnyAsync(u => u.Id == app.UserId))
+                                throw new ReservationConflict(app.Id, "Reservation owner missing");
                         }
-                        else
+                        var total = applications.Sum(a => a.RequestedAmount);
+                        var accepted = step.Paid + total >= step.Total;
+                        foreach (var app in applications)
                         {
-                            user.WalletBalance += app.RequestedAmount;
-                            RealEstateInvestment.Helpers.InvestmentLedger.Record(context, Guid.Empty, user.Id,
-                                property, app.RequestedAmount, app.RequestedShares,
-                                RealEstateInvestment.Enums.TransactionType.InvestmentRefund,
-                                "InvestmentRefund", $"scheduler/application-round; Application={app.Id}");
-                            property.AvailableShares += app.RequestedShares;
-                            property.Status = "declined";
-                            property.PriorityInvestorId = null;
-                            app.Status = "rejected";
-                            message = new Message
+                            var user = await context.Users.SingleAsync(u => u.Id == app.UserId);
+                            if (accepted && (user.IsBlocked || user.IsDeleted == true || !user.IsEmailConfirmed))
+                                throw new ReservationConflict(app.Id, "Acceptance requires an active confirmed owner");
+                            var decisionId = StableId($"scheduler3041/{step.Id}/{app.Id}");
+                            if (await context.ActionLogs.AnyAsync(l => l.Id == decisionId))
+                                throw new ReservationConflict(app.Id, "Terminal scheduler decision already exists");
+                            if (accepted)
                             {
-                                Title = "Application rejected",
-                                Content = $"Your application for property {property.Title} was rejected due to insufficient funding.",
-                                RecipientId = app.UserId
-                            };
+                                context.Investments.Add(new Investment { UserId = app.UserId, PropertyId = property.Id,
+                                    Shares = app.RequestedShares, InvestedAmount = app.RequestedAmount, CreatedAt = now });
+                                app.Status = "accepted"; app.ApprovedShares = app.RequestedShares; app.ApprovedAmount = app.RequestedAmount;
+                            }
+                            else
+                            {
+                                user.WalletBalance += app.RequestedAmount;
+                                property.AvailableShares += app.RequestedShares;
+                                if (property.AvailableShares > property.TotalShares)
+                                    throw new ReservationConflict(app.Id, "Refund exceeds property capacity");
+                                InvestmentLedger.Record(context, Guid.Empty, user.Id, property, app.RequestedAmount, app.RequestedShares,
+                                    RealEstateInvestment.Enums.TransactionType.InvestmentRefund, "InvestmentRefund",
+                                    $"scheduler/application-round; Application={app.Id}; Stage={index + 1}",
+                                    operationId: StableId($"scheduler3041/refund/{app.Id}"), sourceId: app.Id);
+                                app.Status = "rejected";
+                                if (property.PriorityInvestorId == app.UserId) property.PriorityInvestorId = null;
+                            }
+                            var reason = accepted ? "Stage funding threshold reached at DueDate" : "Stage underfunded at DueDate; remaining reservation returned";
+                            context.ActionLogs.Add(new ActionLog { Id = decisionId, UserId = Guid.Empty,
+                                Action = "InvestmentApplicationDecision3041", Details = JsonSerializer.Serialize(new {
+                                    applicationId = app.Id, Action = accepted ? "accept" : "reject", Reason = reason,
+                                    ApprovedShares = accepted ? app.RequestedShares : 0, ExpectedStep = index + 1,
+                                    paymentPlanId = step.Id, actor = "scheduler" }) });
+                            var message = new Message { RecipientId = app.UserId,
+                                Title = accepted ? "Your investment application was approved" : "Application rejected",
+                                Content = $"Application {app.Id}, stage {index + 1}: {reason}." };
+                            context.Messages.Add(message);
+                            if (accepted) notifications.Add(message);
                         }
-                        context.Messages.Add(message);
+                        if (accepted) step.Paid += total;
+                        // Never revoke prior investments, change property status or automatically carry.
+                        context.ActionLogs.Add(new ActionLog { UserId = Guid.Empty,
+                            Action = accepted ? "InvestmentStepAccepted" : "InvestmentStepRejected",
+                            Details = $"PropertyId: {property.Id}, StepId: {step.Id}, Step: {index + 1}, Amount: {total}, Accepted: {accepted}" });
                     }
-                    if (accepted) step.Paid = totalRequested;
-                    context.ActionLogs.Add(new ActionLog
-                    {
-                        UserId = new Guid("2273adeb-483c-4104-a3a9-585b3dad9e27"),
-                        Action = accepted ? "InvestmentStepAccepted" : "InvestmentStepRejected",
-                        Details = $"PropertyId: {property.Id}, Step DueDate: {step.DueDate}, Accepted: {accepted}"
-                    });
                     await context.SaveChangesAsync();
                     await transaction.CommitAsync();
                 }
@@ -216,6 +227,29 @@
                     await SendFirebase(message.Content, message.Title, scope, context, message.RecipientId!.Value);
                 // Persist notification error logs independently of the committed financial work.
                 if (context.ChangeTracker.HasChanges()) await context.SaveChangesAsync();
+            }
+
+            private sealed class ReservationConflict(Guid applicationId, string reason) : InvalidOperationException(reason)
+            {
+                public Guid ApplicationId { get; } = applicationId;
+            }
+
+            private static Guid StableId(string value) => new Guid(SHA256.HashData(Encoding.UTF8.GetBytes(value)).AsSpan(0, 16));
+
+            private async Task RecordConflict(Guid propertyId, ReservationConflict error)
+            {
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                var id = StableId($"scheduler3041/conflict/{error.ApplicationId}/{error.Message}");
+                try
+                {
+                    if (await db.ActionLogs.AnyAsync(x => x.Id == id)) return;
+                    db.ActionLogs.Add(new ActionLog { Id = id, UserId = Guid.Empty, Action = "InvestmentSchedulerConflict3041",
+                        Details = JsonSerializer.Serialize(new { applicationId = error.ApplicationId, propertyId, reason = error.Message }) });
+                    await db.SaveChangesAsync();
+                }
+                catch (DbUpdateException ex) when (IsFinancialConflict(ex)) { }
+                Console.WriteLine($"Application reservation requires admin reconciliation: {error.ApplicationId}");
             }
 
             private async Task SendFirebase(string text1, string text2, IServiceScope scope, AppDbContext context, Guid userId)

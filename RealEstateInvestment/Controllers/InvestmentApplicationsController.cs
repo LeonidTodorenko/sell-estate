@@ -104,7 +104,7 @@ namespace RealEstateInvestment.Controllers
             // Legacy / future manual override. Normal first-step applications are processed
             // by ScheduledTaskService at PaymentPlan DueDate. Old manual accounting predates
             // reservations; do not re-enable before explicitly aligning it with the scheduler.
-            return StatusCode(StatusCodes.Status410Gone, new { message = "Manual application processing is disabled; applications are processed automatically at PaymentPlan DueDate." });
+            return StatusCode(StatusCodes.Status410Gone, new { message = "Legacy application processing is disabled. Use the reviewed investment workflow." });
 
             /* Disabled legacy implementation retained for future accounting review.
 
@@ -157,7 +157,7 @@ namespace RealEstateInvestment.Controllers
             // Legacy / future manual override. Normal first-step applications are processed
             // by ScheduledTaskService at PaymentPlan DueDate. Old manual accounting predates
             // reservations; do not re-enable before explicitly aligning it with the scheduler.
-            return StatusCode(StatusCodes.Status410Gone, new { message = "Manual application processing is disabled; applications are processed automatically at PaymentPlan DueDate." });
+            return StatusCode(StatusCodes.Status410Gone, new { message = "Legacy application processing is disabled. Use the reviewed investment workflow." });
 
             /* Disabled legacy implementation retained for future accounting review.
 
@@ -182,7 +182,7 @@ namespace RealEstateInvestment.Controllers
             // Legacy / future manual override. Normal first-step applications are processed
             // by ScheduledTaskService at PaymentPlan DueDate. Old manual accounting predates
             // reservations; do not re-enable before explicitly aligning it with the scheduler.
-            return StatusCode(StatusCodes.Status410Gone, new { message = "Manual application processing is disabled; applications are processed automatically at PaymentPlan DueDate." });
+            return StatusCode(StatusCodes.Status410Gone, new { message = "Legacy application processing is disabled. Use the reviewed investment workflow." });
 
             /* Disabled legacy implementation retained for future accounting review.
 

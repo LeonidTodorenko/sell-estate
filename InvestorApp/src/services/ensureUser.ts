@@ -18,7 +18,11 @@ export async function ensureUserInSession() {
     throw new Error('No valid session for ensureUserInSession');
   }
 
-  if (session0.user) return session0.user;
+  if ((session0.user?.id || session0.user?.userId) &&
+      session0.user?.fullName && session0.user?.email) {
+    await writeLegacyUser(session0);
+    return session0.user;
+  }
 
   // Здесь access токен уже должен быть в axios (через setAccessToken/интерсептор)
   const { data: me } = await api.get('/auth/me');

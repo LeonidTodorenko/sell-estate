@@ -1,147 +1,38 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, TextInput, FlatList,  StyleSheet, Alert } from 'react-native';
+import AdminProtectedScreen from '../components/AdminProtectedScreen';
+import React, {useCallback,useEffect,useRef,useState} from 'react';
+import {View,Text,TextInput,FlatList,Pressable,Alert,StyleSheet} from 'react-native';
+import {Picker} from '@react-native-picker/picker';
 import api from '../api';
-import BlueButton from '../components/BlueButton';
 import theme from '../constants/theme';
-//import { useUser } from '../contexts/UserContext';
-
-interface InvestmentApplication {
-  id: string;
-  userId: string;
-  propertyId: string;
-  requestedAmount: number;
-  requestedShares: number;
-  approvedAmount?: number;
-  approvedShares?: number;
-  stepNumber: number;
-  status?: string;
-  isPriority: boolean;
-  createdAt: string;
+import {DecisionHistory} from './InvestmentApplicationScreen';
+type Application={id:string;userId:string;propertyId:string;requestedAmount:number;requestedShares:number;approvedAmount:number|null;approvedShares:number|null;stepNumber:number;status:string;createdAt:string};
+const uuid=()=> 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const n=Math.floor(Math.random()*16);return(c==='x'?n:(n&3)|8).toString(16);});
+function Decision({a,items,reload}:{a:Application;items:Application[];reload:()=>void}){
+ const [shares,setShares]=useState(String(a.requestedShares)),[reason,setReason]=useState(''),[busy,setBusy]=useState(false),[locked,setLocked]=useState(false);
+ const lock=useRef(false);
+ const decide=(action:string)=>{
+  if(lock.current||locked)return;
+  const approvedShares=action==='accept'?Number(shares):0;
+  if(reason.trim().length<3||!Number.isSafeInteger(approvedShares)||approvedShares<0||approvedShares>a.requestedShares||(action==='accept'&&approvedShares===0)){Alert.alert('Check decision','Enter valid approved shares and a reason of at least 3 characters.');return;}
+  const round=items.filter(x=>x.stepNumber===a.stepNumber&&['pending','carried'].includes(x.status));
+  const explanation=action==='carry'?'Keep the entire reservation for the next stage.':action==='accept-stage'?`Accept ALL ${round.length} stage reservations, total $${round.reduce((sum,x)=>sum+x.requestedAmount,0).toFixed(2)}. IDs: ${round.map(x=>x.id).join(', ')}. No second debit.`:`Allocate ${approvedShares} shares. Estimated refund $${(a.requestedAmount-a.requestedAmount*approvedShares/a.requestedShares).toFixed(2)}. Server calculates the exact amount.`;
+  Alert.alert('Confirm investment decision',`${action.toUpperCase()} · ${a.id} · Stage ${a.stepNumber}\n${explanation}\nReason: ${reason.trim()}`,[{text:'Cancel',style:'cancel'},{text:'Confirm',onPress:async()=>{
+   if(lock.current||locked)return;lock.current=true;setBusy(true);
+   try{await api.post(`/investment-workflow/applications/${a.id}/decision`,{operationId:uuid(),action,approvedShares,expectedStep:a.stepNumber,reason:reason.trim(),...(action==='accept-stage'?{expectedRound:round.map(x=>x.id)}:{})},{silentError:true} as any);setLocked(true);reload();}
+   catch(e:any){setLocked(true);Alert.alert('Decision requires verification',`${e?.response?.data?.message||'Decision outcome may be uncertain.'} Reload applications and history before another decision.`);}
+   finally{lock.current=false;setBusy(false);}
+  }}]);
+ };
+ return <View><DecisionHistory id={a.id}/>{['pending','carried'].includes(a.status)&&<><Text>Approved shares (partial acceptance returns the unused reservation)</Text><TextInput accessibilityLabel="Approved shares" keyboardType="number-pad" value={shares} editable={!busy&&!locked} onChangeText={setShares} style={styles.input}/><TextInput accessibilityLabel="Decision reason" placeholder="Reason (required)" value={reason} editable={!busy&&!locked} maxLength={1000} onChangeText={setReason} style={styles.input}/><Text>Acceptance must cover the stage threshold. Use the complete funded round when several reservations cover it together.</Text>{[['accept','Accept / partial'],['accept-stage','Accept funded stage round'],['reject','Reject and refund'],['carry','Carry to next stage']].map(([action,label])=><Pressable accessibilityRole="button" accessibilityLabel={label} key={action} disabled={busy||locked} onPress={()=>decide(action)} style={styles.button}><Text>{label}</Text></Pressable>)}</>}</View>;
 }
-
-const AdminInvestmentApplicationScreen = () => {
-  //const { user } = useUser();
-  const [applications, setApplications] = useState<InvestmentApplication[]>([]);
-  const [propertyId, setPropertyId] = useState<string>('');
-
-  const fetchApplications = useCallback(async () => {
-    if (!propertyId) return;
-    try {
-      const response = await api.get(`/applications/property/${propertyId}`);
-      setApplications(response.data);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to load applications');
-    }
-  }, [propertyId]);
-
-  useEffect(() => {
-    fetchApplications();
-  }, [fetchApplications]);
-
-  const handleApprove = async (id: string, shares: number) => {
-    try {
-      await api.post(`/applications/${id}/approve`, shares);
-      Alert.alert('Success', 'Application approved');
-      fetchApplications();
-    } catch (error) {
-      Alert.alert('Error', 'Failed to approve application');
-    }
-  };
-
-  const handleReject = async (id: string) => {
-    try {
-      await api.post(`/applications/${id}/reject`);
-      fetchApplications();
-    } catch {
-      Alert.alert('Error', 'Failed to reject application');
-    }
-  };
-
-  const handleCarry = async (id: string) => {
-    try {
-      await api.post(`/applications/${id}/carry`);
-      fetchApplications();
-    } catch {
-      Alert.alert('Error', 'Failed to carry application');
-    }
-  };
-
-  const handleTogglePriority = async (id: string, current: boolean) => {
-    try {
-      await api.post(`/applications/${id}/update-priority`, !current);
-      fetchApplications();
-    } catch {
-      Alert.alert('Error', 'Failed to update priority');
-    }
-  };
-
-  const handleRecalculate = async () => {
-    try {
-      await api.post(`/applications/recalculate-priority/${propertyId}`);
-      fetchApplications();
-    } catch {
-      Alert.alert('Error', 'Failed to recalculate priority');
-    }
-  };
-
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Admin Applications</Text>
-
-      <Text>Enter Property ID:</Text>
-      <View style={styles.inputRow}>
-        <TextInput
-          style={styles.input}
-          value={propertyId}
-          onChangeText={setPropertyId}
-          placeholder="Property ID"
-        />
-        <BlueButton title="Load" onPress={fetchApplications} />
-      </View>
-
-      <BlueButton   title="Recalculate Priority" onPress={handleRecalculate} variant="orange" />
-
-      <FlatList
-        data={applications}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <Text>ID: {item.id}</Text>
-            <Text>User: {item.userId}</Text>
-            <Text>Amount: {item.requestedAmount}</Text>
-            <Text>Shares: {item.requestedShares}</Text>
-            <Text>Status: {item.status || 'pending'}</Text>
-            <Text>Step: {item.stepNumber}</Text>
-            <Text>Priority: {item.isPriority ? '✅' : '❌'}</Text>
-
-            <View style={styles.buttonRow}>
-              <BlueButton title="✔ Approve" onPress={() => handleApprove(item.id, item.requestedShares)} />
-              <BlueButton title="✖ Reject" onPress={() => handleReject(item.id)} />
-              <BlueButton title="↪ Carry" onPress={() => handleCarry(item.id)} />
-              <BlueButton 
-                title={item.isPriority ? 'Remove ⭐' : 'Make ⭐'}
-                onPress={() => handleTogglePriority(item.id, item.isPriority)}
-              />
-            </View>
-          </View>
-        )}
-      />
-    </View>
-  );
-};
-
-const styles = StyleSheet.create({
-  container: { padding: 20 ,backgroundColor: theme.colors.background,},
-  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 20 },
-  inputRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  input: { flex: 1, borderColor: '#ccc', borderWidth: 1, marginRight: 10, padding: 8, borderRadius: 5 },
-  card: {
-    padding: 10,
-    marginVertical: 8,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 8,
-  },
-  buttonRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
-});
-
-export default AdminInvestmentApplicationScreen;
+export default function AdminInvestmentApplicationScreen(){return <AdminProtectedScreen><ApplicationsQueue/></AdminProtectedScreen>; }
+function ApplicationsQueue(){
+ const [properties,setProperties]=useState<{id:string;title:string}[]>([]),[property,setProperty]=useState(''),[items,setItems]=useState<Application[]>([]),[status,setStatus]=useState(''),[stage,setStage]=useState(''),[user,setUser]=useState(''),[error,setError]=useState(''),[loading,setLoading]=useState(false);
+ const request=useRef(0);
+ useEffect(()=>{api.get('/properties').then(r=>setProperties(r.data)).catch(()=>setError('Unable to load properties.'));},[]);
+ const load=useCallback(async()=>{const version=++request.current;setItems([]);setError('');if(!property)return;setLoading(true);try{const r=await api.get(`/applications/property/${property}`);if(version===request.current)setItems(r.data);}catch{if(version===request.current)setError('Unable to load applications.');}finally{if(version===request.current)setLoading(false);}},[property]);
+ useEffect(()=>{void load();return()=>{request.current++;};},[load]);
+ const rows=items.filter(a=>(!status||a.status===status)&&(!stage||a.stepNumber===Number(stage))&&(!user||a.userId.toLowerCase().includes(user.toLowerCase())));
+ return <View style={styles.container}><Text style={styles.title}>Investment applications</Text><Text>Full share price is reserved once. The scheduler settles due stages when enabled. Carry remains an administrator decision. Reconciliation conflicts are recorded in Action Logs.</Text><Picker selectedValue={property} onValueChange={setProperty}><Picker.Item label="Choose property" value=""/>{properties.map(p=><Picker.Item key={p.id} label={p.title} value={p.id}/>)}</Picker><Picker selectedValue={status} onValueChange={setStatus}><Picker.Item label="All statuses" value=""/>{['pending','accepted','partial','rejected','carried'].map(s=><Picker.Item key={s} label={s} value={s}/>)}</Picker><TextInput accessibilityLabel="Stage filter" placeholder="Stage" keyboardType="number-pad" value={stage} onChangeText={setStage} style={styles.input}/><TextInput accessibilityLabel="Investor filter" placeholder="Investor ID" value={user} onChangeText={setUser} style={styles.input}/><Pressable onPress={()=>void load()} style={styles.button}><Text>Reload applications</Text></Pressable>{!!error&&<Text accessibilityRole="alert">{error}</Text>}{loading&&<Text>Loading applications…</Text>}<FlatList data={rows} keyExtractor={a=>`${a.id}-${a.status}-${a.stepNumber}`} ListEmptyComponent={<Text>No applications for this selection.</Text>} renderItem={({item:a})=><View style={styles.card}><Text>Application: {a.id}</Text><Text>Investor: {a.userId}</Text><Text>Stage {a.stepNumber} · {a.status}</Text><Text>Requested ${a.requestedAmount.toFixed(2)} · {a.requestedShares} shares</Text><Text>Approved {a.approvedAmount==null?'—':`$${a.approvedAmount.toFixed(2)}`} · {a.approvedShares??'—'} shares</Text><Text>Created: {new Date(a.createdAt).toLocaleString()}</Text><Decision a={a} items={items} reload={()=>void load()}/></View>}/></View>;
+}
+const styles=StyleSheet.create({container:{flex:1,padding:16,backgroundColor:theme.colors.background},title:{fontSize:22,fontWeight:'bold'},input:{borderWidth:1,borderColor:'#aaa',padding:8,marginVertical:5,borderRadius:6},button:{backgroundColor:'#e2f4ec',padding:12,marginVertical:4,borderRadius:6},card:{backgroundColor:'white',padding:14,marginVertical:8,borderRadius:8}});

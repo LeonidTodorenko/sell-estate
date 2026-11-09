@@ -75,7 +75,7 @@ namespace RealEstateInvestment.Controllers
             }
 
 
-            var operationContext = $"investment/apply; StepNumber={req.StepNumber}";
+            var operationContext = $"investment/apply; StepNumber={req.StepNumber}" + (req.PaymentPlanId.HasValue ? $"; PaymentPlanId={req.PaymentPlanId}" : "");
             if (operationId.HasValue)
             {
                 var prior = await _context.UserTransactions.AsNoTracking().SingleOrDefaultAsync(t => t.Id == operationId.Value);
@@ -97,9 +97,7 @@ namespace RealEstateInvestment.Controllers
 
             var now = DateTime.UtcNow;
 
-            var orderedSteps = property.PaymentPlans
-                .OrderBy(p => p.EventDate)
-                .ToList();
+            var orderedSteps = InvestmentStages.Ordered(property.PaymentPlans);
 
             var firstStep = orderedSteps.First();
             var lastStep = orderedSteps.Last();
@@ -134,10 +132,12 @@ namespace RealEstateInvestment.Controllers
                 return BadRequest(new { message = "The application date in not started yet, please try again later." });
 
             var accountingStep = activeStep ?? lastStep;
+            if (req.PaymentPlanId.HasValue && (req.PaymentPlanId != accountingStep.Id || req.StepNumber != orderedSteps.IndexOf(accountingStep) + 1))
+                return Conflict(new { message = "Selected stage changed or is unavailable; reload the payment plan." });
 
             var isFirstStep =
                 activeStep != null &&
-                activeStep.EventDate == firstStep.EventDate;
+                activeStep.Id == firstStep.Id;
 
             Guid sourceId;
             if (isFirstStep)
@@ -159,7 +159,7 @@ namespace RealEstateInvestment.Controllers
                     PropertyId = req.PropertyId,
                     RequestedAmount = expectedAmount,
                     RequestedShares = req.RequestedShares,
-                    StepNumber = req.StepNumber,
+                    StepNumber = orderedSteps.IndexOf(accountingStep) + 1,
                     IsPriority = wasPrior,
                     Status = "pending",
                     CreatedAt = now
@@ -214,7 +214,7 @@ namespace RealEstateInvestment.Controllers
             if (!FinancialActor.VerifyDemoSecret(demoUser, req.PinOrPassword))
                 return BadRequest(new { message = "Invalid PIN" });
 
-            var operationContext = $"investment/apply; StepNumber={req.StepNumber}";
+            var operationContext = $"investment/apply; StepNumber={req.StepNumber}" + (req.PaymentPlanId.HasValue ? $"; PaymentPlanId={req.PaymentPlanId}" : "");
             if (operationId.HasValue)
             {
                 var prior = await _context.DemoUserTransactions.AsNoTracking()
@@ -240,7 +240,7 @@ namespace RealEstateInvestment.Controllers
                 return BadRequest(new { message = "Property price or share capacity is invalid" });
 
             var now = DateTime.UtcNow;
-            var steps = property.PaymentPlans.OrderBy(x => x.EventDate).ToList();
+            var steps = InvestmentStages.Ordered(property.PaymentPlans);
             if (now < steps[0].EventDate)
                 return BadRequest(new { message = "The application date in not started yet, please try again later." });
 
@@ -263,7 +263,10 @@ namespace RealEstateInvestment.Controllers
                 return BadRequest(new { message = "Insufficient funds" });
 
             var activeStep = steps.FirstOrDefault(x => x.EventDate <= now && now <= x.DueDate);
-            var isFirstStep = activeStep != null && activeStep.EventDate == steps[0].EventDate;
+            var accountingStep = activeStep ?? steps.Last();
+            if (req.PaymentPlanId.HasValue && (req.PaymentPlanId != accountingStep.Id || req.StepNumber != steps.IndexOf(accountingStep) + 1))
+                return Conflict(new { message = "Selected stage changed or is unavailable; reload the payment plan." });
+            var isFirstStep = activeStep != null && activeStep.Id == steps[0].Id;
             demoUser.WalletBalance -= expectedAmount;
 
             if (isFirstStep)
@@ -274,7 +277,7 @@ namespace RealEstateInvestment.Controllers
                 {
                     DemoUserId = demoUserId, PropertyId = property.Id,
                     RequestedAmount = expectedAmount, RequestedShares = req.RequestedShares,
-                    StepNumber = req.StepNumber, IsPriority = hasPriority, Status = "pending", CreatedAt = now
+                    StepNumber = steps.IndexOf(accountingStep) + 1, IsPriority = hasPriority, Status = "pending", CreatedAt = now
                 });
             }
             else
@@ -312,6 +315,7 @@ namespace RealEstateInvestment.Controllers
 
         public class InvestmentApplicationWithPin : InvestmentApplication
         {
+            public Guid? PaymentPlanId { get; set; }
             public string PinOrPassword { get; set; }
         }
 
@@ -412,7 +416,7 @@ namespace RealEstateInvestment.Controllers
                 return BadRequest(new { message = "It's too early to validate payments" });
 
             // Pending reservations belong to the scheduler; never close their property here.
-            if (await _context.InvestmentApplications.AnyAsync(a => a.PropertyId == propertyId && a.Status == "pending"))
+            if (await _context.InvestmentApplications.AnyAsync(a => a.PropertyId == propertyId && (a.Status == "pending" || a.Status == "carried")))
                 return Conflict("Pending applications must be settled before refunding investments");
             if (await _context.ShareOffers.AnyAsync(o => o.PropertyId == propertyId && o.IsActive))
                 return Conflict("Active share offers must be settled before refunding investments");
@@ -595,7 +599,7 @@ namespace RealEstateInvestment.Controllers
             var pending = await (
                     from a in _context.InvestmentApplications
                     join p in _context.Properties on a.PropertyId equals p.Id
-                    where a.UserId == userId && a.Status == "pending" && a.RequestedShares > 0
+                    where a.UserId == userId && (a.Status == "pending" || a.Status == "carried") && a.RequestedShares > 0
                     group new { a, p } by new { a.PropertyId } into g
                     select new
                     {
@@ -693,7 +697,7 @@ namespace RealEstateInvestment.Controllers
                                        OwnershipPercent = g.Key.Price > 0 ? Math.Round(g.Sum(x => x.i.InvestedAmount) / g.Key.Price * 100, 2) : 0m
                                    }).ToListAsync();
             var pending = await _context.DemoInvestmentApplications.AsNoTracking()
-                .Where(a => a.DemoUserId == demoUserId && a.Status == "pending" && a.RequestedShares > 0)
+                .Where(a => a.DemoUserId == demoUserId && (a.Status == "pending" || a.Status == "carried") && a.RequestedShares > 0)
                 .GroupBy(a => a.PropertyId)
                 .Select(g => new { PropertyId = g.Key, PendingShares = g.Sum(x => x.RequestedShares), PendingCount = g.Count() })
                 .ToListAsync();

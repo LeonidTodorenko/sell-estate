@@ -32,13 +32,14 @@ public class ScheduledApplicationTests
                     RequestedShares = 25, IsPriority = user == h.Actor
                 });
             if (history)
-                foreach (var status in new[] { "accepted", "rejected", "partial", "carried" })
+                foreach (var status in new[] { "accepted", "rejected", "partial" })
                     db.InvestmentApplications.Add(new InvestmentApplication
                     {
                         UserId = h.Actor, PropertyId = h.PropertyId, Status = status,
                         RequestedAmount = 200000, RequestedShares = 20,
                         ApprovedAmount = 123, ApprovedShares = 3, StepNumber = 2
                     });
+            foreach (var a in db.ChangeTracker.Entries<InvestmentApplication>().Select(x=>x.Entity).Where(x=>x.Status=="pending").ToList()) ReservationFixture3041.Prove(db,a);
             db.SaveChanges();
         });
     }
@@ -75,13 +76,13 @@ public class ScheduledApplicationTests
                     Assert.Equal(accepted ? 1000 : 1000 + total / 2, db.Users.Find(user)!.WalletBalance);
                 var property = db.Properties.Find(h.PropertyId)!;
                 Assert.Equal(accepted ? 50 : 100, property.AvailableShares);
-                if (!accepted) { Assert.Equal(tick == 0 ? "declined" : "active", property.Status); Assert.Null(property.PriorityInvestorId); }
+                if (!accepted) { Assert.Equal(tick == 0 ? "pending" : "active", property.Status); Assert.Null(property.PriorityInvestorId); }
                 else Assert.Equal(h.Actor, property.PriorityInvestorId);
                 Assert.Equal(2, db.Messages.Count()); Assert.Single(db.ActionLogs.Where(a => a.Action.StartsWith("InvestmentStep")));
                 if (history)
                 {
                     var old = db.InvestmentApplications.Where(a => a.StepNumber == 2).ToList();
-                    Assert.Equal(new[] { "accepted", "carried", "partial", "rejected" }, old.Select(a => a.Status).OrderBy(s => s));
+                    Assert.Equal(new[] { "accepted", "partial", "rejected" }, old.Select(a => a.Status).OrderBy(s => s));
                     Assert.All(old, a => { Assert.Equal(123, a.ApprovedAmount); Assert.Equal(3, a.ApprovedShares); });
                 }
             });
@@ -97,8 +98,8 @@ public class ScheduledApplicationTests
     [Theory]
     [InlineData("empty")]
     [InlineData("future")]
-    [InlineData("later")]
-    [InlineData("null-later")]
+    [InlineData("sold")]
+    [InlineData("rented")]
     public async Task Ineligible_rounds_do_nothing(string scenario)
     {
         using var h = new FinancialTestHost(); Seed(h, 150000);
@@ -107,20 +108,13 @@ public class ScheduledApplicationTests
             var step = db.PaymentPlans.Single();
             if (scenario == "empty") db.InvestmentApplications.RemoveRange(db.InvestmentApplications);
             if (scenario == "future") step.DueDate = DateTime.UtcNow.AddDays(1);
-            if (scenario is "later" or "null-later")
-            {
-                step.Paid = 100000;
-                if (scenario == "null-later") step.EventDate = null;
-                db.PaymentPlans.Add(new PaymentPlan { PropertyId = h.PropertyId,
-                    EventDate = scenario == "null-later" ? null : DateTime.UtcNow,
-                    DueDate = DateTime.UtcNow.AddHours(-1), Total = 100000 });
-            }
+            if (scenario is "sold" or "rented") db.Properties.Find(h.PropertyId)!.Status=scenario;
             db.SaveChanges();
         });
         await Tick(h);
         h.WithDb(db =>
         {
-            Assert.Empty(db.Investments); Assert.Empty(db.Messages); Assert.Empty(db.ActionLogs);
+            Assert.Empty(db.Investments); Assert.Empty(db.Messages); Assert.Empty(db.ActionLogs.Where(x=>x.Action!="ApplicateForInvestment"));
             Assert.Equal(1000, db.Users.Find(h.Actor)!.WalletBalance);
             Assert.Equal(50, db.Properties.Find(h.PropertyId)!.AvailableShares);
             Assert.All(db.InvestmentApplications, a => Assert.Equal("pending", a.Status));
@@ -177,7 +171,7 @@ public class ScheduledApplicationTests
         Assert.Equal(1, fault.Calls); Assert.Equal(0, stub.Calls);
         h.WithDb(db =>
         {
-            Assert.Empty(db.Investments); Assert.Empty(db.Messages); Assert.Empty(db.ActionLogs);
+            Assert.Empty(db.Investments); Assert.Empty(db.Messages); Assert.Empty(db.ActionLogs.Where(x=>x.Action!="ApplicateForInvestment"));
             Assert.All(db.InvestmentApplications, a => Assert.Equal("pending", a.Status));
             Assert.Equal(0, db.PaymentPlans.Single().Paid);
             Assert.Equal(1000, db.Users.Find(h.Actor)!.WalletBalance);

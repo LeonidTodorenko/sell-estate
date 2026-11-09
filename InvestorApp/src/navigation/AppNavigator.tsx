@@ -1,3 +1,4 @@
+import AdminInvestmentApplicationScreen from '../screens/AdminInvestmentApplicationScreen';
 // src/navigation/AppNavigator.tsx
 import React from 'react';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
@@ -96,6 +97,7 @@ export type RootStackParamList = {
   AdminDemoAccounts: undefined;
   AdminUsers: undefined;
   AdminInvestments: undefined;
+  AdminInvestmentApplications: undefined;
   AdminKyc: undefined;
   AdminStats: undefined;
   AdminProperties: undefined;
@@ -167,7 +169,7 @@ const MyTheme = {
 const HIDE_BAR_ROUTES = new Set<string>([
   'Gate', 'Login', 'Register', 'ForgotPassword', 'ResetPassword','TermsOfUse','Terms','PrivacyPolicy',
   // все админские:
-  'AdminDashboards','AdminUsers','AdminInvestments','AdminKyc','AdminStats',
+  'AdminInvestmentApplications','AdminDashboards','AdminUsers','AdminInvestments','AdminKyc','AdminStats',
   'AdminProperties','AdminWithdrawals','AdminLogs','AdminMessages',
   'AdminKycUpload','AdminSystemSettings','SuperUser','AdminChat','UsersLists','UserEdit','AdminFinanceFlows',
   'AdminDemoAccounts']);
@@ -234,6 +236,7 @@ export default function AppNavigator() {
         <Stack.Screen name="AdminDashboards" component={AdminDashboardScreen} options={{ title: 'Dashboard Admin' }} />
         <Stack.Screen name="AdminDemoAccounts" component={AdminDemoAccountsScreen} options={{ title: 'Admin: Demo Sandbox' }} />
         <Stack.Screen name="AdminUsers" component={AdminUsersScreen} options={{ title: 'Admin: Users' }} />
+        <Stack.Screen name="AdminInvestmentApplications" component={AdminInvestmentApplicationScreen} options={{title:"Investment applications"}}/>
         <Stack.Screen name="AdminInvestments" component={AdminInvestmentsScreen} options={{ title: 'Admin: Investments' }} />
         <Stack.Screen name="AdminKyc" component={AdminKycScreen} options={{ title: 'Admin: KYC' }} />
         <Stack.Screen name="AdminStats" component={AdminStatsScreen} options={{ title: 'Admin Stats' }} />

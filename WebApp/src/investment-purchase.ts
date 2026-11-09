@@ -15,7 +15,7 @@ function owner(session: Session) {
   return id;
 }
 export async function savedInvestment(session: Session) { return intents.read(owner(session)); }
-export async function purchaseInvestment(session: Session, payload: {propertyId:string;requestedShares:number}, secret: string) {
+export async function purchaseInvestment(session: Session, payload: {propertyId:string;requestedShares:number;paymentPlanId?:string;stepNumber?:number}, secret: string) {
   const id = owner(session);
   if (!navigator.locks) throw new Error('This browser cannot safely lock purchases. Use a supported secure browser.');
   return navigator.locks.request(`ownersclub.investment.apply:${id}`, {ifAvailable:true}, async lock => {

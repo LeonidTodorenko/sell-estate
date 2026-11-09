@@ -2,6 +2,7 @@
 import axios from 'axios';
 import { parseJwt } from './services/auth';
 import { jwtOwner } from './services/purchaseIntentCore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { saveSession, loadSession, clearSession } from './services/sessionStorage';
 import { handleApiError } from './utils/apiError'; 
@@ -282,14 +283,14 @@ export async function writeLegacyUser(raw: any) {
       user: u ?? null,
     };
 
-    const { default: AsyncStorage } = await import('@react-native-async-storage/async-storage');
     await AsyncStorage.setItem('user', JSON.stringify(legacy));
-  } catch {}
+  } catch {
+    throw new Error('Unable to save account data on this device');
+  }
 }
 
 async function updateLegacyToken(accessToken: string) {
   try {
-    const { default: AsyncStorage } = await import('@react-native-async-storage/async-storage');
     const stored = await AsyncStorage.getItem('user');
     if (!stored) return;
     const obj = JSON.parse(stored);

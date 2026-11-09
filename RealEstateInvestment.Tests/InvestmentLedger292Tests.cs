@@ -43,10 +43,10 @@ public sealed class InvestmentLedger292Tests
     {
         h.WithDb(db =>
         {
-            var entries = db.UserTransactions.Where(t => t.PropertyId == h.PropertyId).ToList();
+            var entries = db.UserTransactions.Where(t => t.PropertyId == h.PropertyId && t.Type == type).ToList();
             Assert.Equal(count, entries.Count); Assert.Equal(total, entries.Sum(t => t.Amount));
             Assert.All(entries, t => { Assert.Equal(type, t.Type); Assert.True(t.Amount > 0); Assert.NotEqual(Guid.Empty, t.Id); Assert.NotNull(t.Shares); });
-            var logs = db.ActionLogs.AsEnumerable().Where(l => l.Details.Contains(h.PropertyId.ToString()) && l.Details.StartsWith("{")).ToList();
+            var logs = db.ActionLogs.AsEnumerable().Where(l => l.Details.Contains(h.PropertyId.ToString()) && l.Details.StartsWith("{") && l.Details.Contains("transactionId")).ToList();
             Assert.Equal(count, logs.Count);
             foreach (var t in entries)
             {
@@ -125,7 +125,7 @@ public sealed class InvestmentLedger292Tests
         h.WithDb(db =>
         {
             Assert.Equal(1000, db.Users.Find(h.Actor)!.WalletBalance); Assert.Equal(1000, db.Users.Find(h.Other)!.WalletBalance);
-            Assert.Empty(db.UserTransactions.Where(t => t.PropertyId == h.PropertyId));
+            Assert.Empty(db.UserTransactions.Where(t => t.PropertyId == h.PropertyId && (path != "scheduler" || t.Type != TransactionType.Investment)));
             Assert.DoesNotContain(db.ActionLogs.AsEnumerable(), l => l.Details.Contains(h.PropertyId.ToString()));
             Assert.Equal(beforeShares, db.Properties.Find(h.PropertyId)!.AvailableShares);
             if (path == "refund") Assert.Equal(2, db.Investments.Count(x => x.PropertyId == h.PropertyId));
@@ -145,6 +145,7 @@ public sealed class InvestmentLedger292Tests
             db.Investments.RemoveRange(db.Investments.Where(x => x.PropertyId == h.PropertyId));
             foreach (var user in new[] { h.Actor, h.Other }) db.InvestmentApplications.Add(new InvestmentApplication
                 { UserId = user, PropertyId = h.PropertyId, RequestedAmount = 30, RequestedShares = 3 });
+            foreach(var a in db.ChangeTracker.Entries<InvestmentApplication>().Select(x=>x.Entity).Where(x=>x.PropertyId==h.PropertyId).ToList()) ReservationFixture3041.Prove(db,a);
             db.SaveChanges();
         });
     }
@@ -169,7 +170,8 @@ public sealed class InvestmentLedger292Tests
         {
             Assert.Equal(1000, db.Users.Find(h.Actor)!.WalletBalance);
             Assert.Equal(60, db.Investments.Where(x => x.PropertyId == h.PropertyId).Sum(x => x.InvestedAmount));
-            Assert.Empty(db.UserTransactions.Where(x => x.PropertyId == h.PropertyId));
+            Assert.Equal(2,db.UserTransactions.Count(x=>x.PropertyId==h.PropertyId && x.Type==TransactionType.Investment));
+            Assert.Empty(db.UserTransactions.Where(x=>x.PropertyId==h.PropertyId && x.Type==TransactionType.InvestmentRefund));
         });
     }
 

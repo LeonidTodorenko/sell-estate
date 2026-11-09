@@ -1,10 +1,11 @@
 import React, {useEffect, useRef, useState} from 'react';
 import {Picker} from '@react-native-picker/picker';
-import {AppState, Linking, ScrollView, Text, TextInput} from 'react-native';
+import {AppState, Linking, ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {useQueryClient} from '@tanstack/react-query';
 import api from '../api';
 import BlueButton from '../components/BlueButton';
+import theme from '../constants/theme';
 import {loadSession} from '../services/sessionStorage';
 
 import {walletRequestId,paymentMethods,paymentStatus,safeCheckout,terminal,type PaymentAttempt as Attempt,type WalletPayment as Payment,type PaymentConfig,type PaymentMethod} from '../payments';
@@ -53,7 +54,14 @@ export default function AddFunds(){
   {config?.testMode&&<Text>Test mode · No real money is charged. Currency conversion uses a test configuration.</Text>}
   <Text>Amount ({config?.chargeCurrency})</Text>
   <TextInput accessibilityLabel="Payment amount" keyboardType="decimal-pad" value={String(attempt?.amount??amount)} editable={!attempt&&!busy} onChangeText={setAmount}/>
-  <Text>Payment method</Text><Picker enabled={!attempt&&!busy} selectedValue={chosen} onValueChange={v=>setMethod(v as PaymentMethod)}>{Object.entries(paymentMethods).map(([v,l])=><Picker.Item key={v} value={v} label={l}/>)}</Picker>
+  <Text style={styles.methodLabel}>Payment method</Text>
+  <View style={[styles.methodField, (attempt||busy) && styles.methodDisabled]}>
+   <Picker accessibilityLabel="Payment method" prompt="Payment method" mode="dialog"
+    style={styles.methodPicker} dropdownIconColor={theme.colors.text}
+    enabled={!attempt&&!busy} selectedValue={chosen} onValueChange={v=>setMethod(v as PaymentMethod)}>
+    {Object.entries(paymentMethods).map(([v,l])=><Picker.Item key={v} value={v} label={l} color={theme.colors.text} style={styles.methodOption}/>)}
+   </Picker>
+  </View>
   {config&&<Text>Charge {value.toFixed(2)} {config.chargeCurrency} · Fee {(payment?.feeAmount??fee).toFixed(2)} {config.chargeCurrency}{'\n'}Wallet credit {(payment?.walletAmount??credit).toFixed(2)} {config.walletCurrency} · Rate {payment?.exchangeRate??config.exchangeRate} {config.chargeCurrency} per {config.walletCurrency}</Text>}
   {chosen==='bank_transfer'&&config&&<Text>{config?.testMode?'TEST/manual: do not send money. Admin approval credits the test wallet immediately.':config?.bankInstructions||'Request bank details from the administrator before transferring funds.'}</Text>}
   {chosen!=='yookassa'&&config&&!(chosen==='bank_transfer'&&config?.testMode)&&<Text>Funds are credited only after independent verification of receipt by the administrator.</Text>}
@@ -67,3 +75,12 @@ export default function AddFunds(){
   {history.map(p=><React.Fragment key={p.id}><Text>{new Date(p.createdAt).toLocaleString()} · {paymentMethods[p.method]}{'\n'}{p.amount.toFixed(2)} {p.chargeCurrency} → {p.walletAmount.toFixed(2)} {p.walletCurrency} · {paymentStatus[p.status]??p.status}{p.testMode?' · TEST':''}{p.rejectionReason?' · Declined: '+p.rejectionReason:''}</Text><BlueButton title="View payment" disabled={!!attempt&&attempt.id!==p.id} onPress={()=>{const a={requestKey:p.requestKey,amount:p.amount,method:p.method,id:p.id};void AsyncStorage.setItem(storageKey,JSON.stringify(a)).then(()=>{setAttempt(a);setPayment(p);}).catch(()=>setError('Unable to save.'));}}/></React.Fragment>)}
  </ScrollView>;
 }
+
+// Match AdminMessages' bordered native picker; pin both row colors for system dark mode.
+const styles = StyleSheet.create({
+ methodLabel: {color: theme.colors.text, fontSize: 16},
+ methodField: {borderWidth: 1, borderColor: theme.colors.textSecondary, borderRadius: 6, backgroundColor: theme.colors.surface},
+ methodDisabled: {opacity: 0.6},
+ methodPicker: {width: '100%', minHeight: 56, color: theme.colors.text, backgroundColor: theme.colors.surface},
+ methodOption: {color: theme.colors.text, backgroundColor: theme.colors.surface, fontSize: 16},
+});

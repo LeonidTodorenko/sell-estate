@@ -1,4 +1,4 @@
-﻿using RealEstateInvestment.Helpers;
+using RealEstateInvestment.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -8,6 +8,7 @@ using RealEstateInvestment.Models;
 namespace RealEstateInvestment.Controllers
 {
     [ApiController]
+    [FinancialConcurrency]
     //  [Authorize] todo
     [Route("api/properties/{propertyId}/payment-plans")]
     public class PaymentPlanController : ControllerBase
@@ -34,6 +35,10 @@ namespace RealEstateInvestment.Controllers
         [FinancialAdmin]
         public async Task<IActionResult> CreatePaymentPlan(Guid propertyId, [FromBody] PaymentPlan plan)
         {
+            await using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            // Stage numbers must remain stable while cash/share reservations are outstanding.
+            if (await _context.InvestmentApplications.AnyAsync(a => a.PropertyId == propertyId && (a.Status == "pending" || a.Status == "carried")))
+                return Conflict(new { message = "Payment plan is locked while investment reservations await decisions. Resolve the reservations before changing the schedule." });
             if (plan == null)
                 return BadRequest();
 
@@ -66,6 +71,7 @@ namespace RealEstateInvestment.Controllers
             }
 
 
+            await transaction.CommitAsync();
             return Ok(new { message = "Payment plan added." });
         }
 
@@ -73,6 +79,10 @@ namespace RealEstateInvestment.Controllers
         [FinancialAdmin]
         public async Task<IActionResult> UpdatePaymentPlan(Guid propertyId, Guid planId, [FromBody] PaymentPlan updated)
         {
+            await using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            // Stage numbers must remain stable while cash/share reservations are outstanding.
+            if (await _context.InvestmentApplications.AnyAsync(a => a.PropertyId == propertyId && (a.Status == "pending" || a.Status == "carried")))
+                return Conflict(new { message = "Payment plan is locked while investment reservations await decisions. Resolve the reservations before changing the schedule." });
             var plan = await _context.PaymentPlans.FirstOrDefaultAsync(p => p.Id == planId && p.PropertyId == propertyId);
             if (plan == null) return NotFound();
 
@@ -88,6 +98,7 @@ namespace RealEstateInvestment.Controllers
 
             await _context.SaveChangesAsync();
 
+            await transaction.CommitAsync();
             return Ok(new { message = "Payment plan updated." });
         }
 
@@ -95,12 +106,17 @@ namespace RealEstateInvestment.Controllers
         [FinancialAdmin]
         public async Task<IActionResult> DeletePaymentPlan(Guid propertyId, Guid planId)
         {
+            await using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            // Stage numbers must remain stable while cash/share reservations are outstanding.
+            if (await _context.InvestmentApplications.AnyAsync(a => a.PropertyId == propertyId && (a.Status == "pending" || a.Status == "carried")))
+                return Conflict(new { message = "Payment plan is locked while investment reservations await decisions. Resolve the reservations before changing the schedule." });
             var plan = await _context.PaymentPlans.FirstOrDefaultAsync(p => p.Id == planId && p.PropertyId == propertyId);
             if (plan == null) return NotFound();
 
             _context.PaymentPlans.Remove(plan);
             await _context.SaveChangesAsync();
 
+            await transaction.CommitAsync();
             return Ok(new { message = "Payment plan deleted." });
         }
     }

@@ -39,7 +39,7 @@ export default function GateScreen({ navigation }: Props) {
         }
 
         //  уже сейчас подставляем **актуальный** access в axios
-         setAccessToken(stored.accessToken);
+         setAccessToken(effective.accessToken);
 
            // Проверяем токен реальным запросом  
         try {

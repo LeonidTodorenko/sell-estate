@@ -1,3 +1,4 @@
+import type { Workflow } from './investment-workflow';
 import { purchaseInvestment, savedInvestment } from './investment-purchase';
 import type { PurchaseIntent } from './purchase-intent';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
@@ -32,20 +33,26 @@ function positive(value: string, whole = false) { const n = Number(value); if (!
 function future(value: string) { const n = Date.parse(value); if (!Number.isFinite(n) || n <= Date.now()) throw new Error('Choose a future expiration date.'); return new Date(n).toISOString(); }
 export function InvestmentForm({session,propertyId,available,price}:{session:Session;propertyId:string;available:number;price:number}) {
  const [saved,setSaved]=useState<PurchaseIntent|null>(null), [ready,setReady]=useState(false), [shares,setShares]=useState(''), [secret,setSecret]=useState(''), [error,setError]=useState(''), [busy,setBusy]=useState(false), [done,setDone]=useState(false), [review,setReview]=useState(false);
+ const workflow=useResource<Workflow>(`/investment-workflow/properties/${encodeURIComponent(propertyId)}`);
+ const [stageId,setStageId]=useState('');
  const lock=useRef(false);
  useEffect(()=>{let live=true;setReady(false);savedInvestment(session).then(p=>{if(live){setSaved(p);if(p)setShares(String(p.payload.requestedShares));setReady(true);}}).catch(e=>{if(live)setError(e.message);});return()=>{live=false;};},[session]);
  async function submit(e:FormEvent){e.preventDefault();if(lock.current||!ready||done)return;lock.current=true;setBusy(true);setError('');try{
-   const payload=saved?.payload ?? {propertyId,requestedShares:positive(shares,true)};
+   const w=workflow.data;
+   const stage=w?.stages.find(s=>s.id===(stageId||w.stages.find(x=>x.available)?.id));
+   if(!saved&&(!w?.canApply||!stage?.available))throw new Error('Reload the available investment stage.');
+   const payload=saved?.payload ?? {propertyId,requestedShares:positive(shares,true),paymentPlanId:stage!.id,stepNumber:stage!.stepNumber};
    if(!saved && (payload.requestedShares>available || !Number.isFinite(price) || price<=0))throw new Error('Shares are unavailable.');
    if(!secret.trim())throw new Error('Enter PIN or password.');
    if(!review){setReview(true);return;}
-   await purchaseInvestment(session,{propertyId:payload.propertyId,requestedShares:payload.requestedShares},secret);setSaved(null);setDone(true);
+   await purchaseInvestment(session,payload,secret);setSaved(null);setDone(true);
  }catch(e){setError(e instanceof Error?e.message:'Unable to submit.');try{const p=await savedInvestment(session);setSaved(p);if(p)setShares(String(p.payload.requestedShares));}catch{setReady(false);}}
  finally{if(review){setSecret('');setReview(false);}setBusy(false);lock.current=false;}}
  return <details className="operation"><summary>Apply for shares</summary>{done?<p role="status">Request accepted. Check <Link to="/applications">applications</Link> and <Link to="/transactions">transactions</Link>. <button onClick={() => window.dispatchEvent(new Event('financial-data-changed'))}>Refresh account data</button></p>:<form onSubmit={submit}>
  {saved&&<p role="status">Unresolved purchase: {saved.payload.requestedShares} shares, property {saved.payload.propertyId}. Reference: {saved.id}. {saved.conflict?'409 conflict. Do not retry or create a new purchase. Contact support with this reference to reconcile the outcome.':'Re-enter the same PIN/password to retry this purchase. A new purchase is blocked.'}</p>}
+ <Resource resource={workflow}>{w=><><p>{w.terms}</p><p>{w.automaticProcessingEnabled?'Scheduled processing at DueDate is enabled.':'Automatic processing is OFF.'} {w.mode==='reservation'?'Funds and shares stay reserved pending stage settlement or administrator review.':'This stage creates an investment immediately.'}</p><label>Funding stage<select disabled={!!saved||review} value={stageId||w.stages.find(s=>s.available)?.id||''} onChange={e=>setStageId(e.target.value)}><option value="">Choose available stage</option>{w.stages.map(s=><option key={s.id} value={s.id} disabled={!s.available}>Stage {s.stepNumber} · {s.percentage}% · {s.milestone} · due {new Date(s.dueDate).toLocaleDateString()} · {s.available?'available':'unavailable'}</option>)}</select></label><p>Estimated full debit: {money(Number(shares||0)*w.pricePerShare)} · {w.availableShares} shares available. Property percentages do not reduce the share price.</p></>}</Resource>
  <fieldset disabled={!ready||busy||!!saved?.conflict}><label>Shares<input required type="number" min="1" step="1" disabled={!!saved||review} value={shares} onChange={e=>setShares(e.target.value)}/></label><label>PIN or password<input required type="password" autoComplete="off" value={secret} onChange={e=>setSecret(e.target.value)}/></label>
- {review&&<p>Confirm {shares} shares for property {saved?.payload.propertyId??propertyId}. The server determines payment and allocation.</p>}
+ {review&&<p>Confirm {shares} shares for property {saved?.payload.propertyId??propertyId}. Full estimated debit: {money(Number(shares)*price)}. The server checks the selected stage, amount and allocation.</p>}
  <button className="button">{busy?'Submitting…':review?'Confirm purchase':saved?'Review saved purchase':'Review purchase'}</button></fieldset></form>}{error&&<p role="alert" className="error">{error}</p>}</details>;
 }
 export function CreateOfferForm({session,propertyId,shares}:{session:Session;propertyId:string;shares:number}) {

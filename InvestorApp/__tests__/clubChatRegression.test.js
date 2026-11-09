@@ -1,0 +1,31 @@
+import React from 'react';
+import {act,create} from 'react-test-renderer';
+import {Text,TextInput,TouchableOpacity,Pressable} from 'react-native';
+jest.mock('@react-native-async-storage/async-storage',()=>({getItem:jest.fn(async()=>JSON.stringify({userId:'test'}))}));
+jest.mock('@react-navigation/native',()=>({useFocusEffect:fn=>require('react').useEffect(fn,[fn])}));
+jest.mock('../src/api',()=>({__esModule:true,default:{get:jest.fn(),post:jest.fn()}}));
+jest.mock('../src/components/BottomBar',()=>({BOTTOM_BAR_HEIGHT:84}));
+jest.mock('react-native-safe-area-context',()=>({useSafeAreaInsets:()=>({bottom:0})}));
+jest.mock('react-native-vector-icons/Ionicons',()=> 'Icon');
+jest.mock('../src/components/BlueButton',()=>{const React=require('react');const {Pressable,Text}=require('react-native');return p=><Pressable onPress={p.onPress} disabled={p.disabled}><Text>{p.title}</Text></Pressable>});
+jest.mock('../src/components/StyledInput',()=>require('react-native').TextInput);
+import api from '../src/api';
+import storage from '@react-native-async-storage/async-storage';
+import StatusScreen,{clubPercent} from '../src/screens/StatusScreen';
+import ChatScreen from '../src/screens/ChatScreen';
+import Referrals from '../src/screens/InviteFriendScreen';
+let tree;
+const club={status:'Visionary',totalAssets:75000,baseFee:.085,withReferralFee:.055,canInvite:true,referrerRewardPercent:.02,referrerRewardYears:2};
+const collect=node=>typeof node==='string'?node:Array.isArray(node)?node.map(collect).join(' '):node?collect(node.children):'';const text=()=>collect(tree.toJSON());
+async function mount(Component){await act(async()=>{tree=create(<Component/>);await Promise.resolve();});}
+beforeEach(()=>{jest.clearAllMocks();api.get.mockImplementation(async url=>({data:url.includes('club-info')?club:{clubFeePercent:.055}}));});
+afterEach(()=>{if(tree)act(()=>tree.unmount());tree=null;});
+test('financial display preserves fractional percentages, zero and missing values',()=>{expect(clubPercent(.055)).toBe('5.5%');expect(clubPercent(.085)).toBe('8.5%');expect(clubPercent(0)).toBe('0%');expect(clubPercent(null)).toBe('Unavailable');expect(clubPercent(NaN)).toBe('Unavailable');});
+test('Club displays authoritative status and fees without obsolete next-level thresholds',async()=>{await mount(StatusScreen);expect(text()).toContain('Visionary');expect(text()).toContain('5.5%');expect(text()).toContain('8.5%');expect(text()).not.toContain('425,000');expect(api.get).toHaveBeenCalledWith('/share-offers/test/club-info',expect.anything());});
+test('missing applied fee stays unavailable while membership remains visible',async()=>{api.get.mockImplementation(async url=>url.includes('total-assets')?Promise.reject(Error('offline')):{data:club});await mount(StatusScreen);expect(text()).toContain('Visionary');expect(text()).toContain('Applied fee could not be loaded');expect(text()).toContain('Unavailable');});
+test('Club retries an error without manufacturing financial values',async()=>{api.get.mockRejectedValue(Error('offline'));await mount(StatusScreen);expect(text()).toContain('Unable to load Club status');api.get.mockResolvedValue({data:club});await act(async()=>{tree.root.findAll(n=>n.props.accessibilityLabel==='Try again' && typeof n.props.onPress==='function')[0].props.onPress();await Promise.resolve();});expect(text()).toContain('Visionary');});
+test('Referrals keeps exact rates and does not claim an unreported investment',async()=>{api.get.mockImplementation(async url=>({data:url.includes('club-info')?club:[{id:'r',inviteeEmail:'friend@example.invalid',createdAt:'2026-10-24',acceptedAt:'2026-10-24',status:'Accepted'}]}));await mount(Referrals);expect(text()).toContain('5.5%');expect(text()).toContain('8.5%');expect(text()).not.toContain('Invested: $1,000');expect(text()).toContain('costs $10');expect(api.post).not.toHaveBeenCalled();});
+test('Chat retains a draft when send fails and blocks a concurrent send',async()=>{api.get.mockImplementation(async url=>({data:url.includes('admin-id')?{adminId:'admin'}:[]}));let rejectSend;api.post.mockImplementation(()=>new Promise((_,reject)=>{rejectSend=reject}));await mount(ChatScreen);act(()=>tree.root.findByType(TextInput).props.onChangeText('draft message'));const send=tree.root.findAllByType(TouchableOpacity).find(x=>x.props.accessibilityLabel==='Send message');let promise;await act(async()=>{promise=send.props.onPress();send.props.onPress();await Promise.resolve();});expect(api.post).toHaveBeenCalledTimes(1);await act(async()=>{rejectSend(Error('offline'));await promise;});expect(tree.root.findByType(TextInput).props.value).toBe('draft message');});
+
+test('Demo chat stays read-only and performs no writes',async()=>{storage.getItem.mockResolvedValueOnce(JSON.stringify({userId:'demo',isDemo:true}));await mount(ChatScreen);expect(text()).toContain('Chat is read-only in Demo Mode');expect(api.post).not.toHaveBeenCalled();});
+test('Demo referrals keep the send control disabled',async()=>{storage.getItem.mockResolvedValue(JSON.stringify({userId:'demo',isDemo:true}));await mount(Referrals);expect(text()).toContain('Demo Mode');expect(tree.root.findAll(n=>n.props.disabled===true).length).toBeGreaterThan(0);expect(api.post).not.toHaveBeenCalled();storage.getItem.mockResolvedValue(JSON.stringify({userId:'test'}));});

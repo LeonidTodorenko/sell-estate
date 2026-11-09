@@ -96,7 +96,7 @@ const slides: SlideItem[] = [
 
 const LoginScreen = ({ navigation }: Props) => {
   const { setLoading } = useLoading();
-  const { continueAsGuest } = React.useContext(AuthContext);
+  const { continueAsGuest, setSession: setAuthSession } = React.useContext(AuthContext);
   //  const { signIn } = React.useContext(AuthContext);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -280,6 +280,11 @@ const isAndroidKeyboardLogin = isAndroid && showLoginPanel && kbShown;
     Keyboard.dismiss();
     setLoading(true);
     try {
+      const emailContainsNul = creds.email.includes('\u0000');
+      const passwordContainsNul = creds.password.includes('\u0000');
+      if (emailContainsNul || passwordContainsNul) {
+        throw new Error('Email or password contains an unsupported hidden character. Clear both fields and enter them again.');
+      }
       // КЛЮЧЕВОЕ: идём напрямую, минуя интерсепторы api-инстанса
       const { data } = await axios.post(`${API_BASE_URL}/auth/login`, creds, {
         headers: { 'Content-Type': 'application/json' },
@@ -287,10 +292,23 @@ const isAndroidKeyboardLogin = isAndroid && showLoginPanel && kbShown;
       });
 
       const session = normalizeSession(data);
+      if (!session.accessToken) throw new Error('Login response is missing an access token');
+      setAccessToken(session.accessToken);
+      if (!(session.user?.id || session.user?.userId) ||
+          !session.user?.fullName || !session.user?.email) {
+        const { data: me } = await axios.get(`${API_BASE_URL}/auth/me`, {
+          headers: { Authorization: `Bearer ${session.accessToken}` },
+          timeout: 15000,
+        });
+        session.user = normalizeSession({ ...session, user: { ...session.user, ...me } }).user;
+      }
+      if (!(session.user?.id || session.user?.userId)) {
+        throw new Error('Unable to load account identity');
+      }
       const { accessToken, user } = session;
       setAccessToken(accessToken);
       await Promise.all([
-        saveSession(session),
+        setAuthSession(session),
         writeLegacyUser(session), // чтобы старые места, читающие AsyncStorage('user'), были счастливы
       ]);
       resetForceLogoutFlag();
@@ -654,7 +672,6 @@ const isAndroidKeyboardLogin = isAndroid && showLoginPanel && kbShown;
       Terms of Use
     </Text>
   </Text>
-
 
              {/* <View style={styles.quickLoginWrap}>
                 <Text

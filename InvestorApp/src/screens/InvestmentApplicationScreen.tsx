@@ -10,6 +10,8 @@ import { useNavigation } from '@react-navigation/native';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import { useCallback } from 'react';
 import theme from '../constants/theme';
+function statusText(status:string|null){const descriptions:Record<string,string>={pending:'Funds and shares reserved; awaiting stage settlement or administrator review.',accepted:'All shares allocated; no second debit.',partial:'Some shares allocated; unused funds returned to wallet.',rejected:'Reservation returned to wallet.',carried:'Reservation retained for the next stage; awaiting stage settlement or administrator review.'};return descriptions[status||'pending']||'Contact support for this status.';}
+export function DecisionHistory({id}:{id:string}){const [text,setText]=useState('');return <TouchableOpacity onPress={async()=>{try{const {data}=await api.get(`/investment-workflow/applications/${id}/history`);setText(data.history.map((h:any)=>{const d=JSON.parse(h.details);return `${new Date(h.timestamp).toLocaleString()}: ${d.Action??'Reconciliation conflict'}, stage ${d.ExpectedStep??'—'}, ${d.Reason??d.reason}`;}).join('\n')||'No decisions recorded.');}catch{setText('History unavailable. Try again.');}}}><Text style={{color:'#0070c0'}}>View decision history</Text>{!!text&&<Text>{text}</Text>}</TouchableOpacity>;}
 
 
 interface InvestmentApplication {
@@ -61,8 +63,9 @@ export default function InvestmentApplicationScreen() {
             <Text style={styles.title}>
               {propertyId ? 'Applications for Property' : 'My Applications'}
             </Text>
-      <FlatList
+      <Text>Pending and carried funds stay reserved until stage settlement or an administrator decision. Unproven reserves require reconciliation.</Text><FlatList
         data={applications}
+        ListEmptyComponent={<Text>No applications for this selection.</Text>}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <View style={styles.card}>
@@ -77,8 +80,8 @@ export default function InvestmentApplicationScreen() {
             <Text style={styles.text}>Shares: {item.requestedShares}</Text>
             <Text style={styles.text}>Step: {item.stepNumber}</Text>
             <Text style={styles.text}>Status: {item.status ?? 'Pending'}</Text>
-            <Text style={styles.text}>Priority: {item.isPriority ? 'Yes' : 'No'}</Text>
-            {item.approvedAmount && (
+            <Text style={styles.text}>{statusText(item.status)}</Text><Text style={styles.text}>Created: {new Date(item.createdAt).toLocaleString()}</Text><DecisionHistory id={item.id}/><Text style={styles.text}>Priority: {item.isPriority ? 'Yes' : 'No'}</Text>
+            {item.approvedAmount != null && (
               <Text style={styles.text}>Approved: ${item.approvedAmount} / {item.approvedShares} shares</Text>
             )}
           </View>

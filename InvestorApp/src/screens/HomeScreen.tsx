@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
+import { ensureUserInSession } from '../services/ensureUser';
 import BlueButton from '../components/BlueButton';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchPropertiesWithExtras, Property } from '../services/properties';
@@ -376,8 +377,12 @@ const InvestmentRow = ({
 );
 
 async function fetchHomeData(): Promise<HomeData | null> {
-  const stored = await AsyncStorage.getItem('user');
-  if (!stored) return null;
+  let stored = await AsyncStorage.getItem('user');
+  if (!stored) {
+    await ensureUserInSession();
+    stored = await AsyncStorage.getItem('user');
+  }
+  if (!stored) throw new Error('Account data is unavailable');
 
   const u = JSON.parse(stored);
 

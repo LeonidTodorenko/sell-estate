@@ -19,6 +19,7 @@ import { RootStackParamList } from '../navigation/AppNavigator';
 import theme from '../constants/theme';
 import api, { setAccessToken } from '../api';
 import { clearSession } from '../services/sessionStorage';
+import { ensureUserInSession } from '../services/ensureUser';
 import DemoModeBanner from '../components/DemoModeBanner';
 import Haptics from '../services/HapticsService';
 
@@ -241,7 +242,11 @@ const ProfileScreen = ({ navigation }: Props) => {
 
     const loadStoredUser = async () => {
       try {
-        const stored = await AsyncStorage.getItem('user');
+        let stored = await AsyncStorage.getItem('user');
+        if (!stored) {
+          await ensureUserInSession();
+          stored = await AsyncStorage.getItem('user');
+        }
 
         if (!stored) {
           navigation.replace('Login');

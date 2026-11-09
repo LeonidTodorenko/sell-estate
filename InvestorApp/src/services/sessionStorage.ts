@@ -12,7 +12,12 @@ export type Session = {
 };
 
 export function normalizeSession(raw: any): Session {
-  const sourceUser = raw?.user ?? {};
+  const candidate = raw?.user ?? raw ?? {};
+  // Legacy login responses carry identity fields at the top level.
+  // Keep credentials out of the user object.
+  const { accessToken: _access, token: _token, jwt: _jwt,
+    refreshToken: _refresh, refresh_token: _refreshSnake,
+    refresh: _refreshAlias, ...sourceUser } = candidate;
   const isDemo = raw?.isDemo === true || sourceUser?.isDemo === true;
   const demoCode = raw?.demoCode ?? sourceUser?.demoCode ?? null;
 
@@ -23,6 +28,8 @@ export function normalizeSession(raw: any): Session {
     demoCode,
     user: {
       ...sourceUser,
+      id: sourceUser.id ?? sourceUser.userId,
+      userId: sourceUser.userId ?? sourceUser.id,
       isDemo,
       demoCode,
     },

@@ -45,7 +45,9 @@ type PaymentPlanStep = {
   dueDate: string;
 };
 
+type Workflow = {automaticProcessingEnabled?:boolean;canApply:boolean;currentStep:number;mode:string;terms:string;stages:{id:string;stepNumber:number;milestone:string;percentage:number;eventDate:string|null;dueDate:string;total:number;paid:number;available:boolean}[]};
 type BuySharesData = {
+  workflow: Workflow;
   property: PropertyLike;
   sharePrice: number;
   propertyPreview: string | null;
@@ -95,7 +97,7 @@ function getPropertyPreview(item: PropertyLike | null): string | null {
  * React Query кеширует результат отдельно для каждого propertyId.
  */
 async function fetchBuySharesData(propertyId: string): Promise<BuySharesData> {
-  const [propertiesRes, imagesRes, mediaRes, plansRes] = await Promise.all([
+  const [propertiesRes, imagesRes, mediaRes, plansRes, workflowRes] = await Promise.all([
     api.get<PropertyLike[]>('/properties', { silentLoading: true } as any),
     api
       .get<PropertyImage[]>(`/properties/${propertyId}/images`, {
@@ -112,6 +114,7 @@ async function fetchBuySharesData(propertyId: string): Promise<BuySharesData> {
         silentLoading: true,
       } as any)
       .catch(() => ({ data: [] as PaymentPlanStep[] })),
+    api.get<Workflow>(`/investment-workflow/properties/${propertyId}`, {silentLoading:true} as any),
   ]);
 
   const property = propertiesRes.data.find((item) => item.id === propertyId);
@@ -159,7 +162,8 @@ async function fetchBuySharesData(propertyId: string): Promise<BuySharesData> {
     property: fullProperty,
     sharePrice,
     propertyPreview: getPropertyPreview(fullProperty),
-    isFirstStep,
+    isFirstStep: workflowRes.data.mode === "reservation",
+    workflow: workflowRes.data,
   };
 }
 
@@ -227,7 +231,10 @@ const BuySharesScreen = () => {
    */
   const investMutation = useMutation({
     mutationFn: async (payload: InvestmentPayload) => {
-      return purchaseInvestment({propertyId:payload.propertyId,requestedShares:payload.requestedShares},payload.pinOrPassword);
+      const stage=data?.workflow.stages.find(s=>s.available);
+      const purchase=saved?.payload??{propertyId:payload.propertyId,requestedShares:payload.requestedShares,paymentPlanId:stage?.id,stepNumber:stage?.stepNumber};
+      if(!saved&&(!stage||!data?.workflow.canApply))throw new Error('Reload the available investment stage.');
+      return purchaseInvestment(purchase,payload.pinOrPassword);
     },
     retry: false,
     onSuccess: async (_response, variables) => {
@@ -335,7 +342,7 @@ const BuySharesScreen = () => {
       Haptics.warning();
       Alert.alert(
         'Warning',
-        'You submit an investment request - it will be reviewed and confirmed later. The funds are temporarily debited.',
+        `Reserve ${requestedShares} shares for ${money(requestedAmount)}. ${data?.workflow?.automaticProcessingEnabled ? 'Stage settlement runs at DueDate.' : 'Automatic processing is OFF; administrator review is required.'} Full share price is debited once.`,
         [
           { text: 'Cancel', style: 'cancel' },
           {
@@ -493,6 +500,7 @@ const BuySharesScreen = () => {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
+        {data?.workflow&&<View style={{padding:16,backgroundColor:'white',marginBottom:12}}><Text style={{fontWeight:'bold'}}>Investment stages · {data.workflow.automaticProcessingEnabled?'scheduled processing enabled':'automatic processing OFF'}</Text><Text>{data.workflow.terms}</Text>{data.workflow.stages.map(stage=><View key={stage.id} style={{marginTop:10}}><Text>Stage {stage.stepNumber}: {stage.milestone} · {stage.percentage}% · {stage.available?'Current available stage':'Unavailable for new purchase'}</Text><Text>{stage.eventDate?new Date(stage.eventDate).toLocaleDateString():'No start date'} → {new Date(stage.dueDate).toLocaleDateString()}</Text><Text>Target {money(stage.total)} · Funded {money(stage.paid)}</Text></View>)}</View>}
         {saved && <Text accessibilityRole="alert">Unresolved investment: {saved.payload.requestedShares} shares, property {saved.payload.propertyId}. Reference: {saved.id}. Only the saved purchase can be retried with the same PIN/password. {saved.conflict ? '409: contact support to reconcile this purchase.' : ''}</Text>}
 
         <View style={styles.propertyCard}>
