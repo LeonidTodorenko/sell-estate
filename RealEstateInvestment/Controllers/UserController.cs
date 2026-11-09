@@ -448,6 +448,7 @@ namespace RealEstateInvestment.Controllers
                             TransactionType.RentIncome => tx.Amount,
                             TransactionType.Investment => -tx.Amount,
                             TransactionType.Withdrawal => -tx.Amount,
+                            TransactionType.WithdrawalRefund => tx.Amount,
                             TransactionType.Buyback => -tx.Amount,
                             TransactionType.ShareMarketBuy => -tx.Amount,
                             _ => 0m
@@ -461,6 +462,7 @@ namespace RealEstateInvestment.Controllers
                             TransactionType.ShareMarketSell => tx.Amount,
                             TransactionType.Investment => -tx.Amount,
                             TransactionType.Withdrawal => -tx.Amount,
+                            TransactionType.WithdrawalRefund => tx.Amount,
                             TransactionType.Buyback => -tx.Amount,
                             TransactionType.ShareMarketBuy => -tx.Amount,
                             // RentIncome игнорируем

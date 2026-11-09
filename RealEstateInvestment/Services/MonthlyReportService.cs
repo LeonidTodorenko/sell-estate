@@ -73,7 +73,7 @@ namespace RealEstateInvestment.Services
                         TransactionType.Buyback => -tx.Amount,
                         TransactionType.ShareMarketBuy => -tx.Amount,
                         TransactionType.CancelListingFee or TransactionType.ShareMarketFee => -tx.Amount,
-                        TransactionType.InvestmentRefund or TransactionType.ReferralReward or TransactionType.ClubFeeIncome => tx.Amount,
+                        TransactionType.InvestmentRefund or TransactionType.WithdrawalRefund or TransactionType.ReferralReward or TransactionType.ClubFeeIncome => tx.Amount,
                         _ => 0m
                     };
                     runningTotalAll += deltaAll;
@@ -87,7 +87,7 @@ namespace RealEstateInvestment.Services
                         TransactionType.Buyback => -tx.Amount,
                         TransactionType.ShareMarketBuy => -tx.Amount,
                         TransactionType.CancelListingFee or TransactionType.ShareMarketFee => -tx.Amount,
-                        TransactionType.InvestmentRefund or TransactionType.ReferralReward or TransactionType.ClubFeeIncome => tx.Amount,
+                        TransactionType.InvestmentRefund or TransactionType.WithdrawalRefund or TransactionType.ReferralReward or TransactionType.ClubFeeIncome => tx.Amount,
                         // RentIncome игнорируем
                         _ => 0m
                     };
@@ -160,7 +160,7 @@ namespace RealEstateInvestment.Services
                   - totalShareBuys
                   - totalWithdrawals
                   - totalBuybacks
-                  + monthTx.Where(t => t.Type == TransactionType.InvestmentRefund || t.Type == TransactionType.ReferralReward || t.Type == TransactionType.ClubFeeIncome).Sum(t => t.Amount)
+                  + monthTx.Where(t => t.Type == TransactionType.InvestmentRefund || t.Type == TransactionType.WithdrawalRefund || t.Type == TransactionType.ReferralReward || t.Type == TransactionType.ClubFeeIncome).Sum(t => t.Amount)
                   - monthTx.Where(t => t.Type == TransactionType.CancelListingFee || t.Type == TransactionType.ShareMarketFee).Sum(t => t.Amount);
 
                 // === 4) Сформируем текущие холдинги (по объектам) ===

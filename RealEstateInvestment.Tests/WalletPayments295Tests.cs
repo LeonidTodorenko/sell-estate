@@ -15,18 +15,18 @@ public sealed class WalletPayments295Tests {
  }
  static PaymentOptions Settings()=>new(){Enabled=true,ShopId="1514010",SecretKey="test_fixture",ReturnUrl="https://example.invalid/top-up",ChargeUnitsPerWalletUnit=80,FeePercent=2.5m};
  static FinancialTestHost Host(PaymentOptions? options=null)=>new(s=>{s.AddSingleton(Options.Create(options??Settings()));s.AddSingleton<IYooKassaPayments>(new Gateway());s.AddScoped<PaymentService>();});
- static async Task<JsonElement> Create(FinancialTestHost h,string method="bank_transfer",Guid? key=null,decimal amount=200){var res=await h.Client.PostAsJsonAsync("/api/payments",new{requestKey=key??Guid.NewGuid(),amount,method});res.EnsureSuccessStatusCode();return await res.Content.ReadFromJsonAsync<JsonElement>();}
+ static async Task<JsonElement> Create(FinancialTestHost h,string method="invoice",Guid? key=null,decimal amount=200){var res=await h.Client.PostAsJsonAsync("/api/payments",new{requestKey=key??Guid.NewGuid(),amount,method});res.EnsureSuccessStatusCode();return await res.Content.ReadFromJsonAsync<JsonElement>();}
  static Task<HttpResponseMessage> Review(FinancialTestHost h,Guid id,string reference="BANK_TEST_295",bool verified=true,decimal received=200,string currency="RUB",string action="confirm",string? link=null)=>h.Client.PostAsJsonAsync($"/api/payments/admin/{id}/review",new{action,reference,fundsIndependentlyVerified=verified,receivedAmount=received,receivedCurrency=currency,paymentLink=link});
  [Fact] public async Task Quote_snapshots_fees_rate_and_history_is_owner_scoped(){
   var options=Settings();using var h=Host(options);h.Login(h.Actor);var key=Guid.NewGuid();var p=await Create(h,key:key);
   Assert.Equal(5,p.GetProperty("feeAmount").GetDecimal());Assert.Equal(2.43m,p.GetProperty("walletAmount").GetDecimal());
   options.ChargeUnitsPerWalletUnit=1;options.FeePercent=0;var retry=await Create(h,key:key);Assert.Equal(2.43m,retry.GetProperty("walletAmount").GetDecimal());
-  Assert.Equal(HttpStatusCode.Conflict,(await h.Client.PostAsJsonAsync("/api/payments",new{requestKey=key,amount=200,method="invoice"})).StatusCode);
+  Assert.Equal(HttpStatusCode.Conflict,(await h.Client.PostAsJsonAsync("/api/payments",new{requestKey=key,amount=200,method="assistance"})).StatusCode);
   Assert.Equal(1,(await h.Client.GetFromJsonAsync<JsonElement>("/api/payments")).GetArrayLength());h.Login(h.Other);Assert.Equal(0,(await h.Client.GetFromJsonAsync<JsonElement>("/api/payments")).GetArrayLength());
   Assert.Equal(HttpStatusCode.NotFound,(await h.Client.GetAsync("/api/payments/"+p.GetProperty("id").GetString())).StatusCode);
   h.WithDb(db=>{Assert.Equal(1000,db.Users.Find(h.Actor)!.WalletBalance);Assert.Empty(db.UserTransactions);});
  }
- [Theory][InlineData("invoice")][InlineData("bank_transfer")][InlineData("assistance")]
+ [Theory][InlineData("invoice")][InlineData("assistance")]
  public async Task Manual_receipt_requires_admin_and_independent_evidence_and_replays_once(string method){
   using var h=Host();h.Login(h.Actor);var id=(await Create(h,method)).GetProperty("id").GetGuid();
   Assert.Equal(HttpStatusCode.Forbidden,(await Review(h,id)).StatusCode);h.Login(h.Admin,role:"admin");

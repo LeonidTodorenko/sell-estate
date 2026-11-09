@@ -15,6 +15,7 @@
         ClubFeeIncome,     // клубная комиссия, которая идёт суперпользователю
         CancelListingFee,
         ShareMarketFee,
-        InvestmentRefund
+        InvestmentRefund,
+        WithdrawalRefund
     }
 }

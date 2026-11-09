@@ -322,6 +322,8 @@ namespace RealEstateInvestment.Data
             // DEMO TRANSACTIONS
             // =====================================================
 
+            modelBuilder.Entity<WithdrawalRequest>().HasIndex(x => new { x.UserId, x.RequestKey }).IsUnique();
+
             modelBuilder.Entity<DemoUserTransaction>(b =>
             {
                 b.HasKey(x => x.Id);

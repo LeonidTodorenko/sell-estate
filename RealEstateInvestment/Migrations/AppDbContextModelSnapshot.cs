@@ -1513,6 +1513,9 @@ namespace RealEstateInvestment.Migrations
                     b.Property<string>("ProviderId")
                         .HasColumnType("text");
 
+                    b.Property<string>("RejectionReason")
+                        .HasColumnType("text");
+
                     b.Property<Guid>("RequestKey")
                         .HasColumnType("uuid");
 
@@ -1574,14 +1577,32 @@ namespace RealEstateInvestment.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("ProcessedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ProcessedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("RejectionReason")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("RequestKey")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Status")
                         .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("TestDestination")
                         .HasColumnType("text");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("UserId", "RequestKey")
+                        .IsUnique();
 
                     b.ToTable("WithdrawalRequests");
                 });

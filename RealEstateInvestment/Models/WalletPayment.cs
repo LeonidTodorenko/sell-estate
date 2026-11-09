@@ -14,6 +14,7 @@ public sealed class WalletPayment
     public decimal FeeAmount { get; set; }
     public bool IsTest { get; set; } = true;
     public string Method { get; set; } = "yookassa";
+    public string? RejectionReason { get; set; }
     public string? SettlementReference { get; set; }
     public Guid? ReviewedBy { get; set; }
     public DateTime? UpdatedAt { get; set; }

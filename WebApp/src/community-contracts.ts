@@ -10,7 +10,7 @@ export interface OwnedProperty { propertyId: string; propertyTitle: string; tota
 export interface ClubInfo { status?: string; totalAssets?: number; baseFee?: number; withReferralFee?: number; canInvite?: boolean; referrerRewardPercent?: number; referrerRewardYears?: number }
 export interface ClubTotals { clubStatus?: string; clubFeePercent?: number; hasReferrer?: boolean; baseFeePercent?: number; referralFeePercent?: number }
 export interface Invite { id: string; inviteeEmail: string; createdAt: string; expiresAt: string; acceptedAt?: string | null; status: string }
-export interface Withdrawal { id: string; amount: number; status: string; createdAt: string }
+export interface Withdrawal { id: string; amount: number; status: string; createdAt: string; testDestination?: string; rejectionReason?: string; processedAt?: string }
 export interface ChatMessage { id: string; senderId: string; recipientId: string; content: string; sentAt: string }
 export function fee(value: unknown) { return typeof value === 'number' && Number.isFinite(value) ? `${Number((value * 100).toFixed(4))}%` : 'Unavailable'; }
 export function mapLink(latitude: unknown, longitude: unknown) {

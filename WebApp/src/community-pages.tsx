@@ -1,9 +1,9 @@
 import { DemoTopUp } from './financial-ui';
 import { AddFunds } from './add-funds';
-import { financialPolicy } from './financial-contracts';
+import { WithdrawalForm } from './withdrawal-form';
 import { useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { communityWrite } from './api';
+import { communityWrite, financialWrite } from './api';
 import { Heading, Resource, Empty, Metric, useResource } from './ui';
 import { money, date } from './format';
 import type { Session } from './types';
@@ -33,10 +33,28 @@ export function Referrals({session}:{session:Session}) {
 }
 export function Withdrawals({session}:{session:Session}) {
  const resource=useResource<Withdrawal[]>(communityPaths(session.user.id).withdrawals);
+ const [canceling,setCanceling]=useState(false), [error,setError]=useState('');
+ const cancelLock=useRef(false);
+ async function cancel(id:string) {
+  if(cancelLock.current||!window.confirm('Cancel this TEST withdrawal and return the reserved funds?')) return;
+  cancelLock.current=true;
+  setCanceling(true);
+  setError('');
+  try {
+   await financialWrite(session,'/withdrawals/'+id+'/cancel',{});
+   window.dispatchEvent(new Event('financial-data-changed'));
+  } catch(e) {
+   setError(e instanceof Error?e.message:'Cancellation failed.');
+  } finally {
+   resource.retry();
+   cancelLock.current=false;
+   setCanceling(false);
+  }
+ }
  const [status,setStatus]=useState('');
- return <><Heading title="Withdrawal requests" description="Accounting records only. An approved status does not confirm a bank or card payout."><button onClick={resource.retry}>Refresh</button></Heading><Link to="/withdraw">Withdrawal information →</Link>{session.isDemo&&<p className="demo-banner">Demo withdrawals are simulated and never enter the production approval queue.</p>}<Resource resource={resource}>{data=>{const rows=data.filter(r=>!status||r.status===status).sort((a,b)=>Date.parse(b.createdAt)-Date.parse(a.createdAt));return <><div className="filters"><label>Request status<select value={status} onChange={e=>setStatus(e.target.value)}><option value="">All statuses</option>{[...new Set(data.map(r=>r.status))].map(s=><option key={s}>{s}</option>)}</select></label><button onClick={()=>setStatus('')}>Reset filters</button></div><p role="status">{rows.length} requests</p>{rows.length?<div className="property-grid">{rows.map(r=><article className="panel withdrawal-card" key={r.id}><span className="tag">{r.status || 'Status unavailable'}</span><h2>{money(r.amount)}</h2><dl><dt>Requested</dt><dd>{date(r.createdAt)}</dd><dt>Request ID</dt><dd className="identifier">{r.id}</dd></dl></article>)}</div>:<Empty title={data.length?"No matching requests":"No withdrawal requests"}/>}</>;}}</Resource></>;
+ return <><Heading title="Withdrawal requests" description="TEST/manual withdrawals. Approval simulates a payout."><button onClick={resource.retry}>Refresh</button></Heading><Link to="/withdraw">New withdrawal →</Link>{error&&<p role="alert">{error}</p>}{session.isDemo&&<p className="demo-banner">Demo withdrawals are simulated and never enter the production approval queue.</p>}<Resource resource={resource}>{data=>{const rows=data.filter(r=>!status||r.status===status).sort((a,b)=>Date.parse(b.createdAt)-Date.parse(a.createdAt));return <><div className="filters"><label>Request status<select value={status} onChange={e=>setStatus(e.target.value)}><option value="">All statuses</option>{[...new Set(data.map(r=>r.status))].map(s=><option key={s}>{s}</option>)}</select></label><button onClick={()=>setStatus('')}>Reset filters</button></div><p role="status">{rows.length} requests</p>{rows.length?<div className="property-grid">{rows.map(r=><article className="panel withdrawal-card" key={r.id}><span className="tag">{r.status || 'Status unavailable'}</span><h2>{money(r.amount)}</h2><dl><dt>Requested</dt><dd>{date(r.createdAt)}</dd><dt>Request ID</dt><dd className="identifier">{r.id}</dd>{r.testDestination&&<><dt>Test destination</dt><dd>{r.testDestination}</dd></>}{r.processedAt&&<><dt>Processed</dt><dd>{date(r.processedAt)}</dd></>}{r.rejectionReason&&<><dt>Decline reason</dt><dd>{r.rejectionReason}</dd></>}</dl>{r.status==="pending"&&!session.isDemo&&<button disabled={canceling} onClick={()=>void cancel(r.id)}>Cancel & return funds</button>}</article>)}</div>:<Empty title={data.length?"No matching requests":"No withdrawal requests"}/>}</>;}}</Resource></>;
 }
-export function MoneyInfo({session,withdraw=false}:{session:Session;withdraw?:boolean}) {return <><Heading title={withdraw?'Withdraw funds':'Add Funds'} description="Manage wallet payments and requests."/>{!withdraw&&!session.isDemo?<AddFunds key={session.user.id} session={session}/>:<section className="panel">{!withdraw?<DemoTopUp key={`${session.user.id}-${session.demoCode}`} session={session}/>:<p>{financialPolicy.withdraw}</p>}</section>}<nav className="actions"><Link to="/withdrawals">Withdrawal requests</Link><Link to="/finance">Assets & history</Link><Link to="/transactions">Transactions</Link></nav></>;}
+export function MoneyInfo({session,withdraw=false}:{session:Session;withdraw?:boolean}) {return <><Heading title={withdraw?'Withdraw funds':'Add Funds'} description="Manage wallet payments and requests."/>{!withdraw&&!session.isDemo?<AddFunds key={session.user.id} session={session}/>:<section className="panel">{!withdraw?<DemoTopUp key={`${session.user.id}-${session.demoCode}`} session={session}/>:<WithdrawalForm key={session.user.id} session={session}/>}</section>}<nav className="actions"><Link to="/withdrawals">Withdrawal requests</Link><Link to="/finance">Assets & history</Link><Link to="/transactions">Transactions</Link></nav></>;}
 
 export function Chat({session}:{session:Session}) {return session.isDemo?<><Heading title="Support chat" description="Live support chat is disabled in Demo Mode."/><p className="demo-banner">Messages are not sent to production support from sandbox accounts.</p></>:<LiveChat session={session}/>;}
 function LiveChat({session}:{session:Session}) {const admin=useResource<{adminId:string}>('/users/admin-id');return <><Heading title="Support chat" description="Send a text message to OwnersClub support. Refresh to check for replies."/><Resource resource={admin}>{a=>a.adminId?<Conversation session={session} adminId={a.adminId}/>:<Empty title="Support is currently unavailable"/>}</Resource></>;}

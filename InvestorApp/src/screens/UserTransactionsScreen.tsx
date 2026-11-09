@@ -95,7 +95,7 @@ function normalizeFilter(tx: UserTransaction): FilterValue {
   const t = String(tx.type || '').toLowerCase();
 
   if (t === 'deposit') return 'deposits';
-  if (t === 'withdrawal') return 'withdrawals';
+  if (t === 'withdrawal' || t === 'withdrawalrefund') return 'withdrawals';
 
   if (
     t === 'rentincome' ||
@@ -131,6 +131,7 @@ function getTitle(item: UserTransaction) {
 
   if (t === 'deposit') return 'Deposit';
   if (t === 'withdrawal') return 'Withdrawal';
+  if (t === 'withdrawalrefund') return 'Withdrawal refund';
   if (t === 'investment') return 'Share Purchase';
   if (t === 'cancellistingfee') return 'Listing Cancellation Fee';
   if (t === 'sharemarketfee') return 'Marketplace Fee';
@@ -184,6 +185,7 @@ function isPositiveTransaction(item: UserTransaction) {
   const t = String(item.type || '').toLowerCase();
 
   if (t === 'withdrawal') return false;
+  if (t === 'withdrawalrefund') return true;
   if (t === 'investment') return false;
   if (t === 'cancellistingfee' || t === 'sharemarketfee') return false;
   if (t === 'share_market_buy' || t === 'sharemarketbuy') return false;
@@ -275,9 +277,9 @@ export default function UserTransactionsScreen() {
   const summary = useMemo(() =>
     filteredTransactions.reduce(
       (totals, transaction) => {
-        const amount = Number(transaction.amount) || 0;
-        if (amount >= 0) totals.in += amount;
-        else totals.out += Math.abs(amount);
+        const amount = Math.abs(Number(transaction.amount) || 0);
+        if (isPositiveTransaction(transaction)) totals.in += amount;
+        else totals.out += amount;
         return totals;
       },
       { in: 0, out: 0 },

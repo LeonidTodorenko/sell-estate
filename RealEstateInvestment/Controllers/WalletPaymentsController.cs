@@ -110,13 +110,17 @@ public sealed class WalletPaymentsController(AppDbContext db, PaymentService ser
         await db.Users.AnyAsync(x=>x.Id==User.GetUserId() && x.Role=="admin" && x.IsEmailConfirmed && !x.IsBlocked && x.IsDeleted!=true,ct);
 
     [Authorize(Roles="admin"), HttpGet("admin/queue")]
-    public async Task<IActionResult> Queue(CancellationToken ct) {
+    public async Task<IActionResult> Queue(CancellationToken ct, string? method = null, string? status = null) {
         if(!await IsCurrentAdmin(ct))return Forbid();
-        var rows=await db.Payments.AsNoTracking().OrderByDescending(x=>x.CreatedAt).Take(100).ToListAsync(ct);
-        return Ok(rows.Select(p=>new {payment=View(p),userId=p.UserId,reviewedBy=p.ReviewedBy}));
+        var query = db.Payments.AsNoTracking();
+        if (!string.IsNullOrWhiteSpace(method)) query = query.Where(x => x.Method == method);
+        if (!string.IsNullOrWhiteSpace(status)) query = query.Where(x => x.Status == status);
+        var rows=await query.OrderByDescending(x=>x.CreatedAt).Take(100).ToListAsync(ct);
+        return Ok(rows.Select(p=>new {payment=View(p),userId=p.UserId,reviewedBy=p.ReviewedBy,
+            settlementReference=p.SettlementReference}));
     }
 
-    public sealed record ReviewRequest(string Action, string? Reference, bool FundsIndependentlyVerified=false, decimal? ReceivedAmount=null, string? ReceivedCurrency=null, string? PaymentLink=null);
+    public sealed record ReviewRequest(string Action, string? Reference, bool FundsIndependentlyVerified=false, decimal? ReceivedAmount=null, string? ReceivedCurrency=null, string? PaymentLink=null, string? Reason=null);
     [Authorize(Roles="admin"), HttpPost("admin/{id:guid}/review")]
     public async Task<IActionResult> Review(Guid id, ReviewRequest request, CancellationToken ct) {
         if(!await IsCurrentAdmin(ct))return Forbid();
@@ -125,11 +129,17 @@ public sealed class WalletPaymentsController(AppDbContext db, PaymentService ser
         if(p==null)return NotFound();
         if(p.Method=="yookassa")return Conflict(new{message="Online payments settle only through provider verification."});
         if(request.Action is not ("processing" or "reject" or "confirm"))return BadRequest();
-        var reference=request.Reference?.Trim().ToUpperInvariant();
+        var testBank = p.Method == "bank_transfer" && p.IsTest && settings.Value.TestMode;
+        if (p.Method == "bank_transfer" && p.IsTest && !testBank) return Conflict();
+        if (testBank && request.PaymentLink != null) return BadRequest();
+        var reason = request.Reason?.Trim();
+        if (reason?.Length > 240 || (testBank && request.Action == "reject" && string.IsNullOrEmpty(reason)))
+            return BadRequest(new { message = "Provide a rejection reason of up to 240 characters." });
+        var reference = testBank ? $"TESTBANK:{id:N}".ToUpperInvariant() : request.Reference?.Trim().ToUpperInvariant();
         if(request.PaymentLink is {} link && (!Uri.TryCreate(link,UriKind.Absolute,out var uri) || uri.Scheme!="https" ||
             !(uri.Host=="yookassa.ru" || uri.Host.EndsWith(".yookassa.ru") || uri.Host=="yoomoney.ru" || uri.Host.EndsWith(".yoomoney.ru"))))return BadRequest();
         // Statement/reconciliation ID only; no user uploads or card fields are accepted.
-        if(request.Action=="confirm" && (!request.FundsIndependentlyVerified || request.ReceivedAmount!=p.Amount || request.ReceivedCurrency!=p.ChargeCurrency || reference==null ||
+        if(request.Action=="confirm" && !testBank && (!request.FundsIndependentlyVerified || request.ReceivedAmount!=p.Amount || request.ReceivedCurrency!=p.ChargeCurrency || reference==null ||
             !System.Text.RegularExpressions.Regex.IsMatch(reference,@"^[A-Za-z][A-Za-z0-9_-]{7,79}$")))
             return BadRequest(new{message="Independently verify receipt and provide a unique statement reference starting with a letter (8–80 characters). Never enter card data."});
         if(p.Status=="succeeded")return request.Action=="confirm"&&p.SettlementReference==reference?Ok(View(p)):Conflict();
@@ -141,19 +151,25 @@ public sealed class WalletPaymentsController(AppDbContext db, PaymentService ser
             var won=await db.Payments.Where(x=>x.Id==id && x.CreditedAt==null && (x.Status=="requested" || x.Status=="processing"))
                 .ExecuteUpdateAsync(u=>u.SetProperty(x=>x.Status,next).SetProperty(x=>x.UpdatedAt,DateTime.UtcNow)
                     .SetProperty(x=>x.ReviewedBy,User.GetUserId())
-                    .SetProperty(x=>x.ConfirmationUrl,request.PaymentLink ?? p.ConfirmationUrl)
+                    .SetProperty(x=>x.RejectionReason,request.Action=="reject"?reason:null)
+                    .SetProperty(x=>x.ConfirmationUrl,testBank ? null : request.PaymentLink ?? p.ConfirmationUrl)
                     .SetProperty(x=>x.SettlementReference,request.Action=="confirm"?reference:null)
                     .SetProperty(x=>x.CreditedAt,request.Action=="confirm"?DateTime.UtcNow:(DateTime?)null),ct);
-            if(won!=1)return Conflict();
+            if (won != 1)
+            {
+                var latest = await db.Payments.AsNoTracking().SingleAsync(x => x.Id == id, ct);
+                return request.Action == "confirm" && latest.Status == "succeeded" &&
+                    latest.SettlementReference == reference ? Ok(View(latest)) : Conflict();
+            }
             if(request.Action=="confirm") {
                 var changed=await db.Users.Where(x=>x.Id==p.UserId && !x.IsBlocked && x.IsDeleted!=true && x.IsEmailConfirmed)
                     .ExecuteUpdateAsync(u=>u.SetProperty(x=>x.WalletBalance,x=>x.WalletBalance+p.WalletAmount),ct);
-                if(changed!=1)throw new InvalidOperationException("Account unavailable");
+                if(changed!=1)return Conflict(new { message = "Account unavailable" });
                 db.UserTransactions.Add(new(){Id=p.Id,UserId=p.UserId,Type=Enums.TransactionType.Deposit,
-                    Amount=p.WalletAmount,Timestamp=DateTime.UtcNow,Notes="Verified manual wallet deposit; payment "+p.Id+(p.IsTest?"; TEST":"")});
+                    Amount=p.WalletAmount,Timestamp=DateTime.UtcNow,Notes=(testBank?"Simulated manual bank deposit; payment ":"Verified manual wallet deposit; payment ")+p.Id+(p.IsTest?"; TEST":"")});
             }
             db.ActionLogs.Add(new(){Id=request.Action=="confirm"?p.Id:Guid.NewGuid(),UserId=User.GetUserId(),Action="PaymentReview",
-                Details=JsonSerializer.Serialize(new{paymentId=id,beneficiary=p.UserId,status=next,reference,
+                Details=JsonSerializer.Serialize(new{paymentId=id,beneficiary=p.UserId,status=next,reference,reason,manualSimulation=testBank,
                     amount=p.Amount,currency=p.ChargeCurrency,fee=p.FeeAmount,walletAmount=p.WalletAmount,
                     walletCurrency=p.WalletCurrency,rate=p.ExchangeRate,
                     conversionRoundingAmount=p.Amount-p.FeeAmount-p.WalletAmount*p.ExchangeRate,
@@ -169,6 +185,6 @@ public sealed class WalletPaymentsController(AppDbContext db, PaymentService ser
         chargeCurrency=p.ChargeCurrency,walletAmount=p.WalletAmount,walletCurrency=p.WalletCurrency,
         feeAmount=p.FeeAmount,exchangeRate=p.ExchangeRate,
         conversionRoundingAmount=p.Amount-p.FeeAmount-p.WalletAmount*p.ExchangeRate,method=p.Method,status=p.Status,
-        credited=p.CreditedAt!=null,confirmationUrl=p.ConfirmationUrl,testMode=p.IsTest,
-        createdAt=p.CreatedAt,updatedAt=p.UpdatedAt,creditedAt=p.CreditedAt };
+        credited=p.CreditedAt!=null,confirmationUrl=p.IsTest && p.Method=="bank_transfer" ? null : p.ConfirmationUrl,testMode=p.IsTest,
+        rejectionReason=p.RejectionReason,createdAt=p.CreatedAt,updatedAt=p.UpdatedAt,creditedAt=p.CreditedAt };
 }

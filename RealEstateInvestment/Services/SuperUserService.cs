@@ -1,6 +1,7 @@
 using RealEstateInvestment.Helpers;
 using RealEstateInvestment.Data;
 using RealEstateInvestment.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace RealEstateInvestment.Services
 {
@@ -38,11 +39,16 @@ namespace RealEstateInvestment.Services
             var password = RequireBootstrapSetting("SuperUser:Bootstrap:Password");
             var secretWord = RequireBootstrapSetting("SuperUser:Bootstrap:SecretWord");
 
+            string clientNumber;
+            do clientNumber = ClientNumberGenerator.Generate();
+            while (await _context.Users.AnyAsync(u => u.ClientNumber == clientNumber));
+
             var user = new User
             {
                 Id = id,
                 FullName = _config["SuperUser:Bootstrap:FullName"]?.Trim() ?? "Development Super Admin",
                 Email = email,
+                ClientNumber = clientNumber,
                 PasswordHash = PasswordHasher.HashPassword(password),
                 SecretWord = secretWord,
                 Role = "admin",

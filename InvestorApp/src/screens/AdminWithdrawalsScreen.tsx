@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList,  StyleSheet, Alert } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, FlatList,  StyleSheet, Alert, TextInput, ScrollView } from 'react-native';
 // import { useNavigation } from '@react-navigation/native';
 // import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 // import { RootStackParamList } from '../navigation/AppNavigator';
@@ -13,11 +13,19 @@ interface Withdrawal {
   amount: number;
   status: string;
   createdAt: string;
+  testDestination?: string;
+  rejectionReason?: string;
+  processedAt?: string;
+  processedBy?: string;
 }
 
 const AdminWithdrawalsScreen = () => {
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
-  //const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>(); 
+  const [status,setStatus] = useState('');
+  const [reviewing,setReviewing] = useState('');
+  const [reason,setReason] = useState('');
+  const [busy,setBusy] = useState(false);
+  const lock = useRef(false);
 
   const loadData = async () => {
     try {
@@ -33,33 +41,32 @@ const AdminWithdrawalsScreen = () => {
   }, []);
 
   const handleAction = async (id: string, action: 'approve' | 'reject') => {
+    if (lock.current) return;
+    lock.current = true;
+    setBusy(true);
     try {
-      await api.post(`/withdrawals/${id}/${action}`);
+      await api.post(`/withdrawals/${id}/${action}`,{reason:action==="reject"?reason.trim():undefined});
       Alert.alert('Success', `Withdrawal ${action}ed`);
-      loadData();
+      setReviewing("");
+      setReason("");
     } catch (error) {
       console.error('Error updating status', error);
-      Alert.alert('Error', 'Failed to update status');
+      Alert.alert('Error', 'Review failed. Check the updated request status.');
+    } finally {
+      await loadData();
+      lock.current = false;
+      setBusy(false);
     }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>All Withdrawal Requests</Text>
- 
-      {/* <BlueButton title="Manage Users" onPress={() => navigation.navigate('AdminUsers')} />
-
-      <BlueButton title="View All Investments" onPress={() => navigation.navigate('AdminInvestments')} />
-
-      <BlueButton title="Process KYC" onPress={() => navigation.navigate('AdminKyc')} />
-
-      <BlueButton title="📊 View Stats" onPress={() => navigation.navigate('AdminStats')} />
-
-      <BlueButton title="🏠 Manage Properties" onPress={() => navigation.navigate('AdminProperties')} /> */}
-
-
+      <Text style={styles.title}>TEST Withdrawals</Text>
+      <Text>Approval simulates a payout. Rejection returns reserved funds.</Text>
+      <ScrollStatus status={status} setStatus={setStatus}/>
+      <BlueButton title="Refresh requests" disabled={busy} onPress={()=>void loadData()}/>
       <FlatList
-        data={withdrawals}
+        data={withdrawals.filter(item=>!status||item.status===status)}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <View style={styles.card}>
@@ -68,18 +75,37 @@ const AdminWithdrawalsScreen = () => {
             <Text>Status: {item.status}</Text>
             <Text>Date: {new Date(item.createdAt).toLocaleDateString()}</Text>
 
-            {item.status === 'pending' && (
-              <View style={styles.buttonRow}>
-                <BlueButton title="Approve" onPress={() => handleAction(item.id, 'approve')} />
-                <BlueButton   title="Reject" variant="red" onPress={() => handleAction(item.id, 'reject')} />
-              </View>
-            )}
+            <Text>Request {item.id}</Text>
+            <Text>Destination {item.testDestination ?? 'Legacy request'}</Text>
+            {item.processedAt&&<Text>Processed {new Date(item.processedAt).toLocaleString()} by {item.processedBy}</Text>}
+            {item.rejectionReason&&<Text>Declined: {item.rejectionReason}</Text>}
+            {item.status === 'pending' && <>
+              <BlueButton title="Simulate TEST payout" disabled={busy} onPress={()=>Alert.alert(
+                'Simulate payout?', 'This will finalize the TEST request.',
+                [{text:'Back',style:'cancel'},{text:'Approve',onPress:()=>void handleAction(item.id,'approve')}],
+              )}/>
+              <BlueButton title="Decline request" disabled={busy} variant="red"
+                onPress={()=>{setReviewing(item.id);setReason('');}}/>
+              {reviewing===item.id&&<>
+                <TextInput placeholder="Decline reason" maxLength={240} value={reason} editable={!busy} onChangeText={setReason}/>
+                <BlueButton title="Reject & return funds" disabled={busy||!reason.trim()} variant="red"
+                  onPress={()=>void handleAction(item.id,'reject')}/>
+              </>}
+            </>}
           </View>
         )}
       />
     </View>
   );
 };
+
+function ScrollStatus({status,setStatus}:{status:string;setStatus:(status:string)=>void}) {
+  return <View><ScrollView horizontal>
+    {['','pending','approved','rejected','canceled'].map(value=><Text key={value} accessibilityRole="button"
+      accessibilityState={{selected:status===value}} style={{padding:10,fontWeight:status===value?'bold':'normal'}}
+      onPress={()=>setStatus(value)}>{value||'All statuses'}</Text>)}
+  </ScrollView></View>;
+}
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16,backgroundColor: theme.colors.background },
@@ -90,11 +116,6 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 6,
     marginBottom: 10,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 10,
   },
 });
 

@@ -84,7 +84,7 @@ public sealed class FinancialEndpointTests
         h.WithDb(db =>
         {
             Assert.Equal(balance, db.Users.Find(h.Actor)!.WalletBalance);
-            Assert.Equal(2, db.UserTransactions.Count());
+            Assert.Equal(first == "approve" ? 1 : 2, db.UserTransactions.Count());
             Assert.Equal(2, db.ActionLogs.Count());
             Assert.Equal(first == "approve" ? "approved" : "rejected", db.WithdrawalRequests.Single().Status);
         });

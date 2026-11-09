@@ -1,11 +1,13 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { financialWrite, getSession } from './api';
+import type { Withdrawal as InvestorWithdrawal } from './community-contracts';
 import { money } from './format';
 import { Empty, Heading, Metric, Resource, useResource } from './ui';
 import { adminLogsPath, adminLogPages, type AdminStats, type AdminLogPage } from './admin-contracts';
 import './admin.css';
 
-interface Withdrawal { id: string; userId: string; amount: number; status: string; createdAt: string }
+interface Withdrawal extends InvestorWithdrawal { userId: string; processedBy?: string }
 const timestamp = (value: string) => Number.isFinite(Date.parse(value)) ? new Date(value).toISOString().replace('T', ' ').replace('.000Z', ' UTC') : '—';
 const count = (value: unknown) => typeof value === 'number' && Number.isFinite(value) && value >= 0 && Number.isInteger(value) ? value : '—';
 const amount = (value: unknown) => typeof value === 'number' && Number.isFinite(value) ? money(value) : '—';
@@ -30,19 +32,54 @@ export function AdminOverview() {
 export function AdminWithdrawals() {
   const resource = useResource<Withdrawal[]>('/withdrawals/all');
   const [params] = useSearchParams();
+  const [busy,setBusy] = useState(false), [error,setError] = useState('');
+  const lock = useRef(false);
+  async function review(id:string, action:'approve'|'reject', reason?:string) {
+    const session=getSession();
+    if(!session||lock.current) return;
+    if(action==='approve'&&!window.confirm('Approve this simulated TEST payout?')) return;
+    lock.current=true;
+    setBusy(true);
+    setError('');
+    try { await financialWrite(session,'/withdrawals/'+id+'/'+action,{reason}); }
+    catch(e) { setError(e instanceof Error?e.message:'Review failed.'); }
+    finally {
+      resource.retry();
+      lock.current=false;
+      setBusy(false);
+    }
+  }
   const [status, setStatus] = useState(params.get('status') === 'pending' ? 'pending' : '');
   const [query, setQuery] = useState(''), [from, setFrom] = useState(''), [to, setTo] = useState('');
   const invalid = Boolean(from && to && from > to);
   const clear = () => { setStatus(''); setQuery(''); setFrom(''); setTo(''); };
-  return <><Heading title="Withdrawals" description="Review accounting requests. An approved status does not confirm a bank or card payout."><button onClick={resource.retry}>Refresh requests</button></Heading>
-    <form className="filters panel admin-filter" onSubmit={e => e.preventDefault()}><label>Withdrawal status<select value={status} onChange={e => setStatus(e.target.value)}><option value="">All statuses</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select></label><label>Request or user ID<input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search IDs"/></label><DateRange from={from} to={to} setFrom={setFrom} setTo={setTo}/><button type="button" onClick={clear}>Clear filters</button></form>
+  return <><Heading title="Withdrawals" description="TEST/manual review. Approval simulates a payout. Rejection returns reserved funds."><button onClick={resource.retry}>Refresh requests</button></Heading>
+    <form className="filters panel admin-filter" onSubmit={e => e.preventDefault()}><label>Withdrawal status<select value={status} onChange={e => setStatus(e.target.value)}><option value="">All statuses</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="canceled">Canceled</option></select></label><label>Request or user ID<input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search IDs"/></label><DateRange from={from} to={to} setFrom={setFrom} setTo={setTo}/><button type="button" onClick={clear}>Clear filters</button></form>
     <p className="muted">Filters apply to all requests returned by the API. Dates include both selected days in UTC.</p>
+    {error&&<p role="alert">{error}</p>}
     {invalid && <p role="alert">Start date must be on or before end date.</p>}
     <Resource resource={resource}>{items => {
       const rows = invalid ? [] : items.filter(item => (!status || item.status === status) && (!query.trim() || `${item.id} ${item.userId}`.toLowerCase().includes(query.trim().toLowerCase())) && within(item.createdAt, from, to));
-      return <><p role="status">{rows.length} of {items.length} requests</p>{rows.length ? <section className="panel table-wrap"><table><thead><tr><th>Request / created (UTC)</th><th>User</th><th>Amount (USD)</th><th>Status</th></tr></thead><tbody>{rows.map(item => <tr key={item.id}><td data-label="Request / created (UTC)"><span className="identifier">{item.id}</span><small>{timestamp(item.createdAt)}</small></td><td data-label="User"><Link className="identifier" to={`/admin/users/${encodeURIComponent(item.userId)}`}>{item.userId}</Link></td><td data-label="Amount (USD)">{amount(item.amount)}</td><td data-label="Status"><span className="tag">{item.status || 'Unknown'}</span></td></tr>)}</tbody></table></section> : <Empty title={items.length ? 'No matching withdrawals' : 'No withdrawal requests'}>Refresh the queue or change the filters.</Empty>}</>;
+      return <><p role="status">{rows.length} of {items.length} requests</p>{rows.length ? <section className="panel table-wrap"><table><thead><tr><th>Request / created (UTC)</th><th>User</th><th>Amount (USD)</th><th>Status</th><th>Review</th></tr></thead><tbody>{rows.map(item => <tr key={item.id}><td data-label="Request / created (UTC)"><span className="identifier">{item.id}</span><small>{timestamp(item.createdAt)}</small></td><td data-label="User"><Link className="identifier" to={`/admin/users/${encodeURIComponent(item.userId)}`}>{item.userId}</Link></td><td data-label="Amount (USD)">{amount(item.amount)}</td><td data-label="Status"><span className="tag">{item.status || 'Unknown'}</span></td><td data-label="Review"><WithdrawalReview item={item} busy={busy} review={review}/></td></tr>)}</tbody></table></section> : <Empty title={items.length ? 'No matching withdrawals' : 'No withdrawal requests'}>Refresh the queue or change the filters.</Empty>}</>;
     }}</Resource>
-    <section className="panel operations-panel"><h2>Financial decisions unavailable</h2><p>Approve records a financial transaction; reject returns funds to the account. These actions require a separately verified environment and are disabled in this iteration.</p><div className="actions"><button disabled>Approve</button><button disabled>Reject</button></div></section></>;
+  </>;
+}
+
+function WithdrawalReview({item,busy,review}:{
+  item:Withdrawal; busy:boolean; review:(id:string,action:'approve'|'reject',reason?:string)=>Promise<void>;
+}) {
+  const [reason,setReason]=useState('');
+  return <details>
+    <summary>TEST request details</summary>
+    <p>Destination {item.testDestination ?? 'Legacy request'}</p>
+    {item.processedAt&&<p>Processed {timestamp(item.processedAt)} by {item.processedBy}</p>}
+    {item.rejectionReason&&<p>Declined: {item.rejectionReason}</p>}
+    {item.status==='pending'&&<>
+      <button disabled={busy} onClick={()=>void review(item.id,'approve')}>Simulate payout</button>
+      <label>Decline reason<input maxLength={240} value={reason} onChange={e=>setReason(e.target.value)}/></label>
+      <button disabled={busy||!reason.trim()} onClick={()=>void review(item.id,'reject',reason.trim())}>Reject & return funds</button>
+    </>}
+  </details>;
 }
 
 export function AdminLogs() {
