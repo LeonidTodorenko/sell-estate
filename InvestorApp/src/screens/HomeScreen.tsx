@@ -379,7 +379,7 @@ const InvestmentRow = ({
 async function fetchHomeData(): Promise<HomeData | null> {
   let stored = await AsyncStorage.getItem('user');
   if (!stored) {
-    await ensureUserInSession();
+    await ensureUserInSession(true);
     stored = await AsyncStorage.getItem('user');
   }
   if (!stored) throw new Error('Account data is unavailable');
@@ -397,7 +397,7 @@ async function fetchHomeData(): Promise<HomeData | null> {
   ] = await Promise.all([
     api.get(`/users/${u.userId}/total-assets`, { silentLoading: true } as any),
     api.get(`/messages/unread-count/${u.userId}`, { silentLoading: true } as any).catch(() => ({ data: { count: 0 } })),
-    fetchPropertiesWithExtras(20).catch(() => []),
+    fetchPropertiesWithExtras(20, true).catch(() => []),
     api.get(`/investments/with-aggregated/${u.userId}`, { silentLoading: true } as any).catch(() => ({ data: [] })),
     api.get(`/users/${u.userId}/assets-summary`, { silentLoading: true } as any).catch(() => ({ data: null })),
     api.get(`/share-offers/${u.userId}/club-info`, { silentLoading: true } as any).catch(() => ({ data: null })),
@@ -547,7 +547,7 @@ const clubInfo = homeData?.clubInfo ?? null;
 //    const [assetsRes, unreadRes, propertiesRes, investmentsRes, statsRes, clubInfoRes, offersRes] = await Promise.all([
 //   api.get(`/users/${u.userId}/total-assets`),
 //   api.get(`/messages/unread-count/${u.userId}`).catch(() => ({ data: { count: 0 } })),
-//   fetchPropertiesWithExtras(20).catch(() => []),
+//   fetchPropertiesWithExtras(20, true).catch(() => []),
 //   api.get(`/investments/with-aggregated/${u.userId}`).catch(() => ({ data: [] })),
 //   api.get(`/users/${u.userId}/assets-summary`).catch(() => ({ data: null })),
 //   api.get(`/share-offers/${u.userId}/club-info`).catch(() => ({ data: null })),
@@ -658,7 +658,7 @@ const clubInfo = homeData?.clubInfo ?? null;
     useCallback(() => {
      qc.prefetchQuery({
         queryKey: ['properties', 'withExtras'],
-        queryFn: () => fetchPropertiesWithExtras(20),
+        queryFn: () => fetchPropertiesWithExtras(20, true),
         staleTime: 60_000,
       });
     }, [qc])

@@ -23,28 +23,54 @@ using RealEstateInvestment.Helpers;
 
             }
 
+            private Guid? _runId;
+            private int _runIssues;
+
+            // Operational audit uses its own context, outside financial transactions.
+            // Never persist exception messages, credentials or stack traces here.
+            private async Task RecordRunEvent(string status, Guid? subjectId = null, string? errorType = null)
+            {
+                if (_runId == null) return;
+                try
+                {
+                    using var scope = _serviceProvider.CreateScope();
+                    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                    db.ActionLogs.Add(new ActionLog { UserId = Guid.Empty, Action = "SchedulerRun305",
+                        Details = JsonSerializer.Serialize(new { runId = _runId, status, subjectId, errorType }) });
+                    await db.SaveChangesAsync();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Scheduler monitoring write failed: {ex.GetType().Name}");
+                }
+            }
+
+            private async Task RunTick()
+            {
+                _runId = Guid.NewGuid();
+                _runIssues = 0;
+                await RecordRunEvent("started");
+                try
+                {
+                    await RunScheduledProperyStatusTask();
+                    await RunExpiredShareOfferProcessing();
+                    await RecordRunEvent(_runIssues == 0 ? "completed" : "completed_with_issues");
+                }
+                catch (Exception ex)
+                {
+                    await RecordRunEvent("failed", errorType: ex.GetType().Name);
+                    Console.WriteLine($"Scheduled task error: {ex.GetType().Name}");
+                }
+                finally { _runId = null; }
+            }
+
             protected override async Task ExecuteAsync(CancellationToken stoppingToken)
             {
                 while (!stoppingToken.IsCancellationRequested)
                 {
-                    try
-                    {
-
-                 
-
-
-
-                        Console.WriteLine("OwnersClub 30.4.1 scheduler tick started");
-                        await RunScheduledProperyStatusTask();
-                        await RunExpiredShareOfferProcessing();
-                        Console.WriteLine("OwnersClub 30.4.1 scheduler tick completed");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Scheduled task error: {ex.Message}");
-                    }
-
-                    await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken); // 5 min
+                    await RunTick();
+                    try { await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken); }
+                    catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
                 }
             }
 
@@ -59,10 +85,14 @@ using RealEstateInvestment.Helpers;
                 foreach (var id in ids) {
                     try { await ProcessExpiredOffer(id); }
                     catch (Exception ex) when (IsFinancialConflict(ex)) {
+                        _runIssues++;
+                        await RecordRunEvent("expiry_deferred", id, ex.GetType().Name);
                         Console.WriteLine($"Expiry conflict {id}; deferred to next tick: {ex.Message}");
                     }
                     catch (InvalidOperationException ex) {
                         // Preserve this offer atomically for investigation; other lots can still expire.
+                        _runIssues++;
+                        await RecordRunEvent("expiry_requires_review", id, ex.GetType().Name);
                         Console.WriteLine($"Expiry requires review {id}: {ex.Message}");
                     }
                 }
@@ -118,14 +148,20 @@ using RealEstateInvestment.Helpers;
                     {
                         // Disposal rolls back the entire round. The next scheduled tick
                         // re-reads committed state; never retry using this tracked context.
+                        _runIssues++;
+                        await RecordRunEvent("stage_deferred", propertyId, ex.GetType().Name);
                         Console.WriteLine($"Application round conflict for {propertyId}; deferred to next tick: {ex.Message}");
                     }
                     catch (ReservationConflict ex)
                     {
+                        _runIssues++;
                         await RecordConflict(propertyId, ex);
+                        await RecordRunEvent("stage_conflict", propertyId, nameof(ReservationConflict));
                     }
                     catch (Exception ex)
                     {
+                        _runIssues++;
+                        await RecordRunEvent("stage_failed", propertyId, ex.GetType().Name);
                         Console.WriteLine($"Application round failed for {propertyId}: {ex.GetType().Name}");
                     }
                 }

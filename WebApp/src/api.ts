@@ -177,6 +177,21 @@ export async function financialWrite(expected: Session, path: string, body: unkn
   finally { financialPending = false; }
 }
 
+// Private documents use the same captured-account checks, without tokens in URLs.
+export async function paymentDocument(expected: Session, paymentId: string, fileId?: string, form?: FormData) {
+  let current = session;
+  const matches = () => current && !current.isDemo && current.user.id === expected.user.id && session?.user.id === expected.user.id;
+  if (!matches()) throw new ApiError('Your session changed. Reload this page.', 401);
+  if (current && isExpired(current)) current = await refresh();
+  if (!matches() || !current) throw new ApiError('Please sign in again.', 401);
+  const path = `/payments/${encodeURIComponent(paymentId)}/evidence${fileId ? `/${encodeURIComponent(fileId)}/file` : ''}`;
+  const response = await fetch(API_BASE_URL + path, {method:form?'POST':'GET', body:form,
+    credentials:'omit', cache:'no-store', headers:{Authorization:`Bearer ${current.accessToken}`}, signal:AbortSignal.timeout(60000)});
+  if (!response.ok) throw new ApiError('Document unavailable or rejected. PDF/JPEG/PNG, 5 MiB, maximum 5 files; request must remain open.',response.status);
+  if (!matches()) throw new ApiError('Your session changed.',401);
+  return form ? response.json() : response.blob();
+}
+
 // A closed action list, current admin session and no automatic POST retries.
 export async function adminWrite(expected: Session, action: 'role' | 'block' | 'unblock' | 'approve', id: string, role?: number) {
   let current = session;

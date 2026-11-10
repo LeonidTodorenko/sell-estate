@@ -10,7 +10,7 @@ type Session = {
   demoCode?: string | null;
 };
 
-export async function ensureUserInSession() {
+export async function ensureUserInSession(silentLoading = false) {
   const session0 = (await loadSession()) as Session | null;
 
   // Без валидной сессии — выходим, пусть внешний код решает (GateScreen отправит на Login)
@@ -25,7 +25,7 @@ export async function ensureUserInSession() {
   }
 
   // Здесь access токен уже должен быть в axios (через setAccessToken/интерсептор)
-  const { data: me } = await api.get('/auth/me');
+  const { data: me } = await api.get('/auth/me', {silentLoading} as any);
 
   const isDemo = session0.isDemo === true || session0.user?.isDemo === true || me?.isDemo === true;
   const demoCode = session0.demoCode ?? session0.user?.demoCode ?? me?.demoCode ?? null;

@@ -1,3 +1,4 @@
+import AdminPaymentsScreen from '../screens/AdminPaymentsScreen';
 import AdminInvestmentApplicationScreen from '../screens/AdminInvestmentApplicationScreen';
 // src/navigation/AppNavigator.tsx
 import React from 'react';
@@ -92,6 +93,7 @@ export type RootStackParamList = {
   Withdraw: undefined;
   MyProperties: undefined;
   MyWithdrawals: undefined;
+  AdminPayments: undefined;
   AdminWithdrawals: undefined;
   AdminDashboards: undefined;
   AdminDemoAccounts: undefined;
@@ -172,7 +174,7 @@ const HIDE_BAR_ROUTES = new Set<string>([
   'AdminInvestmentApplications','AdminDashboards','AdminUsers','AdminInvestments','AdminKyc','AdminStats',
   'AdminProperties','AdminWithdrawals','AdminLogs','AdminMessages',
   'AdminKycUpload','AdminSystemSettings','SuperUser','AdminChat','UsersLists','UserEdit','AdminFinanceFlows',
-  'AdminDemoAccounts']);
+  'AdminDemoAccounts','AdminPayments']);
 
 
 export default function AppNavigator() {
@@ -233,6 +235,7 @@ export default function AppNavigator() {
         <Stack.Screen name="MyProperties" component={MyPropertiesScreen} options={{ title: 'My Properties' }} />
         <Stack.Screen name="MyWithdrawals" component={MyWithdrawalsScreen} options={{ title: 'My Withdrawals' }} />
         <Stack.Screen name="AdminWithdrawals" component={AdminWithdrawalsScreen} options={{ title: 'Withdrawal Admin' }} />
+        <Stack.Screen name="AdminPayments" component={AdminPaymentsScreen} options={{ title: 'Платежи и заявки' }} />
         <Stack.Screen name="AdminDashboards" component={AdminDashboardScreen} options={{ title: 'Dashboard Admin' }} />
         <Stack.Screen name="AdminDemoAccounts" component={AdminDemoAccountsScreen} options={{ title: 'Admin: Demo Sandbox' }} />
         <Stack.Screen name="AdminUsers" component={AdminUsersScreen} options={{ title: 'Admin: Users' }} />

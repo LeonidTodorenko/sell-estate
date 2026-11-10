@@ -19,6 +19,11 @@ namespace RealEstateInvestment.Controllers
             _context = context;
         }
 
+        [HttpGet("all")]
+        [FinancialAdmin]
+        public async Task<IActionResult> All() => Ok(await _context.Messages.AsNoTracking()
+            .OrderByDescending(m => m.CreatedAt).Take(200).ToListAsync());
+
         // Receiving user messages
         [HttpGet("inbox/{userId}")]
         public async Task<IActionResult> GetInbox(Guid userId)

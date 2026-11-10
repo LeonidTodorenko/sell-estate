@@ -40,8 +40,7 @@ const AdminMessagesScreen = () => {
   };
 
   useEffect(() => {
-    loadMessages();
-    loadUsers();
+    Promise.all([loadMessages(), loadUsers()]).catch(() => Alert.alert('Error', 'Unable to load messages. Please retry.'));
   }, []);
 
   const handleSend = async () => {
@@ -60,7 +59,7 @@ const AdminMessagesScreen = () => {
       setTitle('');
       setContent('');
       setRecipientId('');
-      loadMessages();
+      await loadMessages();
     }
     catch (error: any) {
              let message = 'Failed to send message ';

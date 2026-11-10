@@ -1,3 +1,4 @@
+import {PaymentEvidence} from './payment-evidence';
 import { AdminInvestmentIntents } from './admin-intents';
 import {useEffect,useRef,useState} from 'react';
 import {api,financialWrite} from './api';
@@ -39,6 +40,7 @@ export function AddFunds({session}:{session:Session}){
  {payment&&<><p role="status">{paymentStatus[payment.status]??'Processing'}. {payment.credited?'Wallet credit confirmed.':'Wallet credit not confirmed.'}</p>
  {payment.confirmationUrl&&safeCheckout(payment.confirmationUrl)&&!terminal(payment)&&<a className="button" href={payment.confirmationUrl} target="_blank" rel="noopener noreferrer">Open secure payment page</a>}
  {(terminal(payment)||payment.method!=='yookassa')&&<button onClick={()=>{localStorage.removeItem(key);setAttempt(null);setPayment(null);}}>New payment or request</button>}</>}
+ {payment&&payment.method!=='yookassa'&&<PaymentEvidence key={payment.id} session={session} id={payment.id} open={payment.testMode&&!terminal(payment)}/>}
  {error&&<p role="alert">{error}</p>}<h3>Payment history</h3><button onClick={()=>void loadHistory().catch(()=>setError('History unavailable.'))}>Refresh history</button>
  {history.length?history.map(p=><article key={p.id}><p>{new Date(p.createdAt).toLocaleString()} · {paymentMethods[p.method]} · {p.amount.toFixed(2)} {p.chargeCurrency} → {p.walletAmount.toFixed(2)} {p.walletCurrency}<br/>{paymentStatus[p.status]??p.status}{p.testMode?' · TEST':''}{p.rejectionReason?' · Declined: '+p.rejectionReason:''}</p>
  <button disabled={!!attempt&&attempt.id!==p.id} onClick={()=>{save({requestKey:p.requestKey,amount:p.amount,method:p.method,id:p.id});setPayment(p);}}>View payment</button></article>):<p>No payments yet.</p>}
@@ -57,6 +59,7 @@ type Review = {
 
 export function AdminPayments({session}:{session:Session}) {
  const [rows,setRows]=useState<PaymentQueueRow[]>([]);
+ const [pending,setPending]=useState<number|null>(null);
  const [error,setError]=useState(''), [busy,setBusy]=useState(false);
  const [method,setMethod]=useState(''), [status,setStatus]=useState('');
  const lock=useRef(false), generation=useRef(0);
@@ -64,7 +67,8 @@ export function AdminPayments({session}:{session:Session}) {
   const version=++generation.current;
   const query=new URLSearchParams({method,status});
   const data=await api<PaymentQueueRow[]>('/payments/admin/queue?'+query);
-  if(version===generation.current) setRows(data);
+  const summary=await api<{pending:number}>('/payments/admin/summary');
+  if(version===generation.current){setRows(data);setPending(summary.pending);}
  };
  useEffect(()=>{
   setRows([]);
@@ -89,7 +93,7 @@ export function AdminPayments({session}:{session:Session}) {
   }
  }
  return <>
-  <h1>Payments & requests</h1>
+  <h1>Payments & requests · {pending??'—'} pending</h1><a href="/admin/withdrawals">Finance → Withdrawals queue</a>
   <AdminInvestmentIntents session={session}/>
   <p>TEST/manual bank approvals credit the test wallet immediately. For other manual payments, use independent settlement records. Keep card details out of this queue.</p>
   <div className="filters">
@@ -102,11 +106,11 @@ export function AdminPayments({session}:{session:Session}) {
    <button disabled={busy} onClick={()=>void load().catch(()=>setError('Payment queue unavailable.'))}>Refresh</button>
   </div>
   {error&&<p role="alert">{error}</p>}
-  {rows.map(row=><ReviewRow key={row.payment.id} row={row} busy={busy} review={review}/>)}
+  {rows.map(row=><ReviewRow key={row.payment.id} row={row} busy={busy} review={review} session={session}/>)}
  </>;
 }
 
-function ReviewRow({row,busy,review}:{row:PaymentQueueRow;busy:boolean;review:(id:string,input:Review)=>Promise<void>}) {
+function ReviewRow({row,busy,review,session}:{session:Session;row:PaymentQueueRow;busy:boolean;review:(id:string,input:Review)=>Promise<void>}) {
  const [reference,setReference]=useState(''), [verified,setVerified]=useState(false);
  const [received,setReceived]=useState(''), [currency,setCurrency]=useState(''), [link,setLink]=useState('');
  const [reason,setReason]=useState('');
@@ -120,7 +124,8 @@ function ReviewRow({row,busy,review}:{row:PaymentQueueRow;busy:boolean;review:(i
   {row.reviewedBy&&<p>Reviewed by {row.reviewedBy}</p>}
   {row.settlementReference&&<p>Settlement reference {row.settlementReference}</p>}
   {p.rejectionReason&&<p>Declined: {p.rejectionReason}</p>}
-  {p.method!=='yookassa'&&!terminal(p)&&<>
+  {p.method!=='yookassa'&&<PaymentEvidence session={session} id={p.id} admin open={p.testMode&&!terminal(p)}/>}
+  {p.method!=='yookassa'&&p.testMode&&!terminal(p)&&<>
    {!testBank&&<>
     <label>PSP-hosted payment link (optional)<input type="url" value={link} onChange={e=>setLink(e.target.value)}/></label>
     <label>Received amount<input type="number" step="0.01" value={received} onChange={e=>setReceived(e.target.value)}/></label>

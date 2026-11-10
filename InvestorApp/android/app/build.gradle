@@ -99,8 +99,8 @@ android {
         applicationId "com.investorapp"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 6
-        versionName "0.6.0"
+        versionCode 8
+        versionName "0.8.0"
     }
     signingConfigs {
         release {
@@ -142,8 +142,8 @@ android {
 	  abi {
 		enable true
 		reset()
-		include "arm64-v8a", "x86_64"
-		universalApk true   
+		include(*((project.findProperty("reactNativeArchitectures") ?: "arm64-v8a,x86_64").split(",")))
+		universalApk ((project.findProperty("reactNativeArchitectures") ?: "arm64-v8a,x86_64").split(",").size() > 1)
 	  }
 	  
 }

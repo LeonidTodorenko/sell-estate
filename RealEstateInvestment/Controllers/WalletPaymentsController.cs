@@ -117,7 +117,13 @@ public sealed class WalletPaymentsController(AppDbContext db, PaymentService ser
         if (!string.IsNullOrWhiteSpace(status)) query = query.Where(x => x.Status == status);
         var rows=await query.OrderByDescending(x=>x.CreatedAt).Take(100).ToListAsync(ct);
         return Ok(rows.Select(p=>new {payment=View(p),userId=p.UserId,reviewedBy=p.ReviewedBy,
-            settlementReference=p.SettlementReference}));
+            settlementReference=p.SettlementReference,userName=db.Users.Where(u=>u.Id==p.UserId).Select(u=>u.FullName).FirstOrDefault()}));
+    }
+
+    [Authorize(Roles="admin"), HttpGet("admin/summary")]
+    public async Task<IActionResult> Summary(CancellationToken ct) {
+        if(!await IsCurrentAdmin(ct))return Forbid();
+        return Ok(new { pending = await db.Payments.CountAsync(p => p.Status == "requested" || p.Status == "processing", ct) });
     }
 
     public sealed record ReviewRequest(string Action, string? Reference, bool FundsIndependentlyVerified=false, decimal? ReceivedAmount=null, string? ReceivedCurrency=null, string? PaymentLink=null, string? Reason=null);

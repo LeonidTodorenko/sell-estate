@@ -28,8 +28,8 @@ presentationPdfName?: string | null;
 
 type ApiMedia = { id: string; type: number; url?: string | null; base64Data?: string | null };
 
-export async function fetchPropertiesWithExtras(limitExtras = 8): Promise<Property[]> {
-  const res = await api.get('/properties');
+export async function fetchPropertiesWithExtras(limitExtras = 8, silentLoading = false): Promise<Property[]> {
+  const res = await api.get('/properties', {silentLoading} as any);
   const list: Property[] = Array.isArray(res.data) ? res.data : [];
 
   const first = list.slice(0, limitExtras);
@@ -38,9 +38,9 @@ export async function fetchPropertiesWithExtras(limitExtras = 8): Promise<Proper
   const withExtras = await Promise.all(
     first.map(async (p) => {
       const [imgRes, mediaRes, planRes] = await Promise.all([
-        api.get(`/properties/${p.id}/images`),
-        api.get(`/properties/${p.id}/media`),
-        api.get(`/properties/${p.id}/payment-plans`),
+        api.get(`/properties/${p.id}/images`, {silentLoading} as any),
+        api.get(`/properties/${p.id}/media`, {silentLoading} as any),
+        api.get(`/properties/${p.id}/payment-plans`, {silentLoading} as any),
       ]);
 
       const rawMedia = Array.isArray(mediaRes.data) ? mediaRes.data : [];

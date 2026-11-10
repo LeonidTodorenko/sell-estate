@@ -55,6 +55,11 @@ public sealed class InvestmentWorkflowController(AppDbContext db) : ControllerBa
         .Where(x => x.Action == "InvestmentSchedulerConflict3041").OrderByDescending(x => x.Timestamp)
         .Take(200).Select(x => new { x.Id, x.Timestamp, x.Details }).ToListAsync());
 
+    [HttpGet("scheduler-runs"), FinancialAdmin]
+    public async Task<IActionResult> SchedulerRuns() => Ok(await db.ActionLogs.AsNoTracking()
+        .Where(x => x.Action == "SchedulerRun305").OrderByDescending(x => x.Timestamp)
+        .Take(200).Select(x => new { x.Id, x.Timestamp, x.Details }).ToListAsync());
+
     public sealed class Decision
     {
         public Guid OperationId { get; set; }

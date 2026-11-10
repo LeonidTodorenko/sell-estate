@@ -1,3 +1,4 @@
+import PaymentEvidence from '../components/PaymentEvidence';
 import React, {useEffect, useRef, useState} from 'react';
 import {Picker} from '@react-native-picker/picker';
 import {AppState, Linking, ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
@@ -68,6 +69,7 @@ export default function AddFunds(){
   {!attempt?.id&&<BlueButton title={attempt?'Recover payment':chosen==='yookassa'?'Continue to payment':'Send request'} disabled={!enabled||busy||(!attempt&&(!valid||credit<=0))} onPress={()=>void create()}/>}
   {payment&&<Text accessibilityLiveRegion="polite">{paymentStatus[payment.status]??'Processing'}. {payment.credited?'Wallet credit confirmed.':'Wallet credit not confirmed.'}</Text>}
   {payment?.confirmationUrl&&!terminal(payment)&&safeCheckout(payment.confirmationUrl)&&<BlueButton title="Open secure payment page" onPress={()=>{void Linking.openURL(payment.confirmationUrl!).catch(()=>setError('Unable to open the system browser.'));}}/>}
+  {payment&&payment.method!=='yookassa'&&<PaymentEvidence key={payment.id} id={payment.id} open={payment.testMode&&!terminal(payment)}/>}
   {attempt?.id&&!payment&&<Text>Recovering payment status…</Text>}
   {payment&&(terminal(payment)||payment.method!=='yookassa')&&<BlueButton title="New payment or request" onPress={()=>{void AsyncStorage.removeItem(storageKey).then(()=>{setAttempt(null);setPayment(null);}).catch(()=>setError('Unable to save. Retry later.'));}}/>}
   {!!error&&<Text accessibilityRole="alert">{error}</Text>}

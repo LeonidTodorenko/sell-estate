@@ -1,5 +1,6 @@
 // src/services/sessionStorage.ts
 import * as Keychain from 'react-native-keychain';
+import {NativeModules} from 'react-native';
 
 const KEY = 'auth_session';
 
@@ -93,6 +94,7 @@ export async function loadSession(): Promise<Session | null> {
 }
 
 export async function clearSession() {
+  await NativeModules.PaymentDocument?.clear?.().catch(() => undefined);
    try {
     await Keychain.resetGenericPassword({ service: KEY });
   } catch (e) {

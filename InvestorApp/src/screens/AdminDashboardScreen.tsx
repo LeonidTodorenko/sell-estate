@@ -1,4 +1,6 @@
-import React from 'react';
+import React, {useCallback, useState} from 'react';
+import {useFocusEffect} from '@react-navigation/native';
+import api from '../api';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity,Alert  } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -11,6 +13,7 @@ import { setAccessToken } from '../api';
 type Nav = NativeStackNavigationProp<RootStackParamList>;
  
 const ROWS = [
+  { icon: '💳', label: 'Платежи и заявки', route: 'AdminPayments' as keyof RootStackParamList },
   { icon: 'DS', label: 'DEMO SANDBOX', route: 'AdminDemoAccounts' as keyof RootStackParamList },
   { icon: '💵', label: 'WITHDRAWALS', route: 'AdminWithdrawals' as keyof RootStackParamList },
   { icon: '👤', label: 'MANAGE USERS', route: 'AdminUsers' },
@@ -32,6 +35,9 @@ const ROWS = [
 
 const AdminDashboardScreen = () => {
   const navigation = useNavigation<Nav>();
+  const [pending,setPending]=useState<number|null>(null);
+  useFocusEffect(useCallback(()=>{let active=true;api.get('/payments/admin/summary',{silentLoading:true} as any)
+    .then(r=>{if(active)setPending(r.data.pending);}).catch(()=>{if(active)setPending(null);});return()=>{active=false;};},[]));
 
    const handleLogout = async () => {
     Alert.alert('Confirm Logout', 'Do you really want to log out?', [
@@ -66,7 +72,7 @@ const AdminDashboardScreen = () => {
             {/* Текст строго по центру кнопки */}
             <View style={styles.centerWrap}>
               <Text style={styles.buttonText} numberOfLines={1}>
-                {row.label}
+                {row.label}{row.route==='AdminPayments' ? ` (${pending??'—'})` : ''}
               </Text>
             </View>
           </TouchableOpacity>

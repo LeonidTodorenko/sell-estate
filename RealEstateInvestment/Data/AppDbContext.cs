@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using RealEstateInvestment.Helpers;
 using RealEstateInvestment.Models;
 
@@ -17,6 +17,7 @@ namespace RealEstateInvestment.Data
         // =========================================================
 
         public DbSet<User> Users { get; set; }
+        public DbSet<PaymentEvidence> PaymentEvidence { get; set; }
         public DbSet<WalletPayment> Payments { get; set; }
 
         public DbSet<Property> Properties { get; set; }

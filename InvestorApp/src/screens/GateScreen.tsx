@@ -43,7 +43,7 @@ export default function GateScreen({ navigation }: Props) {
 
            // Проверяем токен реальным запросом  
         try {
-          await api.get('/auth/me');
+          await api.get('/auth/me', {silentLoading:true} as any);
         } catch (err: any) {
             console.error(err);
           if (err?.response?.status === 401) {
@@ -53,7 +53,7 @@ export default function GateScreen({ navigation }: Props) {
           return safeExit();
         }
 
-        const me = await ensureUserInSession();
+        const me = await ensureUserInSession(true);
         const isDemo = stored.isDemo === true || stored.user?.isDemo === true || me?.isDemo === true;
         const demoCode = stored.demoCode ?? stored.user?.demoCode ?? me?.demoCode ?? null;
         const sessionUser = { ...stored.user, ...me, isDemo, demoCode };
