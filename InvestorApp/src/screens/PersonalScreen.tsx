@@ -235,6 +235,7 @@ const PersonalScreen = ({ navigation }: Props) => {
           onPress={() => navigation.navigate('UserTransactions')}
         />
         <View style={{ height: 10 }} />
+        <BlueButton title="AI Assistant" onPress={() => navigation.navigate('Assistant')} />
         <BlueButton title="Chat with admin" onPress={() => navigation.navigate('Chat')} />
         <View style={{ height: 10 }} />
         <BlueButton    title="Logout" onPress={handleLogout} variant="red" />

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Http.Features;
 using RealEstateInvestment.Helpers;
 using RealEstateInvestment.Services.Demo;
+using RealEstateInvestment.Services.Assistant;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -26,7 +27,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // JWT
-var jwtKey = builder.Configuration["Jwt:Key"] ?? "super-secret-development-key";
+var configuredJwtKey = builder.Configuration["Jwt:Key"];
+var jwtKey = configuredJwtKey ?? "super-secret-development-key";
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "SellEstateIssuer";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "SellEstateClient";
 
@@ -93,7 +95,9 @@ builder.Services.AddCors(options =>
 
 
 
-builder.Services.AddAuthorization();
+var assistantSigningKey = string.IsNullOrWhiteSpace(configuredJwtKey) ? null
+    : new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuredJwtKey));
+builder.Services.AddOwnersClubAssistant(assistantSigningKey, jwtIssuer, jwtAudience, builder.Configuration);
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -252,6 +256,8 @@ app.UseCors("Frontend");
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
+app.UseRequestTimeouts();
 
 app.UseStaticFiles();
 
@@ -371,7 +377,7 @@ app.MapGet("/support", () =>
     """, "text/html");
 });
 
-app.MapGet("/health", () => Results.Ok(new { status = "ok", release = "30.6.1",
+app.MapGet("/health", () => Results.Ok(new { status = "ok", release = "30.7.5",
     commit = Environment.GetEnvironmentVariable("RENDER_GIT_COMMIT"),
     backgroundJobsEnabled, schedulerMode = backgroundJobsEnabled ? "due-stage-settlement" : "off",
     passwordCompatibility = "identity-v3-210000-legacy" }));

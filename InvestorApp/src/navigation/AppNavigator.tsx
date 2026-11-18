@@ -5,6 +5,7 @@ import React from 'react';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator, NativeStackNavigationOptions } from '@react-navigation/native-stack';
 
+import AssistantScreen from '../screens/AssistantScreen';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import ProfileScreen from '../screens/ProfileScreen';
@@ -83,6 +84,7 @@ import theme from '../constants/theme';
  //import { useLoading } from '../contexts/LoadingContext';
  
 export type RootStackParamList = {
+  Assistant: undefined;
   Login: undefined;
   Register: undefined;
   Profile: undefined;
@@ -227,6 +229,7 @@ export default function AppNavigator() {
             }}
           />
         <Stack.Screen name="Register" component={RegisterScreen} options={{ title: 'Create Account' }} />
+        <Stack.Screen name="Assistant" component={AssistantScreen} options={{ title: 'AI Assistant' }} />
         <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profile' }} />
         <Stack.Screen name="Investments" component={InvestmentsScreen} options={{ title: 'Portfolio' }} />
         <Stack.Screen name="Properties" component={PropertyListScreen} options={{ title: 'Properties' }} />
@@ -235,7 +238,7 @@ export default function AppNavigator() {
         <Stack.Screen name="MyProperties" component={MyPropertiesScreen} options={{ title: 'My Properties' }} />
         <Stack.Screen name="MyWithdrawals" component={MyWithdrawalsScreen} options={{ title: 'My Withdrawals' }} />
         <Stack.Screen name="AdminWithdrawals" component={AdminWithdrawalsScreen} options={{ title: 'Withdrawal Admin' }} />
-        <Stack.Screen name="AdminPayments" component={AdminPaymentsScreen} options={{ title: 'Платежи и заявки' }} />
+        <Stack.Screen name="AdminPayments" component={AdminPaymentsScreen} options={{ title: 'Payments and Requests' }} />
         <Stack.Screen name="AdminDashboards" component={AdminDashboardScreen} options={{ title: 'Dashboard Admin' }} />
         <Stack.Screen name="AdminDemoAccounts" component={AdminDemoAccountsScreen} options={{ title: 'Admin: Demo Sandbox' }} />
         <Stack.Screen name="AdminUsers" component={AdminUsersScreen} options={{ title: 'Admin: Users' }} />

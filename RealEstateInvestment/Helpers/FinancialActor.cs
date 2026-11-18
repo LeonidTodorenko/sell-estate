@@ -20,14 +20,14 @@ public static class FinancialActor
 
     // Validate the authenticated identity before choosing a production or sandbox branch.
     // Normal User has no IsActive/ExpiresAt fields; do not invent new eligibility rules.
-    public static async Task<IActionResult?> ValidateAsync(ClaimsPrincipal principal, AppDbContext db)
+    public static async Task<IActionResult?> ValidateAsync(ClaimsPrincipal principal, AppDbContext db, CancellationToken cancellationToken = default)
     {
         var id = principal.GetUserId();
         if (principal.Identity?.IsAuthenticated != true || id == Guid.Empty)
             return new UnauthorizedResult();
         if (principal.IsDemo())
-            return IsEligible(await db.DemoUsers.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id)) ? null : new UnauthorizedResult();
-        var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+            return IsEligible(await db.DemoUsers.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, cancellationToken)) ? null : new UnauthorizedResult();
+        var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         return user != null && !user.IsBlocked && user.IsDeleted != true && user.IsEmailConfirmed
             ? null : new ForbidResult();
     }

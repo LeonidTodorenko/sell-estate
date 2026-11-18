@@ -1,0 +1,14 @@
+.assistant-page { max-width: 54rem; margin-inline: auto; display: grid; gap: 1rem; }
+.assistant-heading, .assistant-composer, .assistant-actions { display: flex; align-items: center; gap: .65rem; }
+.assistant-heading { justify-content: space-between; }
+.assistant-heading h1 { margin: 0; }
+.assistant-page details { border: 1px solid #dce7e0; border-radius: 12px; padding: .75rem 1rem; }
+.assistant-page summary { cursor: pointer; font-weight: 600; }
+.assistant-actions { flex-wrap: wrap; padding-top: .65rem; }
+.assistant-history { min-height: 8rem; max-height: 50vh; overflow-y: auto; overflow-wrap: anywhere; }
+.assistant-turn { display: grid; gap: .65rem; margin-bottom: 1rem; }
+.assistant-question, .assistant-answer { margin: 0; padding: .75rem 1rem; border-radius: 12px; max-width: 90%; }
+.assistant-question { justify-self: end; background: #dcf2e6; color: #18382c; }
+.assistant-answer { justify-self: start; background: #f1f6f3; color: #18382c; }
+.assistant-answer p { margin: 0 0 .25rem; white-space: pre-wrap; }
+.assistant-composer input { flex: 1; min-width: 0; }

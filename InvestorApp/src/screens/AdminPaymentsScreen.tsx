@@ -26,9 +26,9 @@ export default function AdminPaymentsScreen(){
   finally{lock.current=false;setBusy(false);}
  }
  return <AdminProtectedScreen><ScrollView contentContainerStyle={{padding:20,gap:14}}>
-  <Text style={{fontSize:24}}>Платежи и заявки · {pending} pending</Text>
-  <Text>Финансы · TEST operations only. Uploading evidence does not confirm receipt of funds.</Text>
-  <BlueButton title="Финансы → Withdrawals" onPress={()=>navigation.navigate('AdminWithdrawals')}/>
+  <Text style={{fontSize:24}}>Payments and Requests · {pending} pending</Text>
+  <Text>TEST operations only. Uploading evidence does not confirm receipt of funds.</Text>
+  <BlueButton title="Withdrawals" onPress={()=>navigation.navigate('AdminWithdrawals')}/>
   <Picker accessibilityLabel="Filter payment method" enabled={!busy} selectedValue={method} onValueChange={setMethod}><Picker.Item label="All methods" value=""/>{Object.entries(paymentMethods).map(([v,l])=><Picker.Item key={v} label={l} value={v}/>)}</Picker>
   <Picker accessibilityLabel="Filter payment status" enabled={!busy} selectedValue={status} onValueChange={setStatus}><Picker.Item label="All statuses" value=""/>{Object.entries(paymentStatus).map(([v,l])=><Picker.Item key={v} label={l} value={v}/>)}</Picker>
   <BlueButton title="Refresh queue" disabled={busy} onPress={()=>void load().catch(()=>setError('Queue unavailable.'))}/>

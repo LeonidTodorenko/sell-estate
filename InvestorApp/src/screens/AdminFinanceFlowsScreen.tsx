@@ -141,7 +141,7 @@ export default function AdminFinanceFlowsScreen() {
 
       {loading && <ActivityIndicator size="large" />}
 
-      <BlueButton title="Платежи и заявки" onPress={()=>navigation.navigate('AdminPayments')}/>
+      <BlueButton title="Payments and Requests" onPress={()=>navigation.navigate('AdminPayments')}/>
       <BlueButton title="Withdrawals queue" onPress={()=>navigation.navigate('AdminWithdrawals')}/>
       {!!data && (
         <FlatList

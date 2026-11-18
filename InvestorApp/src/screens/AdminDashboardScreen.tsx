@@ -13,7 +13,7 @@ import { setAccessToken } from '../api';
 type Nav = NativeStackNavigationProp<RootStackParamList>;
  
 const ROWS = [
-  { icon: '💳', label: 'Платежи и заявки', route: 'AdminPayments' as keyof RootStackParamList },
+  { icon: '💳', label: 'Payments and Requests', route: 'AdminPayments' as keyof RootStackParamList },
   { icon: 'DS', label: 'DEMO SANDBOX', route: 'AdminDemoAccounts' as keyof RootStackParamList },
   { icon: '💵', label: 'WITHDRAWALS', route: 'AdminWithdrawals' as keyof RootStackParamList },
   { icon: '👤', label: 'MANAGE USERS', route: 'AdminUsers' },
