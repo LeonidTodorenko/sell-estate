@@ -7,22 +7,16 @@ const personalPaths = {
   payments: 'me/payments',
 } as const;
 type Section = keyof typeof personalPaths;
-const accountQuestions: Record<string, Section> = {
-  'my balance': 'balance', 'my wallet balance': 'balance', 'мой баланс': 'balance', 'баланс моего кошелька': 'balance',
-  'my investments': 'investments', 'мои инвестиции': 'investments',
-  'my applications': 'applications', 'мои заявки': 'applications',
-  'my payments': 'payments', 'мои платежи': 'payments',
-};
 type Destination = Section | 'properties';
-type Message = { question: string; answer?: string; destination?: Destination; unknown?: boolean };
-type FaqAnswer = { status: 'answered' | 'unknown' | 'language_changed'; topic: string | null; answer: string; language: 'en' | 'ru' };
+type Message = { question: string; answer?: string; destination?: Destination; unknown?: boolean; sources?: string[] };
+type FaqAnswer = { status: 'answered' | 'unknown' | 'language_changed'; topic: string | null; answer: string; conversationId?: string; sources?: string[] };
 type AccountItem = { shares?: number; investedAmount?: number; requestedShares?: number; status?: string | number; walletAmount?: number; walletCurrency?: string; createdAt: string };
 type AccountAnswer = { balance?: number; currency?: string; status?: string; items?: AccountItem[] };
 
 export const faqQuestions = [
-  ['Property details', 'Карточка объекта'],
-  ['Property photos', 'Фотографии объекта'],
-  ['Payment plan', 'График платежей'],
+  'Property details',
+  'Property photos',
+  'Payment plan',
 ] as const;
 
 const english = {
@@ -39,38 +33,21 @@ const english = {
   noItems: 'No records found.', demoPayments: 'Payments are unavailable in Demo mode.',
   shares: 'shares', latest: 'Latest records (up to 25)',
 };
-const russian = {
-  title: 'AI-ассистент', faq: 'Частые вопросы', account: 'Мой аккаунт',
-  balance: 'Баланс кошелька', investments: 'Мои инвестиции', applications: 'Мои заявки',
-  payments: 'Мои платежи', properties: 'Объекты', prompt: 'Задайте вопрос об OwnersClub', send: 'Отправить',
-  pending: 'Готовим ответ…', signIn: 'Войти снова',
-  expired: 'Срок действия сеанса истёк. Войдите снова, чтобы продолжить.',
-  forbidden: 'Ассистент недоступен для этого аккаунта.',
-  limited: 'Слишком много запросов. Подождите минуту и повторите.',
-  network: 'Не удалось связаться с ассистентом. Проверьте соединение и повторите.',
-  timeout: 'Ассистент не успел ответить. Попробуйте снова.',
-  unavailable: 'Ассистент временно недоступен. Попробуйте снова.',
-  noItems: 'Записей нет.', demoPayments: 'Платежи недоступны в деморежиме.',
-  shares: 'долей', latest: 'Последние записи (до 25)',
-};
 
 class HttpError extends Error {
   constructor(readonly status: number) { super(String(status)); }
 }
 
-function accountText(section: Section, data: AccountAnswer, ru: boolean) {
-  const copy = ru ? russian : english;
-  const locale = ru ? 'ru-RU' : 'en-US';
+function accountText(section: Section, data: AccountAnswer) {
+  const copy = english;
+  const locale = 'en-US';
   const money = (value: number, currency = 'USD') =>
     new Intl.NumberFormat(locale, { style: 'currency', currency }).format(value);
   if (section === 'balance' && typeof data.balance === 'number') return money(data.balance, data.currency);
   if (data.status === 'unavailable_in_demo') return copy.demoPayments;
   if (!Array.isArray(data.items)) throw new HttpError(502);
   if (!data.items.length) return copy.noItems;
-  const statuses: Record<string, string> = ru
-    ? { pending: 'Ожидает', accepted: 'Принята', partial: 'Частично принята', rejected: 'Отклонена', carried: 'Перенесена',
-        credited: 'Зачислен', failed: 'Ошибка', cancelled: 'Отменён', confirmed: 'Подтверждён' }
-    : { pending: 'Pending', accepted: 'Accepted', partial: 'Partially accepted', rejected: 'Rejected', carried: 'Carried over',
+  const statuses: Record<string, string> = { pending: 'Pending', accepted: 'Accepted', partial: 'Partially accepted', rejected: 'Rejected', carried: 'Carried over',
         credited: 'Credited', failed: 'Failed', cancelled: 'Cancelled', confirmed: 'Confirmed' };
   const lines = data.items.map(item => {
     const date = new Date(item.createdAt).toLocaleDateString(locale);
@@ -86,11 +63,12 @@ function accountText(section: Section, data: AccountAnswer, ru: boolean) {
 
 export function useAssistant(baseUrl: string, token: string) {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [ru, setRussian] = useState(false);
+  const [allowExternal, setAllowExternal] = useState(false);
+  const conversation = useRef<string | undefined>(undefined);
   const [error, setError] = useState<keyof typeof english>();
   const [pending, setPending] = useState(false);
   const active = useRef<AbortController | null>(null);
-  const copy = ru ? russian : english;
+  const copy = english;
 
   useEffect(() => () => {
     active.current?.abort();
@@ -100,9 +78,6 @@ export function useAssistant(baseUrl: string, token: string) {
   async function send(text: string, section?: Section) {
     const question = text.trim();
     if (!question || question.length > 400 || active.current || error === 'expired') return;
-    const normalized = question.toLowerCase().replace(/[.!?]+$/, '');
-    if (!section && Object.prototype.hasOwnProperty.call(accountQuestions, normalized))
-      section = accountQuestions[normalized];
     const controller = new AbortController();
     active.current = controller;
     let timedOut = false;
@@ -124,7 +99,7 @@ export function useAssistant(baseUrl: string, token: string) {
           Authorization: `Bearer ${token}`,
           ...(section ? {} : { 'Content-Type': 'application/json' }),
         },
-        body: section ? undefined : JSON.stringify({ text: question }),
+        body: section ? undefined : JSON.stringify({ text: question, conversationId: conversation.current, allowExternal }),
         signal: controller.signal,
       });
       if (!response.ok) throw new HttpError(response.status);
@@ -132,14 +107,14 @@ export function useAssistant(baseUrl: string, token: string) {
       if (active.current !== controller) return;
       let result: Message;
       if (section) {
-        result = { question, answer: accountText(section, data, ru), destination: section };
+        result = { question, answer: accountText(section, data), destination: section };
       } else {
-        const { answer, topic, status, language } = data as FaqAnswer;
+        const { answer, topic, status, conversationId, sources } = data as FaqAnswer;
         if (typeof answer !== 'string') throw new HttpError(502);
-        setRussian(language === 'ru');
+        conversation.current = conversationId;
         const destination = topic && ['properties', 'property-images', 'payment-plan'].includes(topic)
-          ? 'properties' : undefined;
-        result = { question, answer, destination, unknown: status === 'unknown' };
+          ? 'properties' : topic && Object.prototype.hasOwnProperty.call(personalPaths, topic) ? topic as Section : undefined;
+        result = { question, answer, destination, sources, unknown: status === 'unknown' };
       }
       setMessages(previous => [...previous.slice(0, -1), result]);
     } catch (failure) {
@@ -156,5 +131,5 @@ export function useAssistant(baseUrl: string, token: string) {
     }
   }
 
-  return { messages, ru, error, pending, copy, send, sections: Object.keys(personalPaths) as Section[] };
+  return { messages, allowExternal, setAllowExternal, error, pending, copy, send, sections: Object.keys(personalPaths) as Section[] };
 }

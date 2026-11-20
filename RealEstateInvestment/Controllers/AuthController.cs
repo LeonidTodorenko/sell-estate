@@ -399,7 +399,8 @@ namespace RealEstateInvestment.Controllers
                 new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
                 new Claim(ClaimTypes.Email, email ?? string.Empty),
                 new Claim(ClaimTypes.Role, role ?? "user"),
-                new Claim("isDemo", isDemo ? "true" : "false")
+                new Claim("isDemo", isDemo ? "true" : "false"),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString("N"))
             };
 
             if (isDemo && !string.IsNullOrWhiteSpace(demoCode))

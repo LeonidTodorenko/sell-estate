@@ -39,7 +39,7 @@ internal sealed class AssistantTestHost : IDisposable
         if (isolatedPostgres != null)
         {
             var address = new Npgsql.NpgsqlConnectionStringBuilder(isolatedPostgres);
-            if (address.Host != "127.0.0.1" || address.Port != 15433 || address.Database != "qa292_isolated")
+            if (address.Host != "127.0.0.1" || address.Port is not (15433 or 15439) || address.Database != "qa292_isolated")
                 throw new InvalidOperationException("The assistant test requires the dedicated local fixture database.");
         }
         else

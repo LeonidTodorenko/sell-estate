@@ -55,12 +55,12 @@ public static class AssistantRegistration
         });
         services.AddSingleton<AssistantKnowledge>();
         services.AddSingleton<AssistantLanguageSession>();
-        services.AddSingleton<IAssistantProvider, MockAssistantProvider>();
-        services.AddSingleton<AssistantProviderProbe>();
         services.AddSingleton(sp =>
         {
-            var configured = sp.GetRequiredService<IConfiguration>()["Assistant:Gemini:Enabled"];
-            var key = bool.TryParse(configured, out var enabled) && enabled ? Environment.GetEnvironmentVariable("GEMINI_API_KEY") : null;
+            var settings = sp.GetRequiredService<IConfiguration>();
+            var enabled = settings.GetValue<bool>("Assistant:Gemini:Enabled");
+            var freeTierConfirmed = settings.GetValue<bool>("Assistant:Gemini:FreeTierConfirmed");
+            var key = enabled && freeTierConfirmed ? Environment.GetEnvironmentVariable("GEMINI_API_KEY") : null;
             var http = new HttpClient(new SocketsHttpHandler
             {
                 AllowAutoRedirect = false,
@@ -71,6 +71,7 @@ public static class AssistantRegistration
             });
             return new GeminiFaqAdapter(http, key, TimeProvider.System, geminiTimeout);
         });
+        services.AddSingleton<IAssistantConversationProvider>(sp => sp.GetRequiredService<GeminiFaqAdapter>());
         return services;
     }
 }

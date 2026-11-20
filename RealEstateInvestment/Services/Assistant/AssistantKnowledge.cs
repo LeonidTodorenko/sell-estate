@@ -4,6 +4,7 @@ namespace RealEstateInvestment.Services.Assistant;
 
 public sealed record AssistantAnswer(string Status, string Version, string? Topic, string Answer, IReadOnlyList<string> Sources)
 {
+    public Guid? ConversationId { get; init; }
     public string Language { get; init; } = "en";
 }
 
@@ -18,7 +19,7 @@ public sealed class AssistantKnowledge
     private static readonly Regex Allowed = new(@"^[a-zа-яё0-9 .?!,\-]+$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
     private static readonly Regex Words = new(@"[a-zа-я0-9]+", RegexOptions.CultureInvariant);
     private static readonly Regex LeadIn = new(
-        @"^(?:please (?:explain|show me|tell me about)|(?:what is|what are|where is|how does|how do i|how can i)|(?:что такое|расскажите про|как работает|где посмотреть)) ",
+        @"^(?:(?:please )?(?:explain|show me|tell me about)|(?:could|can) you tell me about|(?:what is|what are|where is|how does|how do i|how can i)|(?:что такое|расскажите про|как работает|где посмотреть)) ",
         RegexOptions.CultureInvariant);
 
 
@@ -55,7 +56,7 @@ public sealed class AssistantKnowledge
 
         var unknown = new AssistantAnswer("unknown", Version, null, russian
             ? "В базе нет подтверждённого ответа. Попробуйте задать один общий вопрос о функциях OwnersClub."
-            : "The FAQ has no verified answer. Try one general question about OwnersClub features.", Array.Empty<string>());
+            : "I can help with OwnersClub features like properties, payment plans, investments, and your account. What would you like to know about one of those?", Array.Empty<string>());
         var trimmed = question.Trim(' ');
         if (trimmed.Length is 0 or > 400 || !Allowed.IsMatch(trimmed) || trimmed.Any(char.IsControl)
             || trimmed.Count(c => c is '?' or '!') > 1 || trimmed.TrimEnd('?', '!', '.').Any(c => c is '?' or '!' or '.'))
@@ -94,6 +95,60 @@ public sealed class AssistantKnowledge
         }
         return best != null && !ambiguous ? (Answer(best, russian), false, russian) : (unknown, false, russian);
     }
+
+    private static readonly Regex StartingCost = new(
+        @"\b(?:how much (?:do i need )?to start|minimum (?:investment|amount)|сколько (?:нужно )?начать|минимальн\w* сумм\w*)\b",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    private static readonly Entry SharePriceGuide = new("starting-cost",
+        "В карточке объекта указаны цена доли и доступное число долей. Цена доли рассчитывается делением цены объекта на число долей. Какой объект вы рассматриваете?",
+        "Property details show the price per share and the number of available shares. The price per share is the property price divided by the total number of shares. Which property are you considering?",
+        ["WebApp/README.md", "WebApp/src/pages.tsx"]);
+
+    internal AssistantAnswer LocalAnswer(string question, string? previous, bool russian)
+    {
+        if (StartingCost.IsMatch(question)) return Answer(SharePriceGuide, russian);
+        var result = Match(question, russian).Answer;
+        if (result.Status == "unknown" && Keywords(question).Count == 0 && previous != null)
+            return Match(previous, russian).Answer;
+        return result;
+    }
+
+    internal IReadOnlyList<AssistantAnswer> Retrieve(string question, string? previous)
+    {
+        var terms = Keywords(question);
+        if (terms.Contains("start") || terms.Contains("minimum") || terms.Contains("начать"))
+            terms.UnionWith(["share", "price", "invest"]);
+        var context = Keywords(previous ?? "");
+        var eligible = aliases.Values.Where(alias => publicTopics.Contains(alias.Entry.Topic));
+        var scores = eligible.GroupBy(alias => alias.Entry).Select(group => new
+        {
+            Entry = group.Key,
+            Score = group.Max(alias => 4 * terms.Count(alias.Terms.Contains) + context.Count(alias.Terms.Contains))
+                + (terms.Contains("price") && group.Key.Topic == "plan-share-price" ? 5 : 0)
+        });
+        var results = scores.Where(item => item.Score >= 4 || (terms.Count <= 2 && item.Score > 0)).OrderByDescending(item => item.Score)
+            .ThenBy(item => item.Entry.Topic, StringComparer.Ordinal).Take(4)
+            .Select(item => Answer(item.Entry, false));
+        if (StartingCost.IsMatch(question))
+            results = results.Prepend(Answer(SharePriceGuide, false));
+        return results.Take(4).ToArray();
+    }
+
+    private static readonly HashSet<string> commonTerms = Terms(
+        "i me you my your is it a the and what which how can does do this that about of for in to on tell please ownersclub " +
+        "как а и в о на мне что это про где сколько ли");
+
+    private static HashSet<string> Keywords(string value) => Terms(Normalize(value))
+        .Where(term => term.Length >= 2 && !commonTerms.Contains(term)).ToHashSet(StringComparer.Ordinal);
+
+    // Product descriptions approved for the external provider. The full catalog remains available locally.
+    private static readonly HashSet<string> publicTopics = Terms(
+        "app-overview register email-confirmation profile properties property-images property-presentation property-video " +
+        "property-stats investments application-history stage-status round-acceptance payment-plan plan-share-price " +
+        "marketplace market-buy market-bids market-trades market-cancel market-extend market-fee wallet own-investments " +
+        "own-applications own-payments wallet-add payment-currency payment-history withdraw-history rent-income rent-payout " +
+        "rent-property-history club referral demo support-chat inbox notifications");
 
     private static AssistantAnswer Answer(Entry entry, bool russian) =>
         new("answered", Version, entry.Topic, russian ? entry.Russian : entry.English, entry.Sources);

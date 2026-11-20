@@ -2,6 +2,14 @@
 
 В каждой записи два локальных ответа и ссылки на реализацию или подтверждённую документацию.
 
+## app-overview
+Group: account
+RU: приложение | о приложении | ownersclub | что такое ownersclub | что это за приложение | расскажи о приложении | расскажи про приложение | расскажите о приложении | для чего нужно приложение | что можно делать в приложении | что я могу делать здесь
+EN: app | the app | ownersclub | about the app | about ownersclub | what is this app | what is this app for | what does this app do | what does ownersclub do | what can i do here | what can i do in the app | what can i do with this app | what can i do with ownersclub | give me an overview of the app | introduce ownersclub
+OwnersClub помогает управлять инвестициями в недвижимость. В приложении можно просматривать объекты и графики платежей, следить за своими инвестициями и заявками, проверять баланс кошелька и историю операций. Хотите узнать, с чего начать, или подробнее разобрать одну из этих функций?
+OwnersClub is an app for managing real estate investments. You can explore properties and their payment plans, track your investments and applications, and view your wallet balance and transaction history. Would you like to know how to get started or explore one of those features?
+Sources: [WebApp README](../../../WebApp/README.md) | [WebApp routes](../../../WebApp/src/main.tsx)
+
 ## register
 Group: account
 RU: регистрация аккаунта | регистрация | как зарегистрироваться | создать аккаунт

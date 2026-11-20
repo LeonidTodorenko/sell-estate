@@ -377,7 +377,7 @@ app.MapGet("/support", () =>
     """, "text/html");
 });
 
-app.MapGet("/health", () => Results.Ok(new { status = "ok", release = "30.7.5",
+app.MapGet("/health", () => Results.Ok(new { status = "ok", release = "30.8.2",
     commit = Environment.GetEnvironmentVariable("RENDER_GIT_COMMIT"),
     backgroundJobsEnabled, schedulerMode = backgroundJobsEnabled ? "due-stage-settlement" : "off",
     passwordCompatibility = "identity-v3-210000-legacy" }));

@@ -1,6 +1,6 @@
 import React, { useCallback, useContext, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { API_BASE_URL } from '../api';
 import { parseJwt } from '../services/auth';
@@ -49,7 +49,7 @@ function Action({ label, press, disabled }: { label: string; press: () => void; 
 }
 
 function Conversation({ token, navigation, signIn }: {token: string; navigation: Props['navigation']; signIn: () => Promise<void>}) {
-  const { messages, send, pending, error, ru, copy, sections } = useAssistant(API_BASE_URL, token);
+  const { messages, send, pending, error, allowExternal, setAllowExternal, copy, sections } = useAssistant(API_BASE_URL, token);
   const [draft, setDraft] = useState('');
   const log = useRef<ScrollView>(null);
   const faqY = useRef(0);
@@ -63,19 +63,17 @@ function Conversation({ token, navigation, signIn }: {token: string; navigation:
   return <View style={styles.page}>
     <ScrollView ref={log} style={styles.log} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled"
       onContentSizeChange={() => { if (messages.length && !stayAtFaq.current) log.current?.scrollToEnd({ animated: false }); }}>
-      <View style={styles.row}>
-        <Action label={ru ? 'English' : 'Русский'} disabled={disabled} press={() => ask(ru ? 'Answer in English' : 'Отвечай по-русски')}/>
-      </View>
       <Text accessibilityRole="header" style={styles.heading} onLayout={event => { faqY.current = event.nativeEvent.layout.y; }}>{copy.faq}</Text>
-      <View style={styles.row}>{faqQuestions.map(pair => <Action key={pair[0]} label={pair[ru ? 1 : 0]} disabled={disabled}
-        press={() => ask(pair[ru ? 1 : 0])}/>)}</View>
+      <View style={styles.row}>{faqQuestions.map(question => <Action key={question} label={question} disabled={disabled}
+        press={() => ask(question)}/>)}</View>
       <Text accessibilityRole="header" style={styles.heading}>{copy.account}</Text>
       <View style={styles.row}>{sections.map(section => <Action key={section} label={copy[section]} disabled={disabled}
         press={() => ask(copy[section], section)}/>)}</View>
-      {messages.map(({ question, answer, destination, unknown }, index) => <View key={index} style={styles.turn}>
+      {messages.map(({ question, answer, destination, sources, unknown }, index) => <View key={index} style={styles.turn}>
         <Text style={styles.question}>{question}</Text>
         {answer && <View style={styles.answer}>
           <Text selectable style={styles.text}>{answer}</Text>
+          {!!sources?.length && <Text selectable style={styles.text}>Sources: {sources.join(", ")}</Text>}
           {destination && <Action label={copy[destination]} press={() => navigation.navigate(destinations[destination])}/>}
           {unknown && <Action label={copy.faq} press={() => {
             stayAtFaq.current = true;
@@ -88,6 +86,11 @@ function Conversation({ token, navigation, signIn }: {token: string; navigation:
       {error && <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.text}>{copy[error]}</Text>}
       {error === 'expired' && <Action label={copy.signIn} press={() => void signIn()}/>}
     </ScrollView>
+    <View style={styles.consent}>
+      <Switch accessibilityLabel="Allow Google Gemini" value={allowExternal} disabled={pending}
+        onValueChange={setAllowExternal}/>
+      <Text style={[styles.text, styles.consentText]}>Allow Google Gemini to process general chat messages for this session. Google may use them to improve its products. Do not enter private information.</Text>
+    </View>
     <View style={styles.composer}>
       <TextInput accessibilityLabel={copy.prompt} placeholder={copy.prompt} placeholderTextColor={theme.colors.textSecondary}
         value={draft} onChangeText={setDraft} maxLength={400} style={styles.input}/>
@@ -112,6 +115,8 @@ const styles = StyleSheet.create({
   question: { alignSelf: 'flex-end', maxWidth: '90%', color: theme.colors.text, padding: 12, borderRadius: 12, backgroundColor: '#dcf2e6' },
   answer: { alignSelf: 'flex-start', maxWidth: '95%', gap: 8, padding: 12, borderRadius: 12, backgroundColor: '#f1f6f3' },
   text: { color: theme.colors.text, lineHeight: 22 },
+  consent: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12, gap: 8 },
+  consentText: { flex: 1 },
   composer: { flexDirection: 'row', alignItems: 'center', padding: 12, gap: 8, borderTopWidth: 1, borderColor: theme.colors.border },
   input: { flex: 1, minHeight: 48, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border, color: theme.colors.text },
 });

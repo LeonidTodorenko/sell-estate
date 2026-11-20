@@ -1,40 +1,49 @@
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.IdentityModel.JsonWebTokens;
 
 namespace RealEstateInvestment.Services.Assistant;
 
+public sealed record AssistantTurn(string Question, string Answer);
+
 public sealed class AssistantLanguageSession : IDisposable
 {
-    private readonly MemoryCache preferences = new(new MemoryCacheOptions { SizeLimit = 4096 });
+    private readonly MemoryCache conversations = new(new MemoryCacheOptions { SizeLimit = 1024 });
+    private readonly object gate = new();
 
-    internal (bool Russian, bool Changed) Resolve(HttpContext context, string question)
+    internal sealed class Conversation
     {
-        var bearer = context.Request.Headers.Authorization.ToString()[7..].Trim();
-        var session = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(bearer)));
-        var command = question.Trim().TrimEnd('.', '!', '?').ToLowerInvariant();
-        switch (command)
+        public SemaphoreSlim Slot { get; } = new(1, 1);
+        public bool Russian { get; set; }
+        public string? AccountTopic { get; set; }
+        public List<AssistantTurn> Turns { get; } = [];
+    }
+
+    internal (Guid Id, Conversation Conversation) Open(HttpContext context, Guid? id)
+    {
+        var owner = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(
+            context.Request.Headers.Authorization.ToString())));
+        lock (gate)
         {
-            case "отвечай по-русски":
-            case "please answer in russian":
-            case "answer in russian":
-                var token = new JsonWebToken(bearer);
-                preferences.Set(session, true, new MemoryCacheEntryOptions
-                {
-                    Size = 1,
-                    AbsoluteExpiration = new DateTimeOffset(token.ValidTo, TimeSpan.Zero)
-                });
-                return (true, true);
-            case "отвечай по-английски":
-            case "please answer in english":
-            case "answer in english":
-                preferences.Remove(session);
-                return (false, true);
-            default:
-                return (preferences.TryGetValue<bool>(session, out var russian) && russian, false);
+            if (id is { } existing && conversations.TryGetValue<Conversation>((owner, existing), out var found))
+                return (existing, found!);
+            var created = Guid.NewGuid();
+            var conversation = new Conversation();
+            conversations.Set((owner, created), conversation, new MemoryCacheEntryOptions
+            {
+                Size = 1,
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30)
+            });
+            return (created, conversation);
         }
     }
 
-    public void Dispose() => preferences.Dispose();
+    internal static bool? LanguageCommand(string question) => question.Trim().TrimEnd('.', '!', '?').ToLowerInvariant() switch
+    {
+        "отвечай по-русски" or "please answer in russian" or "answer in russian" => true,
+        "отвечай по-английски" or "please answer in english" or "answer in english" => false,
+        _ => null
+    };
+
+    public void Dispose() => conversations.Dispose();
 }

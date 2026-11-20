@@ -1,6 +1,5 @@
 .assistant-page { max-width: 54rem; margin-inline: auto; display: grid; gap: 1rem; }
-.assistant-heading, .assistant-composer, .assistant-actions { display: flex; align-items: center; gap: .65rem; }
-.assistant-heading { justify-content: space-between; }
+.assistant-composer, .assistant-actions { display: flex; align-items: center; gap: .65rem; }
 .assistant-heading h1 { margin: 0; }
 .assistant-page details { border: 1px solid #dce7e0; border-radius: 12px; padding: .75rem 1rem; }
 .assistant-page summary { cursor: pointer; font-weight: 600; }
