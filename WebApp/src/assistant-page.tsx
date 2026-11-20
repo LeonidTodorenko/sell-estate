@@ -44,7 +44,13 @@ function Conversation({ token }: { token: string }) {
         <p className="assistant-question">{message.question}</p>
         {message.answer && <div className="assistant-answer">
           <p>{message.answer}</p>
-          {!!message.sources?.length && <small>Sources: {message.sources.join(", ")}</small>}
+          {!!message.sourceLinks?.length && <ul>
+            {message.sourceLinks.map(source => <li key={source.title}>
+              {source.url && /^https:\/\/wamsoc\.com\/(about|register|support)$/.test(source.url)
+                ? <a href={source.url}>{source.title}</a>
+                : source.title}
+            </li>)}
+          </ul>}
           {message.destination && <Link to={destinations[message.destination]}>{copy[message.destination]}</Link>}
           {message.unknown && <a href="#assistant-faq">{copy.faq}</a>}
         </div>}

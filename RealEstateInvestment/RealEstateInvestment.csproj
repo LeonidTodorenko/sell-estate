@@ -25,6 +25,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Services/Assistant/CustomerKnowledge-30.8.4.md" LogicalName="OwnersClub.Assistant.CustomerKnowledge" />
     <EmbeddedResource Include="Services/Assistant/FAQ-30.7.2.md" LogicalName="OwnersClub.Assistant.Faq" />
   </ItemGroup>
 </Project>

@@ -45,18 +45,35 @@ public sealed class AssistantController(AppDbContext db, AssistantKnowledge know
                 conversation.Russian = russian;
                 answer = Reply("language_changed", null, russian ? "Теперь я отвечаю по-русски." : "I will answer in English.");
             }
+            else if (RequestsSources(input))
+            {
+                if (!question.AllowExternal) conversation.Turns.Clear();
+                answer = Reply("answered", null, conversation.Russian
+                    ? (conversation.LastSourceSections.Count > 0 ? "Источники предыдущего ответа." : "Для предыдущего ответа нет ссылок на источники.")
+                    : (conversation.LastSourceSections.Count > 0 ? "Sources for the previous answer." : "There are no source links for the previous answer."))
+                    with { SourceSections = conversation.LastSourceSections };
+            }
             else
             {
                 answer = await RespondAsync(input, question.AllowExternal, conversation, ct);
+                conversation.LastSourceSections = answer.SourceSections;
+                answer = answer with { SourceSections = [] };
             }
 
-            return Ok(answer with { ConversationId = id, TraceId = HttpContext.TraceIdentifier, Language = conversation.Russian ? "ru" : "en" });
+            return Ok(AssistantPresentation.ForClient(answer, conversation.Russian) with { ConversationId = id, TraceId = HttpContext.TraceIdentifier, Language = conversation.Russian ? "ru" : "en" });
         }
         finally
         {
             conversation.Slot.Release();
         }
     }
+
+    private static bool RequestsSources(string question) => question.TrimEnd('.', '!', '?').ToLowerInvariant() switch
+    {
+        "show sources" or "show technical sources" or "sources" or
+        "покажи источники" or "покажи технические источники" or "источники" => true,
+        _ => false
+    };
 
     private static readonly Regex PrivateInput = new(
         @"[@/\\=_`<>]|[0-9]{3}|[a-z0-9-]{25,}|\b(?:jwt|bearer|secret|api key|token|password|passcode|iban|swift|passport|credential\w*|kyc|ssn|routing number|card number|bank statement|account number|личн\w*|парол\w*|секрет\w*|паспорт\w*|реквизит\w*|снилс|инн)\b",
@@ -115,13 +132,14 @@ public sealed class AssistantController(AppDbContext db, AssistantKnowledge know
                 ? "Включите Gemini, чтобы начать диалог." : "Enable Gemini to start a live conversation.");
         }
 
-        var sources = knowledge.Retrieve(input, previous);
+        var sources = knowledge.Retrieve(input, previous)
+            .Where(source => AssistantPresentation.CleanText(source.Answer) != null).ToArray();
         var started = Stopwatch.GetTimestamp();
         var result = await provider.GenerateAsync(input, russian, conversation.Turns.ToArray(), sources, ct);
         logger.LogInformation(
             "Assistant {TraceId} {Reason} provider_status={ProviderStatus} duration_ms={DurationMs} source_count={SourceCount} retry_after_s={RetryAfterSeconds}",
             HttpContext.TraceIdentifier, result.Reason, result.ProviderStatus,
-            (long)Stopwatch.GetElapsedTime(started).TotalMilliseconds, sources.Count, result.RetryAfterSeconds);
+            (long)Stopwatch.GetElapsedTime(started).TotalMilliseconds, sources.Length, result.RetryAfterSeconds);
 
         if (result.Answer is not { } generated)
         {

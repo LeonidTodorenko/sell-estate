@@ -8,8 +8,9 @@ const personalPaths = {
 } as const;
 type Section = keyof typeof personalPaths;
 type Destination = Section | 'properties';
-type Message = { question: string; answer?: string; destination?: Destination; unknown?: boolean; sources?: string[] };
-type FaqAnswer = { status: 'answered' | 'unknown' | 'language_changed' | 'consent_required' | 'faq_fallback' | 'retry_later'; topic: string | null; answer: string; conversationId?: string; sources?: string[] };
+type AssistantSource = { title: string; url?: string | null };
+type Message = { question: string; answer?: string; destination?: Destination; unknown?: boolean; sourceLinks?: AssistantSource[] };
+type FaqAnswer = { status: 'answered' | 'unknown' | 'language_changed' | 'consent_required' | 'faq_fallback' | 'retry_later'; topic: string | null; answer: string; conversationId?: string; sourceLinks?: AssistantSource[] };
 type AccountItem = { shares?: number; investedAmount?: number; requestedShares?: number; status?: string | number; walletAmount?: number; walletCurrency?: string; createdAt: string };
 type AccountAnswer = { balance?: number; currency?: string; status?: string; items?: AccountItem[] };
 
@@ -109,12 +110,12 @@ export function useAssistant(baseUrl: string, token: string) {
       if (section) {
         result = { question, answer: accountText(section, data), destination: section };
       } else {
-        const { answer, topic, status, conversationId, sources } = data as FaqAnswer;
+        const { answer, topic, status, conversationId, sourceLinks } = data as FaqAnswer;
         if (typeof answer !== 'string') throw new HttpError(502);
         conversation.current = conversationId;
         const destination = topic && ['properties', 'property-images', 'payment-plan'].includes(topic)
           ? 'properties' : topic && Object.prototype.hasOwnProperty.call(personalPaths, topic) ? topic as Section : undefined;
-        result = { question, answer, destination, sources, unknown: status === 'unknown' || status === 'faq_fallback' };
+        result = { question, answer, destination, sourceLinks, unknown: status === 'unknown' || status === 'faq_fallback' };
       }
       setMessages(previous => [...previous.slice(0, -1), result]);
     } catch (failure) {

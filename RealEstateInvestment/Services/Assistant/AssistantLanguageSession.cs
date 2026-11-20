@@ -16,6 +16,7 @@ public sealed class AssistantLanguageSession : IDisposable
         public SemaphoreSlim Slot { get; } = new(1, 1);
         public bool Russian { get; set; }
         public string? AccountTopic { get; set; }
+        public IReadOnlyList<string> LastSourceSections { get; set; } = [];
         public List<AssistantTurn> Turns { get; } = [];
     }
 

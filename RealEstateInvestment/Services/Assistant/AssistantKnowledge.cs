@@ -4,6 +4,8 @@ namespace RealEstateInvestment.Services.Assistant;
 
 public sealed record AssistantAnswer(string Status, string Version, string? Topic, string Answer, IReadOnlyList<string> Sources)
 {
+    internal IReadOnlyList<string> SourceSections { get; init; } = [];
+    public IReadOnlyList<AssistantSource> SourceLinks { get; init; } = [];
     public string? TraceId { get; init; }
     public Guid? ConversationId { get; init; }
     public string Language { get; init; } = "en";
@@ -11,7 +13,7 @@ public sealed record AssistantAnswer(string Status, string Version, string? Topi
 
 public sealed class AssistantKnowledge
 {
-    private sealed record Entry(string Topic, string Russian, string English, string[] Sources);
+    private sealed record Entry(string Topic, string Group, string Russian, string English, string[] Sources);
     private sealed record Alias(Entry Entry, HashSet<string> Terms);
 
     public const string Version = "30.7.3";
@@ -39,7 +41,7 @@ public sealed class AssistantKnowledge
                 || !lines[6].StartsWith("Sources: ", StringComparison.Ordinal))
                 throw new InvalidOperationException("Invalid assistant FAQ entry.");
 
-            var entry = new Entry(lines[0], lines[4], lines[5], lines[6][9..].Split(" | ").Select(SourcePath).ToArray());
+            var entry = new Entry(lines[0], lines[1][7..], lines[4], lines[5], lines[6][9..].Split(" | ").Select(SourcePath).ToArray());
             foreach (var variant in (lines[2][4..] + " | " + lines[3][4..]).Split(" | "))
             {
                 var text = Normalize(variant);
@@ -101,7 +103,7 @@ public sealed class AssistantKnowledge
         @"\b(?:how much (?:do i need )?to start|minimum (?:investment|amount)|сколько (?:нужно )?начать|минимальн\w* сумм\w*)\b",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
-    private static readonly Entry SharePriceGuide = new("starting-cost",
+    private static readonly Entry SharePriceGuide = new("starting-cost", "properties",
         "В карточке объекта указаны цена доли и доступное число долей. Цена доли рассчитывается делением цены объекта на число долей. Какой объект вы рассматриваете?",
         "Property details show the price per share and the number of available shares. The price per share is the property price divided by the total number of shares. Which property are you considering?",
         ["WebApp/README.md", "WebApp/src/pages.tsx"]);
@@ -153,7 +155,10 @@ public sealed class AssistantKnowledge
         "rent-property-history club referral demo support-chat inbox notifications");
 
     private static AssistantAnswer Answer(Entry entry, bool russian) =>
-        new("answered", Version, entry.Topic, russian ? entry.Russian : entry.English, entry.Sources);
+        new AssistantAnswer("answered", Version, entry.Topic, russian ? entry.Russian : entry.English, entry.Sources)
+        {
+            SourceSections = [entry.Topic is "app-overview" or "register" or "support-chat" ? entry.Topic : entry.Group]
+        };
 
     private static string SourcePath(string link)
     {

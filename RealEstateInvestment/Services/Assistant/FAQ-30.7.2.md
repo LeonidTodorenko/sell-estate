@@ -142,8 +142,8 @@ Sources: [KycController.cs](../../../RealEstateInvestment/Controllers/KycControl
 Group: properties
 RU: карточка объекта | каталог объектов
 EN: property details | property catalog
-В Android есть отдельная карточка объекта. Backend отдаёт связанные медиа отдельным запросом.
-Android has a dedicated property details screen. The backend serves related media through a separate request.
+Откройте карточку объекта, чтобы посмотреть сведения и доступные материалы.
+Open the property details to see the information and materials available for that property.
 Sources: [PropertyController.cs](../../../RealEstateInvestment/Controllers/PropertyController.cs) | [PropertyDetailScreen.tsx](../../../InvestorApp/src/screens/PropertyDetailScreen.tsx)
 
 ## property-images
@@ -175,7 +175,7 @@ Group: properties
 RU: статистика объектов
 EN: property statistics
 Backend предоставляет отдельный список объектов со статистикой.
-The backend provides a separate property listing with statistics.
+Property statistics are available in a separate view.
 Sources: [PropertyController.cs](../../../RealEstateInvestment/Controllers/PropertyController.cs) | [PropertyDetailScreen.tsx](../../../InvestorApp/src/screens/PropertyDetailScreen.tsx)
 
 ## investments
@@ -351,7 +351,7 @@ Group: marketplace
 RU: история сделок marketplace
 EN: marketplace transaction history
 История сделок Marketplace доступна отдельным запросом.
-Marketplace trades have a dedicated history endpoint.
+Check Marketplace trade history to see completed trades.
 Sources: [ShareOfferController.cs](../../../RealEstateInvestment/Controllers/ShareOfferController.cs)
 
 ## market-cancel
@@ -382,8 +382,8 @@ Sources: [ShareOfferController.cs](../../../RealEstateInvestment/Controllers/Sha
 Group: wallet
 RU: кошелёк | кошелек | баланс | мой баланс
 EN: wallet | my balance | wallet balance
-Свой баланс в USD можно прочитать после входа инвестора через GET /api/assistant/me/balance.
-Signed-in investors can read their USD balance via GET /api/assistant/me/balance.
+После входа баланс в долларах США можно посмотреть в кошельке.
+After signing in, open the wallet to see your balance in US dollars.
 Sources: [AssistantController.cs](../../../RealEstateInvestment/Controllers/AssistantController.cs) | [User.cs](../../../RealEstateInvestment/Models/User.cs)
 
 ## own-investments
@@ -414,8 +414,8 @@ Sources: [AssistantController.cs](../../../RealEstateInvestment/Controllers/Assi
 Group: payments
 RU: пополнение кошелька | как пополнить кошелек | пополнить баланс
 EN: add funds | top up wallet | fund wallet
-WebApp и Android запрашивают доступность пополнения у backend. Форма отключает недоступное пополнение.
-WebApp and Android check funding availability with the backend and disable unavailable funding in the form.
+В форме пополнения кошелька показаны доступные варианты.
+Open Add Funds to see the available ways to top up your wallet.
 Sources: [WalletPaymentsController.cs](../../../RealEstateInvestment/Controllers/WalletPaymentsController.cs) | [add-funds.tsx](../../../WebApp/src/add-funds.tsx) | [AddFunds.tsx](../../../InvestorApp/src/screens/AddFunds.tsx)
 
 ## payment-currency
@@ -486,8 +486,8 @@ Sources: [WalletPaymentsController.cs](../../../RealEstateInvestment/Controllers
 Group: payments
 RU: возврат в приложение после оплаты
 EN: android payment return
-Android использует ownersclub://payments/return. Открытие ссылки само по себе не зачисляет средства.
-Android uses ownersclub://payments/return. Opening that link does not credit funds by itself.
+После оплаты на Android можно вернуться в OwnersClub. Сам возврат в приложение не зачисляет средства.
+After paying on Android, you can return to OwnersClub. Returning to the app does not credit funds by itself.
 Sources: [OwnersClub-30.5.md](../../../docs/OwnersClub-30.5.md) | [WalletPayments.cs](../../../RealEstateInvestment/Services/WalletPayments.cs)
 
 ## manual-evidence
@@ -686,8 +686,8 @@ Sources: [AdminDemoAccountsController.cs](../../../RealEstateInvestment/Controll
 Group: support
 RU: чат поддержки | написать в поддержку | связь с поддержкой
 EN: support chat | contact support | chat with support
-Для двусторонней переписки предусмотрен чат. Backend проверяет доступ к диалогу.
-Two-way support uses chat. The backend checks access to the conversation.
+В чате поддержки можно отправлять сообщения и получать ответы.
+Use support chat to send a message and see the replies.
 Sources: [ChatController.cs](../../../RealEstateInvestment/Controllers/ChatController.cs) | [ChatScreen.tsx](../../../InvestorApp/src/screens/ChatScreen.tsx)
 
 ## chat-empty

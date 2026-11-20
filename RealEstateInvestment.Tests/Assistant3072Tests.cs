@@ -108,14 +108,25 @@ public sealed class Assistant3072Tests
             using var payload = JsonDocument.Parse(prompt);
             Assert.Equal("PROPERTY PHOTOS?", payload.RootElement.GetProperty("question").GetString());
             Assert.NotEmpty(payload.RootElement.GetProperty("excerpts").EnumerateArray());
+            var instruction = json.GetProperty("systemInstruction").GetProperty("parts")[0].GetProperty("text").GetString()!;
+            for (var block = 1; block <= 8; block++)
+                Assert.Contains($"## {block}.", instruction);
+            Assert.Contains("identity verification", instruction);
+            Assert.DoesNotContain(".cs", instruction);
+            Assert.DoesNotContain(".cs", prompt);
             return ModelReply("Open the property to see its photos. [1]");
         });
         using var host = Host(handler);
         host.Login(host.Actor);
         Assert.Equal("consent_required", (await Ask(host, "PROPERTY PHOTOS?")).Status);
         var result = await Ask(host, "PROPERTY PHOTOS?", allowExternal: true);
-        Assert.Equal("Open the property to see its photos. [1]", result.Answer);
-        Assert.NotEmpty(result.Sources);
+        Assert.Equal("Open the property to see its photos.", result.Answer);
+        Assert.Empty(result.Sources);
+        var sources = await Ask(host, "show technical sources", result.ConversationId, true);
+        var source = Assert.Single(sources.SourceLinks);
+        Assert.Equal("Property catalog guide", source.Title);
+        Assert.Null(source.Url);
+        Assert.Equal(new[] { source.Title }, sources.Sources);
         await Ask(host, "my balance", result.ConversationId, true);
         await Ask(host, "my API key is fixture-only", result.ConversationId, true);
         var opaque = await Ask(host, "abcdefghijklmnopqrstuvwxyzabcdef", result.ConversationId, true);
@@ -168,7 +179,7 @@ public sealed class Assistant3072Tests
 
         var answer = await Ask(host, "payment plan", allowExternal: true).WaitAsync(TimeSpan.FromSeconds(10));
 
-        Assert.Equal("A property plan lists deadlines. [1]", answer.Answer);
+        Assert.Equal("A property plan lists deadlines.", answer.Answer);
         Assert.Equal("en", answer.Language);
         Assert.Equal(1, handler.Calls);
     }
@@ -192,6 +203,11 @@ public sealed class Assistant3072Tests
     [InlineData(null, "BRIEF", 0)]
     [InlineData("mock-only-credential", "The platform guarantees 40% returns.", 1)]
     [InlineData("mock-only-credential", "Incorrect source. [99]", 1)]
+    [InlineData("mock-only-credential", "See InvestmentController.cs.", 1)]
+    [InlineData("mock-only-credential", "Open the plan.\nSources: internal", 1)]
+    [InlineData("mock-only-credential", "Open ownersclub://payments/return.", 1)]
+    [InlineData("mock-only-credential", "Open WebApp/README.", 1)]
+    [InlineData("mock-only-credential", "Open ownersclub&#58;&#47;&#47;payments/return.", 1)]
     public async Task MissingKeyOrUnapprovedOutputKeepsFaq(string? key, string response, int calls)
     {
         var handler = new Stub((_, _) => Task.FromResult(ModelReply(response)));
@@ -201,8 +217,51 @@ public sealed class Assistant3072Tests
         var actual = await Ask(host, "payment plan", allowExternal: true);
         Assert.Equal("faq_fallback", actual.Status);
         Assert.EndsWith(local.Answer, actual.Answer);
-        Assert.Equal(local.Sources, actual.Sources);
+        Assert.Empty(actual.Sources);
         Assert.Equal(calls, handler.Calls);
+    }
+
+    [Theory]
+    [InlineData(false, "consent_required")]
+    [InlineData(true, "faq_fallback")]
+    public async Task AndroidPaymentFaqAndSourcesStaySafeWithGeminiDisabled(bool allowExternal, string status)
+    {
+        var handler = new Stub((_, _) => throw new InvalidOperationException("Unexpected Gemini request"));
+        using var host = Host(handler, key: null);
+        host.Login(host.Actor);
+
+        var answer = await Ask(host, "android payment return", allowExternal: allowExternal);
+        Assert.Equal(status, answer.Status);
+        Assert.Contains("Returning to the app does not credit funds by itself.", answer.Answer);
+        Assert.DoesNotContain("://", answer.Answer);
+        Assert.Empty(answer.Sources);
+        Assert.Empty(answer.SourceLinks);
+        await Ask(host, "Отвечай по-русски", answer.ConversationId, allowExternal);
+        var reply = await Ask(host, "покажи источники", answer.ConversationId, allowExternal);
+        Assert.Equal("ru", reply.Language);
+        var source = Assert.Single(reply.SourceLinks);
+        Assert.Equal("Справка по платежам и кошельку", source.Title);
+        Assert.Null(source.Url);
+        Assert.Equal(new[] { source.Title }, reply.Sources);
+        Assert.Equal(0, handler.Calls);
+    }
+
+    [Fact]
+    public async Task ExplicitSourcesProvideVerifiedPublicUrlsInTheResponseContract()
+    {
+        var handler = new Stub((_, _) => throw new InvalidOperationException("Unexpected Gemini request"));
+        using var host = Host(handler);
+        host.Login(host.Actor);
+        var answer = await Ask(host, "What can I do here?");
+        Assert.Empty(answer.SourceLinks);
+        var reply = await Ask(host, "show sources", answer.ConversationId);
+        var source = Assert.Single(reply.SourceLinks);
+        Assert.Equal("About OwnersClub", source.Title);
+        Assert.Equal("https://wamsoc.com/about", source.Url);
+        var fresh = await Ask(host, "show sources");
+        Assert.Empty(fresh.Sources);
+        Assert.Empty(fresh.SourceLinks);
+        Assert.Equal(0, handler.Calls);
     }
 
     [Fact]
@@ -383,10 +442,10 @@ public sealed class Assistant3072Tests
         host.Login(host.Actor);
         var introduction = await Ask(host, "tell me about app", allowExternal: true);
         Assert.Equal("answered", introduction.Status);
-        Assert.NotEmpty(introduction.Sources);
+        Assert.Empty(introduction.Sources);
         var followUp = await Ask(host, "how much to start?", introduction.ConversationId, true);
         Assert.Equal("answered", followUp.Status);
-        Assert.NotEmpty(followUp.Sources);
+        Assert.Empty(followUp.Sources);
         Assert.Equal(introduction.ConversationId, followUp.ConversationId);
         var account = await Ask(host, "what about my investments?", followUp.ConversationId, true);
         Assert.Equal("Investments: 1. Total invested: 100.00 USD.", account.Answer);
