@@ -9,7 +9,7 @@ const personalPaths = {
 type Section = keyof typeof personalPaths;
 type Destination = Section | 'properties';
 type Message = { question: string; answer?: string; destination?: Destination; unknown?: boolean; sources?: string[] };
-type FaqAnswer = { status: 'answered' | 'unknown' | 'language_changed'; topic: string | null; answer: string; conversationId?: string; sources?: string[] };
+type FaqAnswer = { status: 'answered' | 'unknown' | 'language_changed' | 'consent_required' | 'faq_fallback' | 'retry_later'; topic: string | null; answer: string; conversationId?: string; sources?: string[] };
 type AccountItem = { shares?: number; investedAmount?: number; requestedShares?: number; status?: string | number; walletAmount?: number; walletCurrency?: string; createdAt: string };
 type AccountAnswer = { balance?: number; currency?: string; status?: string; items?: AccountItem[] };
 
@@ -114,7 +114,7 @@ export function useAssistant(baseUrl: string, token: string) {
         conversation.current = conversationId;
         const destination = topic && ['properties', 'property-images', 'payment-plan'].includes(topic)
           ? 'properties' : topic && Object.prototype.hasOwnProperty.call(personalPaths, topic) ? topic as Section : undefined;
-        result = { question, answer, destination, sources, unknown: status === 'unknown' };
+        result = { question, answer, destination, sources, unknown: status === 'unknown' || status === 'faq_fallback' };
       }
       setMessages(previous => [...previous.slice(0, -1), result]);
     } catch (failure) {

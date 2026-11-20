@@ -84,7 +84,7 @@ public class Assistant3071Tests
         using var response = await host.Client.PostAsJsonAsync("/api/assistant/ask", new { text = "KYC", allowExternal = true });
         response.EnsureSuccessStatusCode();
         var result = await response.Content.ReadFromJsonAsync<AssistantAnswer>();
-        Assert.StartsWith("Limited mode.", result!.Answer);
+        Assert.Equal("answered", result!.Status);
         Assert.Equal("kyc", result.Topic);
         Assert.Equal(0, provider.Calls);
     }
@@ -173,7 +173,7 @@ public class Assistant3071Tests
     {
         public int Calls { get; private set; }
 
-        public Task<AssistantAnswer?> GenerateAsync(string question, bool russian,
+        public Task<AssistantGeneration> GenerateAsync(string question, bool russian,
             IReadOnlyList<AssistantTurn> history, IReadOnlyList<AssistantAnswer> sources, CancellationToken ct)
         {
             Calls++;

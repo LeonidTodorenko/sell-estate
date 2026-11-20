@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Diagnostics;
 using System.Text.RegularExpressions;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
@@ -19,7 +20,7 @@ namespace RealEstateInvestment.Controllers;
 [EnableRateLimiting(AssistantRegistration.Policy)]
 [RequestTimeout(AssistantRegistration.Policy)]
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
-public sealed class AssistantController(AppDbContext db, AssistantKnowledge knowledge, IAssistantConversationProvider provider, AssistantLanguageSession language) : ControllerBase
+public sealed class AssistantController(AppDbContext db, AssistantKnowledge knowledge, IAssistantConversationProvider provider, AssistantLanguageSession language, ILogger<AssistantController> logger) : ControllerBase
 {
     private const int PageSize = 25;
 
@@ -49,7 +50,7 @@ public sealed class AssistantController(AppDbContext db, AssistantKnowledge know
                 answer = await RespondAsync(input, question.AllowExternal, conversation, ct);
             }
 
-            return Ok(answer with { ConversationId = id, Language = conversation.Russian ? "ru" : "en" });
+            return Ok(answer with { ConversationId = id, TraceId = HttpContext.TraceIdentifier, Language = conversation.Russian ? "ru" : "en" });
         }
         finally
         {
@@ -82,9 +83,8 @@ public sealed class AssistantController(AppDbContext db, AssistantKnowledge know
     {
         var russian = conversation.Russian;
         if (!allowExternal) conversation.Turns.Clear();
-        var fallback = russian ? "Ограниченный режим. " : "Limited mode. ";
         if (PrivateInput.IsMatch(input) && knowledge.Match(input, russian) is { Exact: true, Answer: var verified })
-            return verified with { Answer = fallback + verified.Answer };
+            return verified;
         if (OtherAccount.IsMatch(input) || PrivateInput.IsMatch(input))
             return Reply("unknown", null, russian
                 ? "Задайте общий вопрос без личных данных или спросите о своём балансе, инвестициях, заявках или платежах."
@@ -107,16 +107,42 @@ public sealed class AssistantController(AppDbContext db, AssistantKnowledge know
 
         var previous = conversation.Turns.LastOrDefault()?.Question;
         var local = knowledge.LocalAnswer(input, previous, russian);
-        if (!allowExternal || personal)
-            return local with { Answer = fallback + local.Answer };
+        if (personal) return local;
+        if (!allowExternal)
+        {
+            logger.LogInformation("Assistant {TraceId} {Reason}", HttpContext.TraceIdentifier, "consent_missing");
+            return LocalFallback(local, "consent_required", russian
+                ? "Включите Gemini, чтобы начать диалог." : "Enable Gemini to start a live conversation.");
+        }
 
-        var history = conversation.Turns.ToArray();
         var sources = knowledge.Retrieve(input, previous);
-        var generated = await provider.GenerateAsync(input, russian, history, sources, ct);
+        var started = Stopwatch.GetTimestamp();
+        var result = await provider.GenerateAsync(input, russian, conversation.Turns.ToArray(), sources, ct);
+        logger.LogInformation(
+            "Assistant {TraceId} {Reason} provider_status={ProviderStatus} duration_ms={DurationMs} source_count={SourceCount} retry_after_s={RetryAfterSeconds}",
+            HttpContext.TraceIdentifier, result.Reason, result.ProviderStatus,
+            (long)Stopwatch.GetElapsedTime(started).TotalMilliseconds, sources.Count, result.RetryAfterSeconds);
+
+        if (result.Answer is not { } generated)
+        {
+            if (result.Reason is "local_rate_limit" or "provider_429" or "provider_busy")
+            {
+                var seconds = result.RetryAfterSeconds ?? 60;
+                return Reply("retry_later", null, russian
+                    ? $"Чат пока занят. Повторите сообщение через {seconds} сек."
+                    : $"Live chat is busy. Try your message again in {seconds} seconds.");
+            }
+            return LocalFallback(local, "faq_fallback", russian
+                ? "Живой чат временно недоступен." : "Live chat is temporarily unavailable.");
+        }
+
         if (conversation.Turns.Count == 4) conversation.Turns.RemoveAt(0);
-        conversation.Turns.Add(new AssistantTurn(input, generated?.Answer ?? ""));
-        return generated ?? local with { Answer = fallback + local.Answer };
+        conversation.Turns.Add(new AssistantTurn(input, generated.Answer));
+        return generated;
     }
+
+    private static AssistantAnswer LocalFallback(AssistantAnswer local, string status, string notice) =>
+        local with { Status = status, Answer = local.Status == "unknown" ? notice : $"{notice} {local.Answer}" };
 
     private async Task<AssistantAnswer> ReadAccountAsync(string topic, bool russian, CancellationToken ct)
     {

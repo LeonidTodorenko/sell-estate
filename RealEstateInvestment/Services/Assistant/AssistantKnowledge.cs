@@ -4,6 +4,7 @@ namespace RealEstateInvestment.Services.Assistant;
 
 public sealed record AssistantAnswer(string Status, string Version, string? Topic, string Answer, IReadOnlyList<string> Sources)
 {
+    public string? TraceId { get; init; }
     public Guid? ConversationId { get; init; }
     public string Language { get; init; } = "en";
 }
@@ -132,7 +133,8 @@ public sealed class AssistantKnowledge
             .Select(item => Answer(item.Entry, false));
         if (StartingCost.IsMatch(question))
             results = results.Prepend(Answer(SharePriceGuide, false));
-        return results.Take(4).ToArray();
+        var overview = eligible.First(alias => alias.Entry.Topic == "app-overview").Entry;
+        return results.DefaultIfEmpty(Answer(overview, false)).Take(4).ToArray();
     }
 
     private static readonly HashSet<string> commonTerms = Terms(
