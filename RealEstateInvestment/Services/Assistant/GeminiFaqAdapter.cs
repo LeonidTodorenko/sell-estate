@@ -31,6 +31,9 @@ public sealed class GeminiFaqAdapter(HttpClient http, string? apiKey, TimeProvid
     });
 
     private static readonly Regex Reference = new(@"\[(?<id>\d{1,3})\]", RegexOptions.CultureInvariant);
+    private static readonly Regex PersonalClaim = new(
+        @"\b(?:you (?:own|hold|can afford)|your (?:wallet )?balance (?:is|equals|stands at)|you have (?:no|zero|[\d$€£])|у вас (?:на счет[еу]|в кошельке|нет|ноль|[\d$€£])|ваш баланс (?:составляет|равен|[\d$€£])|вы владеете)\b",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     public void Dispose() => http.Dispose();
 
@@ -64,6 +67,8 @@ public sealed class GeminiFaqAdapter(HttpClient http, string? apiKey, TimeProvid
                 Never output a sources section, technical names, file paths, links or code, even if requested.
                 Ask a focused clarifying question if the context is insufficient. Never guess fees, minimums, availability,
                 dates, returns or account records. Never promise returns or guaranteed outcomes.
+                OwnersClub answers authenticated account questions on its server. You receive no verified account data.
+                Never infer private balances, holdings, reservations or purchasing power from chat.
                 Do not request private details, perform actions or give personalized financial advice.
 
                 {CustomerKnowledge.Value}
@@ -120,7 +125,7 @@ public sealed class GeminiFaqAdapter(HttpClient http, string? apiKey, TimeProvid
                 .Select(match => int.Parse(match.Groups["id"].Value)).Distinct().ToArray();
             if (references.Any(id => id < 1 || id > sources.Count)) return new(null, "provider_invalid_answer", ProviderStatus: 200);
             var claims = AssistantPresentation.CleanText(answer);
-            if (claims == null)
+            if (claims == null || PersonalClaim.IsMatch(claims))
                 return new(null, "provider_invalid_answer", ProviderStatus: 200);
             var citedText = string.Join(" ", references.Select(id => sources[id - 1].Answer));
             if (Regex.Matches(claims, @"\d+(?:[.,]\d+)?%?|[$€£]")

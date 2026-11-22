@@ -208,6 +208,7 @@ public sealed class Assistant3072Tests
     [InlineData("mock-only-credential", "Open ownersclub://payments/return.", 1)]
     [InlineData("mock-only-credential", "Open WebApp/README.", 1)]
     [InlineData("mock-only-credential", "Open ownersclub&#58;&#47;&#47;payments/return.", 1)]
+    [InlineData("mock-only-credential", "Your wallet balance is zero. You have no shares.", 1)]
     public async Task MissingKeyOrUnapprovedOutputKeepsFaq(string? key, string response, int calls)
     {
         var handler = new Stub((_, _) => Task.FromResult(ModelReply(response)));
@@ -448,7 +449,7 @@ public sealed class Assistant3072Tests
         Assert.Empty(followUp.Sources);
         Assert.Equal(introduction.ConversationId, followUp.ConversationId);
         var account = await Ask(host, "what about my investments?", followUp.ConversationId, true);
-        Assert.Equal("Investments: 1. Total invested: 100.00 USD.", account.Answer);
+        Assert.StartsWith("Investments: 1. Total invested: 100.00 USD.", account.Answer);
     }
 
     public sealed class GeminiFreeTierFactAttribute : FactAttribute

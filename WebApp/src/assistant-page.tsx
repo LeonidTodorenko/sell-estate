@@ -7,7 +7,7 @@ import './assistant.css';
 
 const destinations = {
   balance: '/finance', investments: '/investments', applications: '/applications',
-  payments: '/transactions', properties: '/properties',
+  payments: '/transactions', properties: '/properties', market: '/marketplace', 'rental-income': '/rental-income',
 } as const;
 
 export function AssistantPage({ session }: { session: Session }) {
@@ -61,7 +61,7 @@ function Conversation({ token }: { token: string }) {
     </div>
     <label><input type="checkbox" checked={allowExternal} disabled={pending}
       onChange={event => setAllowExternal(event.target.checked)}/>
-      Allow Google Gemini to process general chat messages for this session. Google may use them to improve its products. Do not enter private information.
+      Allow Google Gemini to process general chat messages for this session. Google may use them to improve its products. Account answers and purchase estimates stay on OwnersClub. Do not enter private information in general chat.
     </label>
     <form className="assistant-composer" onSubmit={event => {
       event.preventDefault();

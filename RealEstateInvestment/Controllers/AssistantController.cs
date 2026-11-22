@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 using System.ComponentModel.DataAnnotations;
@@ -35,19 +34,19 @@ public sealed class AssistantController(AppDbContext db, AssistantKnowledge know
         if (await FinancialActor.ValidateAsync(User, db, ct) is { } denied) return denied;
         var (id, conversation) = language.Open(HttpContext, question.ConversationId);
         if (!conversation.Slot.Wait(0, ct)) return StatusCode(429);
-
         try
         {
+            if (!question.AllowExternal) conversation.Turns.Clear();
             var input = question.Text.Trim();
             AssistantAnswer answer;
             if (AssistantLanguageSession.LanguageCommand(input) is { } russian)
             {
                 conversation.Russian = russian;
+                conversation.LanguageSelected = true;
                 answer = Reply("language_changed", null, russian ? "Теперь я отвечаю по-русски." : "I will answer in English.");
             }
             else if (RequestsSources(input))
             {
-                if (!question.AllowExternal) conversation.Turns.Clear();
                 answer = Reply("answered", null, conversation.Russian
                     ? (conversation.LastSourceSections.Count > 0 ? "Источники предыдущего ответа." : "Для предыдущего ответа нет ссылок на источники.")
                     : (conversation.LastSourceSections.Count > 0 ? "Sources for the previous answer." : "There are no source links for the previous answer."))
@@ -60,7 +59,10 @@ public sealed class AssistantController(AppDbContext db, AssistantKnowledge know
                 answer = answer with { SourceSections = [] };
             }
 
-            return Ok(AssistantPresentation.ForClient(answer, conversation.Russian) with { ConversationId = id, TraceId = HttpContext.TraceIdentifier, Language = conversation.Russian ? "ru" : "en" });
+            var clientAnswer = answer.SourceLinks.Count > 0
+                ? answer
+                : AssistantPresentation.ForClient(answer, conversation.Russian);
+            return Ok(clientAnswer with { ConversationId = id, TraceId = HttpContext.TraceIdentifier, Language = conversation.Russian ? "ru" : "en" });
         }
         finally
         {
@@ -76,51 +78,77 @@ public sealed class AssistantController(AppDbContext db, AssistantKnowledge know
     };
 
     private static readonly Regex PrivateInput = new(
-        @"[@/\\=_`<>]|[0-9]{3}|[a-z0-9-]{25,}|\b(?:jwt|bearer|secret|api key|token|password|passcode|iban|swift|passport|credential\w*|kyc|ssn|routing number|card number|bank statement|account number|личн\w*|парол\w*|секрет\w*|паспорт\w*|реквизит\w*|снилс|инн)\b",
+        @"[@/\\=_`<>]|[0-9]{3}|[a-z0-9-]{25,}|\b(?:jwt|bearer|secret|api key|token|password|pin|passcode|iban|swift|passport|credential\w*|kyc|ssn|routing number|card number|bank statement|account number|личн\w*|парол\w*|секрет\w*|паспорт\w*|реквизит\w*|снилс|инн)\b",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
     private static readonly Regex OtherAccount = new(
         @"\b(?:another|someone else|other (?:user|investor|account)|all (?:users|investors)|account (?:for|of)|for user|чуж\w*|другого пользователя)\b",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-    private static readonly Regex Personal = new(
-        @"\b(?:my|mine|i have|i own|i invested|have i invested|мои|мой|мою|моих|моего|моём|у меня|я вложил\w*)\b",
-        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-    private static readonly Regex AccountFollowUp = new(
-        @"^(?:and )?(?:how many(?: are there)?|what about (?:them|it)|how much(?: in total)?|а?\s*сколько(?: всего)?)\??$",
-        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-    private static readonly (string Topic, Regex Terms)[] AccountTopics =
+    private static Regex Intent(string pattern) => new(pattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    private static readonly Regex Personal = Intent(@"\b(?:my|mine|i (?:have|own|invested|got|hold|afford)|have i|for me|мои|мой|мою|моих|моего|моём|мне|у меня|я вложил\w*)\b");
+    private static readonly Regex AccountFollowUp = Intent(@"^(?:and )?(?:how many(?: are there)?|what about (?:them|it)|how much(?: in total)?|а?\s*сколько(?: всего)?)\??$");
+    private static readonly Regex Cyrillic = Intent(@"[а-яё]");
+    private static readonly Regex Injection = Intent(@"\b(?:ignore (?:previous|all|system)|system prompt|(?:user|account)\s*id|impersonat\w*|обойди|игнорируй|идентификатор пользователя)\b");
+    private static readonly (string Topic, Regex Terms)[] FinancialTopics =
     [
-        ("balance", new(@"\b(?:balance|баланс\w*)\b", RegexOptions.IgnoreCase)),
-        ("investments", new(@"\b(?:investments?|invested|инвестици\w*|вложени\w*)\b", RegexOptions.IgnoreCase)),
-        ("applications", new(@"\b(?:applications?|заяв\w*)\b", RegexOptions.IgnoreCase)),
-        ("payments", new(@"\b(?:payments?|transactions?|плат[её]ж\w*|транзакци\w*)\b", RegexOptions.IgnoreCase))
+        ("purchase-plan", Intent(@"\b(?:can i (?:buy|afford)|how much (?:more )?(?:do i )?need (?:to buy|for)|plan (?:a|my) purchase|buy\s+[\d-]+\s+shares?|^\s*[\d-]+\s+shares?|shortfall|(?:могу|смогу)\s+(?:ли\s+)?(?:я\s+)?купить|купить\s+\S+\s+дол\w*|^\s*[\d-]+\s+дол\w*|план\w*\s+покуп\w*|не хватает)\b")),
+        ("payment-plan", Intent(@"\b(?:payment schedules?|installment schedules?|график\w*\s+плат[её]ж\w*|(?:payment plans?|план\w*\s+плат[её]ж\w*|этап\w*\s+оплат\w*)\s+(?:of|in|for|at|в|для|объект[ае]?))\b")),
+        ("assets", Intent(@"\b(?:total assets|(?:my|all) assets|portfolio value|актив\w*|стоимость портфеля)\b")),
+        ("rental-income", Intent(@"\b(?:projected rent(?:al income)?|(?:my|monthly|estimated) rent(?:al income)?|rental income|прогноз\w* аренд\w*|арендн\w* доход\w*|доход\w* от аренды)\b")),
+        ("market", Intent(@"\b(?:shares (?:on (?:the )?market|listed|for sale)|my (?:active )?listings|listed shares|дол\w* на (?:рынке|продаже)|выставлен\w* дол\w*|дол\w* выставлен\w*)\b")),
+        ("balance", Intent(@"\b(?:wallet balance|available (?:funds|balance|cash)|how (?:many|much) money (?:i|do i|have i)|how much (?:do i have|is in my wallet)|баланс\w*|сколько (?:у меня )?(?:денег|средств)|доступн\w* (?:средств\w*|денег)|сколько \w* на кошельке)\b|^(?:my )?wallet[.?!]?$|^кошел[её]к[.?!]?$")),
+        ("investments", Intent(@"\b(?:what shares (?:i|do i|have i)|(?:my|owned|held) shares|holdings|investments?|invested|инвестици\w*|вложени\w*|(?:какие|сколько|мои) дол\w*|дол\w* у меня)\b")),
+        ("applications", Intent(@"\b(?:applications?|заяв\w*)\b")),
+        ("payments", Intent(@"\b(?:payments?|transactions?|плат[её]ж\w*|транзакци\w*)\b"))
     ];
+
+    private static readonly Regex GeneralDefinition = Intent(@"^(?:what (?:is|are)|explain|что такое)\b");
+    private static readonly Regex HoldingTerms = Intent(@"\b(?:holdings|shares|дол\w*)\b");
+    private static readonly Regex ApplicationTerms = Intent(@"\b(?:pending|open|carried|status|открыт\w*|ожида\w*|статус|в обработке|на рассмотрении)\b");
+    private static bool IsAccountRequest(string topic, string input, bool personal) => topic switch
+    {
+        "investments" => personal || HoldingTerms.IsMatch(input),
+        "applications" => personal || ApplicationTerms.IsMatch(input),
+        "payments" => personal,
+        "rental-income" or "market" or "balance" => personal || !GeneralDefinition.IsMatch(input),
+        _ => true
+    };
 
     private async Task<AssistantAnswer> RespondAsync(string input, bool allowExternal,
         AssistantLanguageSession.Conversation conversation, CancellationToken ct)
     {
         var russian = conversation.Russian;
-        if (!allowExternal) conversation.Turns.Clear();
+        var personal = Personal.IsMatch(input);
+        var topic = FinancialTopics.FirstOrDefault(candidate =>
+            candidate.Terms.IsMatch(input) && IsAccountRequest(candidate.Topic, input, personal)).Topic;
+        var followUp = AccountFollowUp.IsMatch(input);
+        if (followUp && conversation.AccountTopic is not ("purchase-plan" or "payment-plan")) topic = conversation.AccountTopic;
+        if (topic is not null && !OtherAccount.IsMatch(input) && !Injection.IsMatch(input) &&
+            (!PrivateInput.IsMatch(input) || (topic is "purchase-plan" or "payment-plan" &&
+                !PrivateInput.IsMatch(Regex.Replace(input, @"\b[0-9]{3,9}\b", "")))))
+        {
+            conversation.AccountTopic = topic;
+            conversation.Turns.Clear();
+            if (!conversation.LanguageSelected && !followUp) conversation.Russian = Cyrillic.IsMatch(input);
+            try
+            {
+                return await new PersonalFinanceReader(db, User, conversation.Russian).ReadAsync(topic, input, ct);
+            }
+            catch (System.Data.Common.DbException) when (!ct.IsCancellationRequested)
+            {
+                logger.LogWarning("Assistant financial data unavailable {TraceId}", HttpContext.TraceIdentifier);
+                return Reply("unknown", null, conversation.Russian
+                    ? "Финансовые данные временно недоступны. Повторите запрос."
+                    : "Account data is temporarily unavailable. Try again.");
+            }
+        }
+
+        conversation.AccountTopic = null;
         if (PrivateInput.IsMatch(input) && knowledge.Match(input, russian) is { Exact: true, Answer: var verified })
             return verified;
-        if (OtherAccount.IsMatch(input) || PrivateInput.IsMatch(input))
+        if (OtherAccount.IsMatch(input) || PrivateInput.IsMatch(input) || (Injection.IsMatch(input) && (topic is not null || personal)))
             return Reply("unknown", null, russian
                 ? "Задайте общий вопрос без личных данных или спросите о своём балансе, инвестициях, заявках или платежах."
                 : "Ask a general question without private details, or ask about your own balance, investments, applications, or payments.");
-
-        var topics = AccountTopics.Where(topic => topic.Terms.IsMatch(input)).Select(topic => topic.Topic).ToArray();
-        var personal = Personal.IsMatch(input);
-        var accountTopic = personal && topics.Length == 1 ? topics[0]
-            : AccountFollowUp.IsMatch(input) ? conversation.AccountTopic : null;
-        if (accountTopic != null)
-        {
-            conversation.AccountTopic = accountTopic;
-            return await ReadAccountAsync(accountTopic, russian, ct);
-        }
-        conversation.AccountTopic = null;
-        if (personal && topics.Length > 0)
-            return Reply("unknown", null, russian
-                ? "Что посмотреть в вашем аккаунте? Уточните: баланс, инвестиции, заявки или платежи."
-                : "Which part of your account should I check: balance, investments, applications, or payments?");
 
         var previous = conversation.Turns.LastOrDefault()?.Question;
         var local = knowledge.LocalAnswer(input, previous, russian);
@@ -161,46 +189,6 @@ public sealed class AssistantController(AppDbContext db, AssistantKnowledge know
 
     private static AssistantAnswer LocalFallback(AssistantAnswer local, string status, string notice) =>
         local with { Status = status, Answer = local.Status == "unknown" ? notice : $"{notice} {local.Answer}" };
-
-    private async Task<AssistantAnswer> ReadAccountAsync(string topic, bool russian, CancellationToken ct)
-    {
-        var id = User.GetUserId();
-        var demo = User.IsDemo();
-        string text;
-        switch (topic)
-        {
-            case "balance":
-                var balance = demo
-                    ? await db.DemoUsers.AsNoTracking().Where(x => x.Id == id).Select(x => x.WalletBalance).SingleAsync(ct)
-                    : await db.Users.AsNoTracking().Where(x => x.Id == id).Select(x => x.WalletBalance).SingleAsync(ct);
-                text = (russian ? "Баланс кошелька: " : "Wallet balance: ") +
-                    balance.ToString("0.00", CultureInfo.InvariantCulture) + " USD.";
-                break;
-            case "investments":
-                var amounts = demo
-                    ? db.DemoInvestments.AsNoTracking().Where(x => x.DemoUserId == id).Select(x => x.InvestedAmount)
-                    : db.Investments.AsNoTracking().Where(x => x.UserId == id).Select(x => x.InvestedAmount);
-                var summary = await amounts.GroupBy(_ => 1)
-                    .Select(group => new { Count = group.Count(), Total = group.Sum() }).SingleOrDefaultAsync(ct);
-                var total = (summary?.Total ?? 0m).ToString("0.00", CultureInfo.InvariantCulture);
-                text = russian ? $"Инвестиций: {summary?.Count ?? 0}. Всего вложено: {total} USD."
-                    : $"Investments: {summary?.Count ?? 0}. Total invested: {total} USD.";
-                break;
-            case "applications":
-                var applications = demo
-                    ? await db.DemoInvestmentApplications.AsNoTracking().CountAsync(x => x.DemoUserId == id, ct)
-                    : await db.InvestmentApplications.AsNoTracking().CountAsync(x => x.UserId == id, ct);
-                text = russian ? $"Всего заявок: {applications}." : $"Total applications: {applications}.";
-                break;
-            default:
-                if (demo)
-                    return Reply("answered", topic, russian ? "Платежи недоступны в деморежиме." : "Payments are unavailable in Demo mode.");
-                var payments = await db.Payments.AsNoTracking().CountAsync(x => x.UserId == id, ct);
-                text = russian ? $"Всего платежей: {payments}." : $"Total payments: {payments}.";
-                break;
-        }
-        return Reply("answered", topic, text);
-    }
 
     private static AssistantAnswer Reply(string status, string? topic, string text) =>
         new(status, AssistantKnowledge.Version, topic, text, []);
