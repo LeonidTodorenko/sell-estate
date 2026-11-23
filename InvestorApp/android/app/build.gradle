@@ -90,6 +90,7 @@ android {
 	
 	 packaging {
         jniLibs {
+            useLegacyPackaging = true
             pickFirsts += ["**/libworklets.so"]
         }
     }
@@ -99,8 +100,8 @@ android {
         applicationId "com.investorapp"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 8
-        versionName "0.8.0"
+        versionCode 11
+        versionName "30.8.5"
     }
     signingConfigs {
         release {
@@ -135,7 +136,7 @@ android {
             initWith release
             signingConfig signingConfigs.debug
             matchingFallbacks = ['release']
-            versionNameSuffix '-internal'
+            versionNameSuffix '-normal'
         }
     }
 	splits {

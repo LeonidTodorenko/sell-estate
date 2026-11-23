@@ -14,7 +14,7 @@ import { faqQuestions, useAssistant } from './useAssistant';
 type Props = NativeStackScreenProps<RootStackParamList, 'Assistant'>;
 const destinations = {
   balance: 'MyFinance', investments: 'MyProperties', applications: 'MyProperties',
-  payments: 'UserTransactions', properties: 'Properties',
+  payments: 'UserTransactions', properties: 'Properties', market: 'ShareMarketplaces', 'rental-income': 'MyRentIncome',
 } as const;
 
 export default function AssistantScreen(props: Props) {
@@ -89,7 +89,7 @@ function Conversation({ token, navigation, signIn }: {token: string; navigation:
     <View style={styles.consent}>
       <Switch accessibilityLabel="Allow Google Gemini" value={allowExternal} disabled={pending}
         onValueChange={setAllowExternal}/>
-      <Text style={[styles.text, styles.consentText]}>Allow Google Gemini to process general chat messages for this session. Google may use them to improve its products. Do not enter private information.</Text>
+      <Text style={[styles.text, styles.consentText]}>Allow Google Gemini to process general chat messages for this session. Google may use them to improve its products. Account answers and purchase estimates stay on OwnersClub. Do not enter private information in general chat.</Text>
     </View>
     <View style={styles.composer}>
       <TextInput accessibilityLabel={copy.prompt} placeholder={copy.prompt} placeholderTextColor={theme.colors.textSecondary}

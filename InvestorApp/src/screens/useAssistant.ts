@@ -7,7 +7,7 @@ const personalPaths = {
   payments: 'me/payments',
 } as const;
 type Section = keyof typeof personalPaths;
-type Destination = Section | 'properties';
+type Destination = Section | 'properties' | 'market' | 'rental-income';
 type Message = { question: string; answer?: string; destination?: Destination; unknown?: boolean; sources?: string[] };
 type FaqAnswer = { status: 'answered' | 'unknown' | 'language_changed' | 'consent_required' | 'faq_fallback' | 'retry_later'; topic: string | null; answer: string; conversationId?: string; sources?: string[] };
 type AccountItem = { shares?: number; investedAmount?: number; requestedShares?: number; status?: string | number; walletAmount?: number; walletCurrency?: string; createdAt: string };
@@ -22,7 +22,7 @@ export const faqQuestions = [
 const english = {
   title: 'AI Assistant', faq: 'Frequently asked questions', account: 'My account',
   balance: 'Wallet balance', investments: 'My investments', applications: 'My applications',
-  payments: 'My payments', properties: 'Properties', prompt: 'Ask about OwnersClub', send: 'Send',
+  payments: 'My payments', properties: 'Properties', market: 'Marketplace', 'rental-income': 'Rental income', prompt: 'Ask about OwnersClub', send: 'Send',
   pending: 'Getting an answer…', signIn: 'Sign in again',
   expired: 'Your session has expired. Sign in again to continue.',
   forbidden: 'The assistant is unavailable for this account.',
@@ -112,8 +112,8 @@ export function useAssistant(baseUrl: string, token: string) {
         const { answer, topic, status, conversationId, sources } = data as FaqAnswer;
         if (typeof answer !== 'string') throw new HttpError(502);
         conversation.current = conversationId;
-        const destination = topic && ['properties', 'property-images', 'payment-plan'].includes(topic)
-          ? 'properties' : topic && Object.prototype.hasOwnProperty.call(personalPaths, topic) ? topic as Section : undefined;
+        const destination = topic && ['properties', 'property-images', 'payment-plan', 'purchase-plan'].includes(topic)
+          ? 'properties' : topic === 'market' || topic === 'rental-income' ? topic : topic && Object.prototype.hasOwnProperty.call(personalPaths, topic) ? topic as Section : undefined;
         result = { question, answer, destination, sources, unknown: status === 'unknown' || status === 'faq_fallback' };
       }
       setMessages(previous => [...previous.slice(0, -1), result]);

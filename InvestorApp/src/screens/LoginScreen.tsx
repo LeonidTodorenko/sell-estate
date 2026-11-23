@@ -673,50 +673,6 @@ const isAndroidKeyboardLogin = isAndroid && showLoginPanel && kbShown;
     </Text>
   </Text>
 
-             {/* <View style={styles.quickLoginWrap}>
-                <Text
-                  onPress={() =>
-                    loginCore(
-                      { email: 'admin@example.com', password: 'securepassword' },
-                      'AdminDashboards',
-                    )
-                  }
-                  style={styles.adminLink}
-                >
-                  ➤ Enter Admin Panel
-                </Text>
-
-              
-
-                <Text
-                  onPress={() =>
-                    loginCore({ email: 'user@example.com', password: 'securepassword' }, 'Home')
-                  }
-                  style={styles.userLink}
-                >
-                  ➤ Login as Test User
-                </Text>
-
-               
-                <Text
-                  onPress={() =>
-                    loginCore({ email: 'user2@example.com', password: 'securepassword' }, 'Home')
-                  }
-                  style={styles.userLink2}
-                >
-                  ➤ Login as Test User2
-                </Text>
-
-                <Text
-                  onPress={() =>
-                    loginCore({ email: 'user3@example.com', password: 'securepassword' }, 'Home')
-                  }
-                  style={styles.userLink3}
-                >
-                  ➤ Login as Test User3
-                </Text>
- 
-              </View>   */}
 
               
             </View>
@@ -1041,18 +997,7 @@ panel: {
     textDecorationLine: 'underline',
   },
 
-  quickLoginWrap: {
-    marginTop: 6,
-  },
-
   link: { marginTop: 10, color: 'blue', textAlign: 'center' },
-
-  adminLink: {
-    marginTop: 1,
-    color: '#111827',
-    textAlign: 'center',
-    fontWeight: 'bold',
-  },
 
   footerButtons: {
     position: 'absolute',
@@ -1081,27 +1026,6 @@ panel: {
     padding: 20,
     borderRadius: 12,
     width: '90%',
-  },
-
-  userLink: {
-    marginTop: 6,
-    color: 'red',
-    textAlign: 'center',
-    fontWeight: 'bold',
-  },
-
-  userLink2: {
-    marginTop: 6,
-    color: 'black',
-    textAlign: 'center',
-    fontWeight: 'bold',
-  },
-
-  userLink3: {
-    marginTop: 6,
-    color: 'orange',
-    textAlign: 'center',
-    fontWeight: 'bold',
   },
 
   rowButtons: {
