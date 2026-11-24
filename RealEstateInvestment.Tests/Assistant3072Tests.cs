@@ -207,6 +207,8 @@ public sealed class Assistant3072Tests
     [InlineData("mock-only-credential", "Open the plan.\nSources: internal", 1)]
     [InlineData("mock-only-credential", "Open ownersclub://payments/return.", 1)]
     [InlineData("mock-only-credential", "Open WebApp/README.", 1)]
+    [InlineData("mock-only-credential", "See the plan.\n## Sources", 1)]
+    [InlineData("mock-only-credential", "See Code\\Helpers\\Ledger.cs.", 1)]
     [InlineData("mock-only-credential", "Open ownersclub&#58;&#47;&#47;payments/return.", 1)]
     [InlineData("mock-only-credential", "Your wallet balance is zero. You have no shares.", 1)]
     public async Task MissingKeyOrUnapprovedOutputKeepsFaq(string? key, string response, int calls)

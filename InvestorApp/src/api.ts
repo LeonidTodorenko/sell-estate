@@ -284,7 +284,9 @@ export async function writeLegacyUser(raw: any) {
     };
 
     await AsyncStorage.setItem('user', JSON.stringify(legacy));
+    console.info('[QA27 session-v2] Account cache saved');
   } catch {
+    console.error('[QA27 session-v2] Account cache save failed');
     throw new Error('Unable to save account data on this device');
   }
 }

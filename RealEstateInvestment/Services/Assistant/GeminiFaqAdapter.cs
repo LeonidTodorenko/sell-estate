@@ -31,6 +31,10 @@ public sealed class GeminiFaqAdapter(HttpClient http, string? apiKey, TimeProvid
     });
 
     private static readonly Regex Reference = new(@"\[(?<id>\d{1,3})\]", RegexOptions.CultureInvariant);
+    private static readonly Regex TechnicalText = new(
+        @"(?im)^[ \t>*#_-]*(?:sources|источники|references|citations|ссылки на источники)[ \t]*\**[ \t]*(?::|$)|(?:[\w.-]+[/\\]){2,}[\w.-]+|\b[\w.-]+\.(?:cs|csproj|md|tsx?|jsx?|json|kt|ya?ml|sql|py|xml|gradle|html|css)\b",
+        RegexOptions.CultureInvariant);
+
     private static readonly Regex PersonalClaim = new(
         @"\b(?:you (?:own|hold|can afford)|your (?:wallet )?balance (?:is|equals|stands at)|you have (?:no|zero|[\d$€£])|у вас (?:на счет[еу]|в кошельке|нет|ноль|[\d$€£])|ваш баланс (?:составляет|равен|[\d$€£])|вы владеете)\b",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
@@ -125,7 +129,7 @@ public sealed class GeminiFaqAdapter(HttpClient http, string? apiKey, TimeProvid
                 .Select(match => int.Parse(match.Groups["id"].Value)).Distinct().ToArray();
             if (references.Any(id => id < 1 || id > sources.Count)) return new(null, "provider_invalid_answer", ProviderStatus: 200);
             var claims = AssistantPresentation.CleanText(answer);
-            if (claims == null || PersonalClaim.IsMatch(claims))
+            if (claims == null || TechnicalText.IsMatch(claims) || PersonalClaim.IsMatch(claims))
                 return new(null, "provider_invalid_answer", ProviderStatus: 200);
             var citedText = string.Join(" ", references.Select(id => sources[id - 1].Answer));
             if (Regex.Matches(claims, @"\d+(?:[.,]\d+)?%?|[$€£]")

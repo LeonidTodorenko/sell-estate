@@ -279,12 +279,17 @@ const isAndroidKeyboardLogin = isAndroid && showLoginPanel && kbShown;
     setBusy(true);
     Keyboard.dismiss();
     setLoading(true);
+    let loginStage = 'validate';
     try {
       const emailContainsNul = creds.email.includes('\u0000');
       const passwordContainsNul = creds.password.includes('\u0000');
+      console.info('[QA27 login-v3] Input validation', {
+        emailContainsNul, passwordContainsNul,
+      });
       if (emailContainsNul || passwordContainsNul) {
         throw new Error('Email or password contains an unsupported hidden character. Clear both fields and enter them again.');
       }
+      loginStage = 'POST /auth/login';
       // КЛЮЧЕВОЕ: идём напрямую, минуя интерсепторы api-инстанса
       const { data } = await axios.post(`${API_BASE_URL}/auth/login`, creds, {
         headers: { 'Content-Type': 'application/json' },
@@ -296,6 +301,7 @@ const isAndroidKeyboardLogin = isAndroid && showLoginPanel && kbShown;
       setAccessToken(session.accessToken);
       if (!(session.user?.id || session.user?.userId) ||
           !session.user?.fullName || !session.user?.email) {
+        loginStage = 'GET /auth/me';
         const { data: me } = await axios.get(`${API_BASE_URL}/auth/me`, {
           headers: { Authorization: `Bearer ${session.accessToken}` },
           timeout: 15000,
@@ -307,6 +313,7 @@ const isAndroidKeyboardLogin = isAndroid && showLoginPanel && kbShown;
       }
       const { accessToken, user } = session;
       setAccessToken(accessToken);
+      loginStage = 'save local session';
       await Promise.all([
         setAuthSession(session),
         writeLegacyUser(session), // чтобы старые места, читающие AsyncStorage('user'), были счастливы
@@ -362,6 +369,11 @@ const isAndroidKeyboardLogin = isAndroid && showLoginPanel && kbShown;
 
       //const role = user?.role ?? user?.Role ?? 'user';
     } catch (error: any) {
+      console.warn('[QA27 login-v3] Login failed', {
+        stage: loginStage,
+        status: error?.response?.status ?? null,
+        sqlState22021: String(error?.response?.data?.message ?? '').includes('22021'),
+      });
       let message = 'Something went wrong';
       if (error.response?.data?.message) {
         //if (error.response && error.response.data && error.response.data.message) {
