@@ -54,3 +54,10 @@ yarn.lock
 # Local env
 .env
 .env.*
+
+# OwnersClub history: only the authenticated snapshot in the public tree
+/docs/chat-history/*
+!/docs/chat-history/ownersclub.age
+/OwnersClub-chat-history/
+/chat gpt arch.zip
+/парольахривагптврепозитории.txt
