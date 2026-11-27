@@ -29,9 +29,7 @@ internal static class InvestmentChoices
         var global = await ForecastRateJournal.ReadAsync(db, null, ct);
         if (compare)
         {
-            var matches = properties.Where(p => !string.IsNullOrWhiteSpace(p.Title) &&
-                Regex.IsMatch(input, $@"(?<![\p{{L}}\p{{N}}]){Regex.Escape(p.Title)}(?![\p{{L}}\p{{N}}])",
-                    RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)).ToArray();
+            var matches = AssistantPropertyNames.Match(input, properties, p => p.Title);
             if (matches.Length != 2) return Reply(L("Name two distinct properties exactly as shown in the catalog.",
                 "Укажите названия двух разных объектов как в каталоге."));
             var lines = new List<string>();

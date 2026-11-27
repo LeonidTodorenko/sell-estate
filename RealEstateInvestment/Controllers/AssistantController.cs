@@ -126,6 +126,14 @@ public sealed class AssistantController(AppDbContext db, AssistantKnowledge know
             System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out day);
     }
 
+    [HttpDelete("conversations/{id:guid}")]
+    public async Task<IActionResult> ResetConversation(Guid id, CancellationToken ct)
+    {
+        if (await FinancialActor.ValidateAsync(User, db, ct) is { } denied) return denied;
+        language.Reset(HttpContext, id);
+        return NoContent();
+    }
+
     [HttpPost("ask")]
     [RequestTimeout(AssistantRegistration.AskTimeoutPolicy)]
     [RequestSizeLimit(4096)]

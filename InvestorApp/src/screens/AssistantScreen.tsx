@@ -56,7 +56,7 @@ function Conversation({ token, navigation, context, signIn }: {
   context: Props['route']['params'];
   signIn: () => Promise<void>;
 }) {
-  const { messages, send, pending, error, allowExternal, setAllowExternal, copy, sections } = useAssistant(API_BASE_URL, token);
+  const { messages, send, pending, error, allowExternal, setAllowExternal, copy, sections, russian, reset } = useAssistant(API_BASE_URL, token);
   const [draft, setDraft] = useState(context?.question ?? '');
   const [propertyId, setPropertyId] = useState(context?.propertyId);
   useFocusEffect(useCallback(() => {
@@ -78,19 +78,20 @@ function Conversation({ token, navigation, context, signIn }: {
   return <View style={styles.page}>
     <ScrollView ref={log} style={styles.log} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled"
       onContentSizeChange={() => { if (messages.length && !stayAtFaq.current) log.current?.scrollToEnd({ animated: false }); }}>
+      <Action label={russian ? "Новый диалог" : "New Chat"} disabled={disabled} press={async () => { if (await reset()) { setDraft(""); setPropertyId(undefined); } }}/>
       <Text accessibilityRole="header" style={styles.heading} onLayout={event => { faqY.current = event.nativeEvent.layout.y; }}>{copy.faq}</Text>
       <View style={styles.row}>{faqQuestions.map(question => <Action key={question} label={question} disabled={disabled}
         press={() => ask(question)}/>)}</View>
       <Text accessibilityRole="header" style={styles.heading}>{copy.account}</Text>
       <View style={styles.row}>{sections.map(section => <Action key={section} label={copy[section]} disabled={disabled}
         press={() => ask(copy[section], section)}/>)}</View>
-      {messages.map(({ question, answer, destination, sources, unknown, forecast, allocation }, index) => <View key={index} style={styles.turn}>
+      {messages.map(({ question, answer, destination, sources, unknown, forecast, allocation, russian: answerRussian }, index) => <View key={index} style={styles.turn}>
         <Text style={styles.question}>{question}</Text>
         {answer && <View style={styles.answer}>
           <Text selectable style={styles.text}>{answer}</Text>
-          {allocation && <AssetAllocation title={allocation.demo ? 'Asset structure · Demo' : 'Asset structure'}
-            description="Estimated values in USD. The wallet includes credited rental payouts." items={allocation.items}/>}
-          {forecast && <AssistantScenarioCard card={forecast}/>}
+          {allocation && <AssetAllocation russian={answerRussian} title={`${answerRussian ? 'Структура активов' : 'Asset structure'}${allocation.demo ? ' · Demo' : ''}`}
+            description={answerRussian ? "Оценка активов в долларах США. Кошелёк включает зачисленные арендные выплаты." : "Estimated values in USD. The wallet includes credited rental payouts."} items={allocation.items}/>}
+          {forecast && <AssistantScenarioCard card={forecast} russian={answerRussian}/>}
           {!!sources?.length && <Text selectable style={styles.text}>Sources: {sources.join(", ")}</Text>}
           {destination && <Action label={copy[destination]} press={() => navigation.navigate(destinations[destination])}/>}
           {unknown && <Action label={copy.faq} press={() => {

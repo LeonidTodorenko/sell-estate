@@ -153,7 +153,7 @@ internal sealed class PersonalFinanceReader(AppDbContext db, ClaimsPrincipal pri
     private static readonly Regex SecondaryMarket = new(@"\b(?:secondary|resale|marketplace|from (?:another|a seller)|вторич\w*|на рынке|у продавца)\b",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
     private static readonly Regex InvalidQuantityPrefix = new(@"\d\s+$|[!+-.,−]\s*$", RegexOptions.CultureInvariant);
-    private static readonly Regex ObjectTitle = new(@"\s(?:of|in|for|at|в|для|объект[ае]?)\s+(?<title>.+?)\s*[?!]*$",
+    private static readonly Regex ObjectTitle = new(@"\s(?:of|in|for|at|в|для|объект[ае]?)\s+(?<title>[\s\S]+?)\s*[?!]*$",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     private async Task<AssistantAnswer> PlanAsync(string topic, string input, decimal balance, DateTime now, CancellationToken ct)
@@ -173,10 +173,10 @@ internal sealed class PersonalFinanceReader(AppDbContext db, ClaimsPrincipal pri
         if (!match.Success)
             return Clarify(L("Which property? Use its exact title from Properties.", "Какой объект? Укажите точное название из каталога."));
         var title = match.Groups["title"].Value.Trim(' ', '"', '«', '»', '“', '”');
-        var normalized = title.ToUpperInvariant();
-        var properties = await db.Properties.AsNoTracking().Where(p => (p.Title == title || p.Title.ToUpper() == normalized) && p.Status != "declined")
-            .Select(p => new { p.Id, p.Title, p.Price, p.TotalShares, p.AvailableShares, p.Status }).Take(2).ToListAsync(ct);
-        if (properties.Count != 1)
+        var catalog = await db.Properties.AsNoTracking().Where(p => p.Status != "declined")
+            .Select(p => new { p.Id, p.Title, p.Price, p.TotalShares, p.AvailableShares, p.Status }).ToListAsync(ct);
+        var properties = catalog.Where(p => AssistantPropertyNames.Equal(p.Title, title)).Take(2).ToArray();
+        if (properties.Length != 1)
             return Clarify(L("I couldn’t identify a unique listed property. Check the exact title in Properties.",
                 "Не удалось однозначно определить объект. Проверьте точное название в каталоге."));
         var property = properties[0];

@@ -37,10 +37,17 @@ public sealed class AssistantLanguageSession : IDisposable
         public List<AssistantTurn> Turns { get; } = [];
     }
 
+    private static string Owner(HttpContext context) => Convert.ToHexString(SHA256.HashData(
+        Encoding.UTF8.GetBytes(context.Request.Headers.Authorization.ToString())));
+
+    internal void Reset(HttpContext context, Guid id)
+    {
+        lock (gate) conversations.Remove((Owner(context), id));
+    }
+
     internal (Guid Id, Conversation Conversation) Open(HttpContext context, Guid? id)
     {
-        var owner = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(
-            context.Request.Headers.Authorization.ToString())));
+        var owner = Owner(context);
         lock (gate)
         {
             if (id is { } existing && conversations.TryGetValue<Conversation>((owner, existing), out var found))

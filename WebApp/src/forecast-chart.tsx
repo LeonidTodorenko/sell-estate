@@ -7,9 +7,11 @@ export type ForecastPoint = { year: number; date: string };
 export const forecastMoney = (value: number | null) => value === null ? 'Unknown' : money(value);
 const compact = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: 'compact', maximumFractionDigits: 1 });
 
-export function ForecastChart({ title, description, points, series }: {
-  title: string; description: string; points: ForecastPoint[]; series: ForecastSeries[];
+export function ForecastChart({ title, description, points, series, russian = false }: {
+  title: string; description: string; points: ForecastPoint[]; series: ForecastSeries[]; russian?: boolean;
 }) {
+  const label = (en: string, ru: string) => russian ? ru : en;
+  const period = (year: number) => year ? `${label("Year", "Год")} ${year}` : label("Start", "Начало");
   const id = useId();
   const [selected, setSelected] = useState(points.length - 1);
   const index = Math.min(selected, points.length - 1);
@@ -40,7 +42,7 @@ export function ForecastChart({ title, description, points, series }: {
     <ul className="forecast-legend">{series.map(s => <li key={s.label}>
       <i aria-hidden="true" style={{ borderColor: s.color, borderTopStyle: s.dashed ? 'dashed' : 'solid' }}/>{s.label}
     </li>)}</ul>
-    {!values.length && <p className="note">No amounts can be calculated with the available inputs.</p>}
+    {!values.length && <p className="note">{label('No amounts can be calculated with the available inputs.', 'Недостаточно данных для расчёта.')}</p>}
     <div className="forecast-plot" ref={plot}>{!!values.length && <svg viewBox={`0 0 ${width} ${bottom + 25}`} aria-hidden="true" onPointerMove={event => {
       if (event.pointerType !== 'mouse') return;
       const matrix = event.currentTarget.getScreenCTM();
@@ -57,21 +59,21 @@ export function ForecastChart({ title, description, points, series }: {
         <path d={plotPath(s.values, x, y)} fill="none" stroke={s.color} strokeWidth="2.5" strokeDasharray={s.dashed ? '6 4' : undefined} vectorEffect="non-scaling-stroke"/>
         {s.values.map((value, i) => value !== null && <circle key={i} cx={x(i)} cy={y(value)} r={i === index ? 5.5 : 3.5} stroke={s.color} strokeWidth="2" fill={s.dashed ? "#fff" : s.color}/>)}
       </g>)}
-      <text x={left} y={bottom + 20}>Start</text>
-      <text x={right} y={bottom + 20} textAnchor="end">Year {points.at(-1)?.year}</text>
+      <text x={left} y={bottom + 20}>{period(0)}</text>
+      <text x={right} y={bottom + 20} textAnchor="end">{period(points.at(-1)?.year ?? 0)}</text>
     </svg>}</div>
-    <div className="chart-ranges" role="group" aria-label={`${title} data points`}>
+    <div className="chart-ranges" role="group" aria-label={`${title} · ${label("data points", "точки графика")}`}>
       {points.map((p, i) => <button type="button" key={p.year} aria-pressed={i === index}
         onFocus={() => setSelected(i)} onPointerMove={e => { if (e.pointerType === 'mouse') setSelected(i); }}
-        onClick={() => setSelected(i)} aria-controls={`${id}-point`}>{p.year ? `Year ${p.year}` : 'Start'}</button>)}
+        onClick={() => setSelected(i)} aria-controls={`${id}-point`}>{period(p.year)}</button>)}
     </div>
     <div className="forecast-point" id={`${id}-point`} aria-live="polite">
       <time dateTime={points[index].date}>{points[index].date}</time>
-      {series.map(s => <span key={s.label}>{s.label} <strong>{forecastMoney(s.values[index])}</strong></span>)}
+      {series.map(s => <span key={s.label}>{s.label} <strong>{s.values[index] === null && russian ? "Нет данных" : forecastMoney(s.values[index])}</strong></span>)}
     </div>
-    <details className="chart-data"><summary>View chart data</summary><div className="table-wrap" tabIndex={0} role="region" aria-label={`${title} data table`}><table>
-      <thead><tr><th scope="col">Date</th>{series.map(s => <th scope="col" key={s.label}>{s.label} (USD)</th>)}</tr></thead>
-      <tbody>{points.map((p, i) => <tr key={p.year}><th scope="row">{p.date}</th>{series.map(s => <td key={s.label}>{forecastMoney(s.values[i])}</td>)}</tr>)}</tbody>
+    <details className="chart-data"><summary>{label("View chart data", "Данные графика")}</summary><div className="table-wrap" tabIndex={0} role="region" aria-label={`${title} · ${label("data table", "таблица данных")}`}><table>
+      <thead><tr><th scope="col">{label("Date", "Дата")}</th>{series.map(s => <th scope="col" key={s.label}>{s.label} (USD)</th>)}</tr></thead>
+      <tbody>{points.map((p, i) => <tr key={p.year}><th scope="row">{p.date}</th>{series.map(s => <td key={s.label}>{s.values[i] === null && russian ? "Нет данных" : forecastMoney(s.values[i])}</td>)}</tr>)}</tbody>
     </table></div></details>
   </section>;
 }

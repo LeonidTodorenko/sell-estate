@@ -41,6 +41,42 @@ public sealed class AssistantInvestmentIntelligenceTests
         Assert.Null(foreign.Forecast);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task NormalizesNamesSeparatesGeneralQuestionsAndResetsConversation(bool demo)
+    {
+        using var host = new AssistantTestHost();
+        Seed(host, "  Damac  lagoons\r\n");
+        host.Login(demo ? host.Demo : host.Actor, demo: demo);
+        var forecast = await Ask(host, "Forecast for DAMAC\n LAGOONS, 2 shares, 5 years, rates -10 -6 -2");
+        Assert.NotNull(forecast.Forecast);
+        Assert.Equal(demo, forecast.Forecast.Demo);
+        Assert.Equal(-6m, forecast.Forecast.Data.Scenarios.Single(s => s.Id == "base").AnnualGrowthPercent);
+        var general = await Ask(host, "In one sentence, explain why gross rental yield differs from net yield.", forecast.ConversationId);
+        Assert.Null(general.Forecast);
+        var comparison = await Ask(host, "Compare Damac  lagoons and Creek Residence");
+        Assert.Contains("Creek Residence", comparison.Answer);
+        Assert.Contains("Damac", comparison.Answer);
+        Assert.Equal(HttpStatusCode.NoContent,
+            (await host.Client.DeleteAsync($"/api/assistant/conversations/{forecast.ConversationId}")).StatusCode);
+        var fresh = await Ask(host, "Make it 4 shares and 7 years", forecast.ConversationId);
+        Assert.NotEqual(forecast.ConversationId, fresh.ConversationId);
+        Assert.Null(fresh.Forecast);
+        host.WithDb(db =>
+        {
+            db.Properties.Add(new Property
+            {
+                Id = Guid.NewGuid(), Title = "DAMAC LAGOONS", Location = "Fixture",
+                TotalShares = 100, AvailableShares = 20, Status = "available", Price = 90000
+            });
+            db.SaveChanges();
+        });
+        var ambiguous = await Ask(host, "Forecast for Damac lagoons, 2 shares, 5 years, rates -10 6 10");
+        Assert.Null(ambiguous.Forecast);
+        Assert.Contains("Which property", ambiguous.Answer);
+    }
+
     [Fact]
     public async Task ApprovalsAreAdminOnlyAndRecommendationsUseOwnerBalanceAndHoldings()
     {

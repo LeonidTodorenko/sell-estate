@@ -36,8 +36,8 @@ export function HistoryChart({ title, points, bars = false, description }: { tit
   </section>;
 }
 
-export function AllocationChart({ title, items, description }: {
-  title: string; items: Allocation[]; description?: string;
+export function AllocationChart({ title, items, description, russian = false }: {
+  title: string; items: Allocation[]; description?: string; russian?: boolean;
 }) {
   const id = useId();
   const [selection, setSelection] = useState<number>();
@@ -68,7 +68,7 @@ export function AllocationChart({ title, items, description }: {
           })}
         </svg>
         <p className="allocation-selection" aria-live="polite">
-          <span>{selected?.label ?? 'Positive total'}</span>
+          <span>{selected?.label ?? (russian ? 'Положительный итог' : 'Positive total')}</span>
           <strong>{money(selected?.value ?? total)}</strong>
           {selected && <span>{percent(selected.value)}</span>}
         </p>
@@ -81,7 +81,7 @@ export function AllocationChart({ title, items, description }: {
         </button></li>)}
       </ul>
     </div> : <Empty title="No positive amounts available"/>}
-    {!!negative.length && <div><h3>Negative amounts</h3>
+    {!!negative.length && <div><h3>{russian ? "Отрицательные суммы" : "Negative amounts"}</h3>
       <dl className="allocation-negative">{negative.map((row, i) => <div key={i}><dt>{row.label}</dt><dd>{money(row.value)}</dd></div>)}</dl>
     </div>}
   </section>;

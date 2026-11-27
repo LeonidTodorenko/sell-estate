@@ -18,6 +18,8 @@ internal static class ScenarioConversation
     private static readonly Regex Intent = Pattern(@"(?<!\p{L})(?:chart|forecast|scenario|график\w*|прогноз\w*|сценари\w*)(?!\p{L})");
     private static readonly Regex Transaction = Pattern(@"payment|deposit|withdraw|balance|portfolio|wallet|сч[её]т|баланс|портфел|плат[её]ж|заявк|вывод|пополн");
     private static readonly Regex Switch = Pattern(@"(?:^(?:and\s+)?(?:for|для)\s+\p{L}|(?:instead|вместо)\b|(?:chart|forecast|график|прогноз)\s+(?:for|для)\s+\p{L})");
+    private static readonly Regex FollowUp = Pattern(@"^(?:(?:and |what if |а если |если )?(?:make it |change (?:it |that )?(?:to )?|take |use |взять |сделай |поставь |измени (?:на )?)?(?:\d|with rent\b|without rent\b|rates?\s+-?\d|fee\s+\d|с арендой\b|без аренды\b|ставки\s+-?\d|комисси\w*\s+\d)|(?:and |а )?(?:for|для)\s+)");
+    private static readonly Regex GeneralQuestion = Pattern(@"^(?:why|how (?:does|do|is|are|can)|what (?:is|are|does)|(?:please )?explain|in one sentence|почему|как (?:работает|отличается)|что такое|объясни)\b");
     private static readonly Regex Shares = Pattern(@"(?<![\d.,-])([\d]{1,9})\s*(?:shares?\b|дол(?:я|и|ей|ю)\b)");
     private static readonly Regex Years = Pattern(@"(?<![\d.,-])([\d]{1,2})\s*(?:years?\b|лет\b|год(?:а|ов)?\b)");
     private static readonly Regex Rental = Pattern(@"rent|аренд");
@@ -30,7 +32,8 @@ internal static class ScenarioConversation
     {
         var active = propertyId is { } selected ? new ScenarioContext(PropertyId: selected) : conversation.Scenario;
         var initial = Intent.IsMatch(input) && !Pattern(@"payment schedule|график\w* платеж").IsMatch(input);
-        if (Transaction.IsMatch(input) || (!initial && active is null)) return null;
+        if (Transaction.IsMatch(input) || GeneralQuestion.IsMatch(input) ||
+            (!initial && (active is null || !FollowUp.IsMatch(input)))) return null;
         var shares = Shares.Match(input);
         var years = Years.Match(input);
         var rental = Rental.IsMatch(input);
@@ -38,9 +41,7 @@ internal static class ScenarioConversation
         var rates = Rates.Match(input);
         var properties = await db.Properties.AsNoTracking().Where(p => p.Status != "declined")
             .Select(p => new { p.Id, p.Title }).ToListAsync(ct);
-        var matches = properties.Where(p => !string.IsNullOrWhiteSpace(p.Title) &&
-            Regex.IsMatch(input, $@"(?<![\p{{L}}\p{{N}}]){Regex.Escape(p.Title.Trim())}(?![\p{{L}}\p{{N}}])",
-                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)).ToArray();
+        var matches = AssistantPropertyNames.Match(input, properties, p => p.Title);
         if (!initial && !shares.Success && !years.Success && !rental && !fee.Success && !rates.Success && !(active?.Rental == true && Date.IsMatch(input)) && matches.Length == 0)
             return null;
 

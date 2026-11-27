@@ -19,7 +19,8 @@ export function AssistantPage({ session }: { session: Session }) {
 }
 
 function Conversation({ token }: { token: string }) {
-  const { messages, send, pending, error, allowExternal, setAllowExternal, copy, sections } = useAssistant(API_BASE_URL, token);
+  const { messages, send, pending, error, allowExternal, setAllowExternal, copy, sections, russian, reset } = useAssistant(API_BASE_URL, token);
+  const [deepLink, setDeepLink] = useState(true);
   const [search] = useSearchParams();
   const [draft, setDraft] = useState(() => {
     const title = search.get('property');
@@ -35,7 +36,8 @@ function Conversation({ token }: { token: string }) {
 
   return <section className="assistant-page" aria-labelledby="assistant-title">
     <header className="assistant-heading">
-      <h1 id="assistant-title">{copy.title}</h1>
+      <h1 id="assistant-title">{russian ? "ИИ-ассистент" : copy.title}</h1>
+      <button type="button" disabled={disabled} onClick={async () => { if (await reset()) { setDraft(""); setDeepLink(false); } }}>{russian ? "Новый диалог" : "New Chat"}</button>
     </header>
     <details id="assistant-faq" open>
       <summary>{copy.faq}</summary>
@@ -54,9 +56,9 @@ function Conversation({ token }: { token: string }) {
         <p className="assistant-question">{message.question}</p>
         {message.answer && <div className={(message.forecast || message.allocation) ? 'assistant-answer assistant-answer-with-chart' : 'assistant-answer'}>
           <p>{message.answer}</p>
-          {message.allocation && <AllocationChart title={message.allocation.demo ? 'Asset structure · Demo' : 'Asset structure'}
-            description="Estimated asset values in USD. The wallet includes credited rental payouts." items={message.allocation.items}/>}
-          {message.forecast && <ScenarioCard card={message.forecast}/>}
+          {message.allocation && <AllocationChart russian={message.russian} title={`${message.russian ? 'Структура активов' : 'Asset structure'}${message.allocation.demo ? ' · Demo' : ''}`}
+            description={message.russian ? "Оценка активов в долларах США. Кошелёк включает зачисленные арендные выплаты." : "Estimated asset values in USD. The wallet includes credited rental payouts."} items={message.allocation.items}/>}
+          {message.forecast && <ScenarioCard card={message.forecast} russian={message.russian}/>}
           {!!message.sourceLinks?.length && <ul>
             {message.sourceLinks.map(source => <li key={source.title}>
               {source.url && (/^https:\/\/wamsoc\.com\/(about|register|support)$/.test(source.url) ||
@@ -80,7 +82,7 @@ function Conversation({ token }: { token: string }) {
     <form className="assistant-composer" onSubmit={event => {
       event.preventDefault();
       if (disabled || !draft.trim()) return;
-      void send(draft, undefined, messages.length === 0 ? search.get('propertyId') ?? undefined : undefined);
+      void send(draft, undefined, deepLink && messages.length === 0 ? search.get('propertyId') ?? undefined : undefined);
       setDraft('');
     }}>
       <input aria-label={copy.prompt} placeholder={copy.prompt} maxLength={400} value={draft} onChange={event => setDraft(event.target.value)}/>
@@ -89,7 +91,10 @@ function Conversation({ token }: { token: string }) {
   </section>;
 }
 
-export function ScenarioCard({ card }: { card: ChatForecast }) {
+export function ScenarioCard({ card, russian = false }: { card: ChatForecast; russian?: boolean }) {
+  const label = (en: string, ru: string) => russian ? ru : en;
+  const years = new Intl.PluralRules(russian ? "ru" : "en");
+  const period = (year: number) => `${year} ${russian ? ({ one: "год", few: "года", many: "лет", other: "лет" }[years.select(year) as "one" | "few" | "many" | "other"]) : year === 1 ? "year" : "years"}`;
   const [horizon, setHorizon] = useState(card.horizon);
   const { data } = card;
   const points = data.cashFlow.filter(point => point.year <= horizon);
@@ -97,39 +102,44 @@ export function ScenarioCard({ card }: { card: ChatForecast }) {
   const estimate = data.scenarios.find(scenario => scenario.id === 'base')?.points.find(point => point.year === horizon);
   const series = data.scenarios.map(scenario => ({
     id: scenario.id,
-    label: `${scenario.id === 'negative' ? 'Stress' : scenario.id === 'base' ? 'Base' : 'Optimistic'} (${scenario.annualGrowthPercent}%/yr)`,
+    label: `${scenario.id === 'negative' ? label('Stress', 'Стрессовый') : scenario.id === 'base' ? label('Base', 'Базовый') : label('Optimistic', 'Оптимистичный')} (${scenario.annualGrowthPercent}%/${label("yr", "год")})`,
     color: scenario.id === 'negative' ? '#a34729' : scenario.id === 'base' ? '#087a4e' : '#305f9f',
     dashed: scenario.id !== 'base',
     values: scenario.points.filter(point => point.year <= horizon).map(point => point.positionValue),
   }));
+  const amount = (value: number | null) => russian
+    ? value === null ? 'Нет данных' : new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'USD' }).format(value)
+    : forecastMoney(value);
+  const rateScope = card.rateScope === 'property' ? label('property', 'объект')
+    : card.rateScope === 'global' ? label('global', 'общие ставки') : label('approved', 'утверждено');
   const signed = (value: number) => value > 0 ? '+' : '';
   const change = estimate?.unrealizedChangeFromRecordedValue;
   const percent = estimate?.changeFromRecordedValuePercent;
   return <section className="assistant-scenario" aria-label={card.property}>
     <h3>{card.property} {card.demo === true && <span className="tag">Demo</span>}</h3>
-    <div className="assistant-estimate"><span>Base estimate · Year {horizon}</span>
-      <strong>{forecastMoney(estimate?.positionValue ?? null)}</strong>
-      {change != null && <span>{signed(change)}{forecastMoney(change)}{percent != null && ` (${signed(percent)}${percent}%)`} vs. saved valuation</span>}
+    <div className="assistant-estimate"><span>{label("Base estimate · Year", "Базовая оценка · Год")} {horizon}</span>
+      <strong>{amount(estimate?.positionValue ?? null)}</strong>
+      {change != null && <span>{signed(change)}{amount(change)}{percent != null && ` (${signed(percent)}${percent}%)`} {label("vs. saved valuation", "к сохранённой оценке")}</span>}
     </div>
-    <p className="chart-note">Calculated {data.asOf} · {card.source ? `${card.source} (${card.rateScope ?? 'approved'}, ${card.ratesAsOf ?? 'date unavailable'})` : 'Conditional assumptions'}</p>
-    <p>{data.shares} {data.shares === 1 ? 'share' : 'shares'} · Upfront cost {forecastMoney(data.primaryPurchaseCost)}</p>
-    <div className="chart-ranges" role="group" aria-label="Scenario horizon">
+    <p className="chart-note">{label("Calculated", "Дата расчёта")} {data.asOf} · {card.source ? `${card.source} (${rateScope}, ${card.ratesAsOf ?? label('date unavailable', 'дата неизвестна')})` : label('Conditional assumptions', 'Условные допущения')}</p>
+    <p>{data.shares} {russian ? ({ one: 'доля', few: 'доли', many: 'долей', other: 'долей' }[years.select(data.shares) as 'one' | 'few' | 'many' | 'other']) : data.shares === 1 ? 'share' : 'shares'} · {label('Upfront cost', 'Стоимость покупки')} {amount(data.primaryPurchaseCost)}</p>
+    <div className="chart-ranges" role="group" aria-label={label("Scenario horizon", "Горизонт прогноза")}>
       {data.cashFlow.filter(point => point.year > 0).map(({ year }) =>
         <button type="button" key={year} aria-pressed={year === horizon} onClick={() => setHorizon(year)}>
-          {year} {year === 1 ? 'year' : 'years'}
+          {period(year)}
         </button>)}
     </div>
-    <ForecastChart key={horizon} title="Scenario value" description="Conditional annual rates and saved valuation."
-      points={points} series={series.filter(item => card.demo !== true || item.id !== 'negative')}/>
-    {card.demo === true && <details><summary>Risk · stress scenario</summary>
-      <ForecastChart key={horizon} title="Stress scenario" description="Conditional downside. Value may fall."
+    <ForecastChart key={`value-${horizon}`} russian={russian} title={label("Scenario value", "Стоимость по сценариям")} description={label("Conditional annual rates and saved valuation.", "Условные годовые ставки и сохранённая оценка.")}
+      points={points} series={series.filter(item => item.id !== 'negative')}/>
+    <details><summary>{label("Risk · stress scenario", "Риски · стресс-сценарий")}</summary>
+      <ForecastChart key={`stress-${horizon}`} russian={russian} title={label("Stress scenario", "Стресс-сценарий")} description={label("Conditional downside. Value may fall.", "Условный сценарий снижения стоимости.")}
         points={points} series={series.filter(item => item.id === 'negative')}/>
-    </details>}
-    {card.rental && rental && <details open><summary>Conditional rent</summary>
-      <ForecastChart key={horizon} title="Rental income" description="Complete months using the assumed start. Payouts are uncertain."
+    </details>
+    {card.rental && rental && <details open><summary>{label("Conditional rent", "Условная аренда")}</summary>
+      <ForecastChart key={`rent-${horizon}`} russian={russian} title={label("Rental income", "Арендный доход")} description={label("Complete months using the assumed start. Payouts are uncertain.", "Полные месяцы от предполагаемой даты начала. Выплаты не гарантированы.")}
         points={rental} series={[
-          { label: 'Before club fee', color: '#087a4e', values: rental.map(point => point.beforeClubFee) },
-          { label: 'After assumed fee', color: '#305f9f', dashed: true, values: rental.map(point => point.afterClubFee) },
+          { label: label('Before club fee', 'До комиссии клуба'), color: '#087a4e', values: rental.map(point => point.beforeClubFee) },
+          { label: label('After assumed fee', 'После условной комиссии'), color: '#305f9f', dashed: true, values: rental.map(point => point.afterClubFee) },
         ]}/>
     </details>}
   </section>;

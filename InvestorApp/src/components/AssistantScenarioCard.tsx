@@ -32,10 +32,13 @@ export function readScenario(value: unknown): Scenario | undefined {
 
 const colors: Record<string, string> = { base: '#087a4e', optimistic: '#305f9f', negative: '#a34729' };
 const names: Record<string, string> = { base: 'Base', optimistic: 'Optimistic', negative: 'Stress' };
+const russianNames: Record<string, string> = { base: "Базовый", optimistic: "Оптимистичный", negative: "Стрессовый" };
 const compact = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: 'compact', maximumFractionDigits: 1 });
-const money = (n?: number | null) => n == null ? 'Unavailable' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n);
+const money = (n: number | null | undefined, russian: boolean) => n == null ? (russian ? 'Нет данных' : 'Unavailable') :
+  new Intl.NumberFormat(russian ? 'ru-RU' : 'en-US', { style: 'currency', currency: 'USD' }).format(n);
 
-export function AssistantScenarioCard({ card }: { card: Scenario }) {
+export function AssistantScenarioCard({ card, russian = false }: { card: Scenario; russian?: boolean }) {
+  const label = (en: string, ru: string) => russian ? ru : en;
   const [year, setYear] = useState(card.horizon);
   const [risk, showRisk] = useState(false);
   const { data } = card;
@@ -46,32 +49,32 @@ export function AssistantScenarioCard({ card }: { card: Scenario }) {
   const growth = point?.unrealizedChangeFromRecordedValue;
   return <View style={styles.card}>
     <Text style={styles.heading}>{card.property}{card.demo === true ? ' · Demo' : ''}</Text>
-    <Text style={styles.label}>Base estimate · Year {year} · {data.shares} {data.shares === 1 ? 'share' : 'shares'}</Text>
-    <Text accessibilityLiveRegion="polite" style={styles.estimate}>{money(point?.positionValue)}</Text>
+    <Text style={styles.label}>{label("Base estimate · Year", "Базовая оценка · Год")} {year} · {russian ? "Число долей:" : ""} {data.shares} {russian ? "" : data.shares === 1 ? "share" : "shares"}</Text>
+    <Text accessibilityLiveRegion="polite" style={styles.estimate}>{money(point?.positionValue, russian)}</Text>
     {point?.unrealizedChangeFromRecordedValue != null && <Text style={styles.label}>
-      {money(point.unrealizedChangeFromRecordedValue)}{point.changeFromRecordedValuePercent != null ? ` (${point.changeFromRecordedValuePercent}%)` : ''} vs. saved valuation
+      {money(point.unrealizedChangeFromRecordedValue, russian)}{point.changeFromRecordedValuePercent != null ? ` (${point.changeFromRecordedValuePercent}%)` : ''} {label("vs. saved valuation", "к сохранённой оценке")}
     </Text>}
-    <Text style={styles.label}>Upfront cost {money(data.primaryPurchaseCost)}</Text>
-    <Text style={styles.label}>Calculated {data.asOf} · {typeof card.source === 'string' ? card.source : 'Conditional assumptions'}{typeof card.ratesAsOf === 'string' ? ` · ${card.ratesAsOf}` : ''}</Text>
+    <Text style={styles.label}>{label("Upfront cost", "Стоимость покупки")} {money(data.primaryPurchaseCost, russian)}</Text>
+    <Text style={styles.label}>{label("Calculated", "Дата расчёта")} {data.asOf} · {typeof card.source === 'string' ? card.source : label('Conditional assumptions', 'Условные допущения')}{typeof card.ratesAsOf === 'string' ? ` · ${card.ratesAsOf}` : ''}</Text>
     <View style={styles.controls}>{base?.points.filter(p => p.year > 0).map(p =>
-      <Pressable key={p.year} accessibilityRole="button" accessibilityLabel={`Year ${p.year}`}
+      <Pressable key={p.year} accessibilityRole="button" accessibilityLabel={`${russian ? "Год" : "Year"} ${p.year}`}
         accessibilityState={{ selected: p.year === year }} onPress={() => setYear(p.year)}
         style={[styles.button, p.year === year && styles.selected]}>
-        <Text style={styles.label}>{p.year}y</Text>
+        <Text style={styles.label}>{p.year} {label("yr", "г.")}</Text>
       </Pressable>)}</View>
-    <Chart key={year} year={year} series={data.scenarios.filter(s => card.demo !== true || s.id !== 'negative')}/>
+    <Chart key={`main-${year}`} year={year} russian={russian} series={data.scenarios.filter(s => s.id !== 'negative')}/>
     {typeof rent === 'number' && Number.isFinite(rent) && typeof growth === 'number' && <AssetAllocation
-      key={year} title="Base scenario components"
-      description="Conditional unrealized change and modeled cumulative rent after the assumed club fee, in USD."
-      items={[{ label: 'Unrealized change', value: growth }, { label: 'Conditional rental income', value: rent }]}/>}
-    {card.demo === true && <Pressable accessibilityRole="button" accessibilityState={{ expanded: risk }} onPress={() => showRisk(!risk)} style={styles.button}>
-      <Text style={styles.label}>Risk · stress scenario</Text>
-    </Pressable>}
-    {card.demo === true && risk && <Chart key={year} year={year} series={data.scenarios.filter(s => s.id === 'negative')}/>}
+      key={`allocation-${year}`} russian={russian} title={label("Base scenario components", "Состав базового сценария")}
+      description={label("Conditional unrealized change and modeled cumulative rent after the assumed club fee, in USD.", "Условное изменение стоимости и расчётная аренда после комиссии, в долларах США.")}
+      items={[{ label: label('Unrealized change', 'Изменение стоимости'), value: growth }, { label: label('Conditional rental income', 'Условный арендный доход'), value: rent }]}/>}
+    <Pressable accessibilityRole="button" accessibilityState={{ expanded: risk }} onPress={() => showRisk(!risk)} style={styles.button}>
+      <Text style={styles.label}>{label("Risk · stress scenario", "Риски · стресс-сценарий")}</Text>
+    </Pressable>
+    {risk && <Chart key={`risk-${year}`} year={year} russian={russian} series={data.scenarios.filter(s => s.id === 'negative')}/>}
   </View>;
 }
 
-function Chart({ year, series }: { year: number; series: Series[] }) {
+function Chart({ year, series, russian }: { year: number; series: Series[]; russian: boolean }) {
   const [selectedYear, setSelectedYear] = useState(year);
   const selection = Math.min(selectedYear, year);
   const values = series.flatMap(s => s.points.filter(p => p.year <= year && p.positionValue !== null).map(p => p.positionValue!));
@@ -84,8 +87,8 @@ function Chart({ year, series }: { year: number; series: Series[] }) {
         <Line x1={63} x2={267} y1={y(tick)} y2={y(tick)} stroke={tick === 0 ? '#8ca598' : '#d4e2d9'}/>
         <SvgText x={58} y={y(tick) + 4} textAnchor="end" fill="#304c3e" fontSize={10}>{compact.format(tick)}</SvgText>
       </React.Fragment>)}
-      <SvgText x={63} y={130} fill="#304c3e" fontSize={11}>Start</SvgText>
-      <SvgText x={267} y={130} fill="#304c3e" fontSize={11} textAnchor="end">Year {year}</SvgText>
+      <SvgText x={63} y={130} fill="#304c3e" fontSize={11}>{russian ? "Начало" : "Start"}</SvgText>
+      <SvgText x={267} y={130} fill="#304c3e" fontSize={11} textAnchor="end">{russian ? "Год" : "Year"} {year}</SvgText>
       <Line x1={x(selection)} x2={x(selection)} y1={16} y2={110} stroke="#8ca598" strokeDasharray={[3, 4]}/>
       {series.map(s => {
         const points = s.points.filter(p => p.year <= year);
@@ -101,17 +104,17 @@ function Chart({ year, series }: { year: number; series: Series[] }) {
         </React.Fragment>;
       })}
     </Svg>}
-    {!values.length && <Text style={styles.label}>No values available</Text>}
+    {!values.length && <Text style={styles.label}>{russian ? "Нет данных" : "No values available"}</Text>}
     {!!values.length && <View style={styles.controls}>{series[0].points.filter(p => p.year <= year).map(p =>
       <Pressable key={p.year} accessibilityRole="button" accessibilityState={{ selected: p.year === selection }}
         style={[styles.button, p.year === selection && styles.selected]} onPress={() => setSelectedYear(p.year)}>
-        <Text style={styles.label}>{p.year ? `Year ${p.year}` : 'Start'}</Text>
+        <Text style={styles.label}>{p.year ? `${russian ? "Год" : "Year"} ${p.year}` : russian ? 'Начало' : 'Start'}</Text>
       </Pressable>)}</View>}
     {!!values.length && <Text accessibilityLiveRegion="polite" style={styles.label}>
-      {series[0].points.find(p => p.year === selection)?.date ?? (selection ? `Year ${selection}` : 'Start')}
+      {series[0].points.find(p => p.year === selection)?.date ?? (selection ? `${russian ? "Год" : "Year"} ${selection}` : russian ? 'Начало' : 'Start')}
     </Text>}
     {series.map(s => <Text key={s.id} style={[styles.label, { color: colors[s.id] }]}>
-      {names[s.id]} ({s.annualGrowthPercent}%/yr) · {money(s.points.find(p => p.year === selection)?.positionValue)}
+      {(russian ? russianNames : names)[s.id]} ({s.annualGrowthPercent}%/{russian ? "год" : "yr"}) · {money(s.points.find(p => p.year === selection)?.positionValue, russian)}
     </Text>)}
   </View>;
 }

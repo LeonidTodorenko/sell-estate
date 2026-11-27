@@ -19,8 +19,8 @@ function readAllocation(value: unknown): Allocation | undefined {
     card.items.length > 0 && card.items.every(item => item && typeof item.label === 'string' && Number.isFinite(item.value))) return card;
 }
 
-type Message = { question: string; answer?: string; destination?: Destination; unknown?: boolean; sources?: string[]; allocation?: Allocation; forecast?: Scenario };
-type FaqAnswer = { status: 'answered' | 'unknown' | 'language_changed' | 'consent_required' | 'faq_fallback' | 'retry_later'; topic: string | null; answer: string; conversationId?: string; sources?: string[]; allocation?: unknown; forecast?: unknown };
+type Message = { russian?: boolean; question: string; answer?: string; destination?: Destination; unknown?: boolean; sources?: string[]; allocation?: Allocation; forecast?: Scenario };
+type FaqAnswer = { status: 'answered' | 'unknown' | 'language_changed' | 'consent_required' | 'faq_fallback' | 'retry_later'; topic: string | null; answer: string; language?: string; conversationId?: string; sources?: string[]; allocation?: unknown; forecast?: unknown };
 type AccountItem = { shares?: number; investedAmount?: number; requestedShares?: number; status?: string | number; walletAmount?: number; walletCurrency?: string; createdAt: string };
 type AccountAnswer = { balance?: number; currency?: string; status?: string; items?: AccountItem[] };
 
@@ -75,6 +75,7 @@ function accountText(section: Section, data: AccountAnswer) {
 export function useAssistant(baseUrl: string, token: string) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [allowExternal, setAllowExternal] = useState(false);
+  const [russian, setRussian] = useState(false);
   const conversation = useRef<string | undefined>(undefined);
   const [error, setError] = useState<keyof typeof english>();
   const [pending, setPending] = useState(false);
@@ -120,12 +121,13 @@ export function useAssistant(baseUrl: string, token: string) {
       if (section) {
         result = { question, answer: accountText(section, data), destination: section };
       } else {
-        const { answer, topic, status, conversationId, sources, forecast, allocation } = data as FaqAnswer;
+        const { answer, topic, status, conversationId, language, sources, forecast, allocation } = data as FaqAnswer;
         if (typeof answer !== 'string') throw new HttpError(502);
         conversation.current = conversationId;
+        setRussian(language === 'ru');
         const destination = topic && ['properties', 'property-images', 'payment-plan', 'purchase-plan'].includes(topic)
           ? 'properties' : topic === 'market' || topic === 'rental-income' ? topic : topic && Object.prototype.hasOwnProperty.call(personalPaths, topic) ? topic as Section : undefined;
-        result = { question, answer, destination, sources, allocation: readAllocation(allocation), forecast: readScenario(forecast), unknown: status === 'unknown' || status === 'faq_fallback' };
+        result = { question, answer, russian: language === 'ru', destination, sources, allocation: readAllocation(allocation), forecast: readScenario(forecast), unknown: status === 'unknown' || status === 'faq_fallback' };
       }
       setMessages(previous => [...previous.slice(0, -1), result]);
     } catch (failure) {
@@ -142,5 +144,36 @@ export function useAssistant(baseUrl: string, token: string) {
     }
   }
 
-  return { messages, allowExternal, setAllowExternal, error, pending, copy, send, sections: Object.keys(personalPaths) as Section[] };
+  async function reset() {
+    if (active.current) return false;
+    const controller = new AbortController();
+    active.current = controller;
+    setPending(true);
+    const timer = setTimeout(() => controller.abort(), 20000);
+    try {
+      if (conversation.current) {
+        const response = await fetch(`${baseUrl.replace(/\/$/, '')}/assistant/conversations/${conversation.current}`, {
+          method: 'DELETE', headers: { Authorization: `Bearer ${token}` }, signal: controller.signal,
+        });
+        if (!response.ok) throw new HttpError(response.status);
+      }
+      if (active.current !== controller) return false;
+      conversation.current = undefined;
+      setMessages([]);
+      setAllowExternal(false);
+      setError(undefined);
+      return true;
+    } catch (failure) {
+      if (active.current === controller) setError(failure instanceof HttpError && failure.status === 401 ? 'expired' : 'unavailable');
+      return false;
+    } finally {
+      clearTimeout(timer);
+      if (active.current === controller) {
+        active.current = null;
+        setPending(false);
+      }
+    }
+  }
+
+  return { russian, reset, messages, allowExternal, setAllowExternal, error, pending, copy, send, sections: Object.keys(personalPaths) as Section[] };
 }

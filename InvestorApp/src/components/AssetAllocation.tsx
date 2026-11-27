@@ -9,10 +9,11 @@ const colors = ['#087a4e', '#3c91a0', '#a66b2b', '#7b6ab1'];
 const money = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 const percent = new Intl.NumberFormat('en-US', { style: 'percent', maximumFractionDigits: 1 });
 
-export default function AssetAllocation({ title, items, description }: {
+export default function AssetAllocation({ title, items, description, russian = false }: {
   title: string;
   items: Amount[];
   description: string;
+  russian?: boolean;
 }) {
   const [selection, setSelection] = useState<string>();
   const rows = items.filter(row => Number.isFinite(row.value) && row.value > 0)
@@ -40,7 +41,7 @@ export default function AssetAllocation({ title, items, description }: {
           })}
         </Svg>
         <View pointerEvents="none" style={styles.selection} accessibilityLiveRegion="polite">
-          <Text style={styles.center}>{selected?.label ?? 'Positive total'}</Text>
+          <Text style={styles.center}>{selected?.label ?? (russian ? 'Положительный итог' : 'Positive total')}</Text>
           <Text style={styles.center}>{money.format(selected?.value ?? total)}</Text>
           {selected && <Text style={styles.center}>{percent.format(selected.value / total)}</Text>}
         </View>
@@ -55,7 +56,7 @@ export default function AssetAllocation({ title, items, description }: {
       </Pressable>)}
     </> : <Text style={styles.text}>No positive amounts available</Text>}
     {negative.length > 0 && <>
-      <Text accessibilityRole="header" style={styles.title}>Negative amounts</Text>
+      <Text accessibilityRole="header" style={styles.title}>{russian ? "Отрицательные суммы" : "Negative amounts"}</Text>
       {negative.map(row => <View key={itemKey(row)} style={styles.row}>
         <Text style={styles.label}>{row.label}</Text><Text style={styles.text}>{money.format(row.value)}</Text>
       </View>)}
