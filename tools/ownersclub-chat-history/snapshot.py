@@ -22,6 +22,7 @@ FILES = frozenset({
     "review.json", "last-import.json", "README.md", "HANDOFF.md",
     "tools/archive.py", "tests/test_archive.py",
 })
+MANAGER = "stakeholder-communications/manager/project-messages.json"
 DIALOGUE = re.compile(r"conversations/[0-9]{4,}_[-0-9a-z]{7,10}_[0-9a-f]{8}\.txt")
 ARCHIVE_NAME = "ownersclub.age"
 REQUIRED = {"INDEX.md", "manifest.json", "state.json", "tools/archive.py"}
@@ -29,7 +30,7 @@ MAX_BYTES = 95 * 1024 * 1024
 
 
 def name_allowed(name):
-    return name in FILES or DIALOGUE.fullmatch(name) is not None
+    return name in FILES or name == MANAGER or DIALOGUE.fullmatch(name) is not None
 
 
 def regular(path):
@@ -52,6 +53,13 @@ def load_password(path):
 def pack(root):
     entries = [root / name for name in sorted(FILES) if (root / name).exists()]
     entries.extend(sorted((root / "conversations").glob("*.txt")))
+    manager = root / MANAGER
+    if manager.exists():
+        for directory in (manager.parent, manager.parent.parent):
+            info = directory.lstat()
+            if not stat.S_ISDIR(info.st_mode) or getattr(info, "st_file_attributes", 0) & 0x400:
+                raise ValueError("Unexpected archive directory")
+        entries.append(manager)
     stream = io.BytesIO()
     total = 0
     with tarfile.open(fileobj=stream, mode="w:gz", format=tarfile.USTAR_FORMAT) as archive:
@@ -80,7 +88,7 @@ def unpack(payload, dest):
                 raise ValueError("Unexpected archive member")
             seen.add(entry.name)
             path = dest / entry.name
-            path.parent.mkdir(exist_ok=True)
+            path.parent.mkdir(parents=True, exist_ok=True)
             with archive.extractfile(entry) as source, path.open("xb") as output:
                 output.write(source.read())
     if not REQUIRED <= seen:
@@ -104,6 +112,9 @@ def rebuild_index(root, archive):
             for cid, record in state.items():
                 _, rows, _ = archive.render(cid, record)
                 db.executemany("INSERT INTO history VALUES (?, ?, ?, ?, ?, ?, ?)", rows)
+            manager_rows = getattr(archive, "manager_rows", None)
+            if manager_rows is not None:
+                db.executemany("INSERT INTO history VALUES (?, ?, ?, ?, ?, ?, ?)", manager_rows(root))
     archive.verify(root)
 
 
