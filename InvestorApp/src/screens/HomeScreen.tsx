@@ -1,3 +1,4 @@
+import AssetAllocation from '../components/AssetAllocation';
 import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
@@ -14,6 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
 import { ensureUserInSession } from '../services/ensureUser';
 import BlueButton from '../components/BlueButton';
+import { PortfolioAIInsights } from '../components/NativeInvestmentInsights';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchPropertiesWithExtras, Property } from '../services/properties';
 import { useFocusEffect } from '@react-navigation/native';
@@ -71,6 +73,7 @@ type Totals = {
   marketValue: number;
   rentalIncome: number;
   totalAssets: number;
+  allocationAvailable: boolean;
 };
 
 type Investment = {
@@ -407,6 +410,7 @@ async function fetchHomeData(): Promise<HomeData | null> {
   const a = assetsRes.data;
 
   const totals: Totals = {
+    allocationAvailable: [a.walletBalance, a.investmentValue, a.pendingApplicationsValue, a.marketValue].every(Number.isFinite),
     walletBalance: a.walletBalance ?? 0,
     investmentValue: a.investmentValue ?? 0,
     pendingApplicationsValue: a.pendingApplicationsValue ?? 0,
@@ -493,6 +497,7 @@ export default function MainHomeScreen({ navigation }: any) {
   // const [investmentImagesMap, setInvestmentImagesMap] = useState<Record<string, PropertyImage[]>>({});
   // const [stats, setStats] = useState<AssetStats | null>(null);
   // const [clubInfo, setClubInfo] = useState<ClubInfo | null>(null);
+  const [historySelection, setHistorySelection] = useState<number>();
   const [chartRange, setChartRange] = useState<'3m' | '6m' | '1y' | 'all'>('1y');
   //const [userAvatar, setUserAvatar] = useState<string | null>(null);
 const {
@@ -846,6 +851,9 @@ const clubInfo = homeData?.clubInfo ?? null;
       </AnimatedCard>
 
       <View style={{ height: theme.spacing.xl }} />
+      <PortfolioAIInsights onOpenAssistant={() =>
+        navigation.navigate('Assistant', { question: 'Show my portfolio allocation' })}/>
+      <View style={{ height: theme.spacing.xl }} />
 
       <AnimatedCard delay={60}>
         <SectionHeader
@@ -954,6 +962,14 @@ const clubInfo = homeData?.clubInfo ?? null;
         onSeeAll={() => navigation.navigate('MyFinance')}
       />
 
+      {totals?.allocationAvailable && <AssetAllocation title="Asset structure"
+        description="Current values in USD. The wallet includes credited rental payouts."
+        items={[
+          { label: 'Wallet', value: totals.walletBalance },
+          { label: 'Investments', value: totals.investmentValue },
+          { label: 'Pending applications', value: totals.pendingApplicationsValue },
+          { label: 'Marketplace', value: totals.marketValue },
+        ]}/>}
       <View style={styles.chartCard}>
   <View style={styles.chartTopRow}>
     <View>
@@ -971,12 +987,14 @@ const clubInfo = homeData?.clubInfo ?? null;
   </View>
 
   {combinedChart ? (
+    <>
     <LineChart
       data={combinedChart}
       width={chartWidth}
       height={220}
       yAxisSuffix=" $"
-      withInnerLines={false}
+      onDataPointClick={({ index }) => setHistorySelection(index)}
+      withInnerLines
       withOuterLines={false}
       withVerticalLines={false}
       fromZero={false}
@@ -993,9 +1011,13 @@ const clubInfo = homeData?.clubInfo ?? null;
           stroke: theme.colors.primary,
         },
       }}
-      bezier
       style={styles.chart}
     />
+    {historySelection !== undefined && combinedChart.labels[historySelection] && <Text
+      style={styles.chartIncomeHint} accessibilityLiveRegion="polite">
+      {combinedChart.labels[historySelection]} · {money(combinedChart.datasets[0].data[historySelection])}
+    </Text>}
+    </>
   ) : (
     <View style={styles.chartEmptyWrap}>
       <Text style={styles.emptyText}>No chart data for selected period</Text>
@@ -1004,7 +1026,7 @@ const clubInfo = homeData?.clubInfo ?? null;
 
   <View style={styles.chartTabsRow}>
     <Pressable
-      onPress={() => setChartRange('3m')}
+      onPress={() => { setChartRange('3m'); setHistorySelection(undefined); }}
       style={[styles.chartTab, chartRange === '3m' && styles.chartTabActive]}
     >
       <Text style={[styles.chartTabText, chartRange === '3m' && styles.chartTabTextActive]}>
@@ -1013,7 +1035,7 @@ const clubInfo = homeData?.clubInfo ?? null;
     </Pressable>
 
     <Pressable
-      onPress={() => setChartRange('6m')}
+      onPress={() => { setChartRange('6m'); setHistorySelection(undefined); }}
       style={[styles.chartTab, chartRange === '6m' && styles.chartTabActive]}
     >
       <Text style={[styles.chartTabText, chartRange === '6m' && styles.chartTabTextActive]}>
@@ -1022,7 +1044,7 @@ const clubInfo = homeData?.clubInfo ?? null;
     </Pressable>
 
     <Pressable
-      onPress={() => setChartRange('1y')}
+      onPress={() => { setChartRange('1y'); setHistorySelection(undefined); }}
       style={[styles.chartTab, chartRange === '1y' && styles.chartTabActive]}
     >
       <Text style={[styles.chartTabText, chartRange === '1y' && styles.chartTabTextActive]}>
@@ -1031,7 +1053,7 @@ const clubInfo = homeData?.clubInfo ?? null;
     </Pressable>
 
     <Pressable
-      onPress={() => setChartRange('all')}
+      onPress={() => { setChartRange('all'); setHistorySelection(undefined); }}
       style={[styles.chartTab, chartRange === 'all' && styles.chartTabActive]}
     >
       <Text style={[styles.chartTabText, chartRange === 'all' && styles.chartTabTextActive]}>

@@ -1,3 +1,4 @@
+import AssetAllocation from '../components/AssetAllocation';
 import React, {
   useState,
   useCallback,
@@ -909,7 +910,11 @@ const InvestmentsScreen = () => {
         onRefresh={refetch}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
-        ListHeaderComponent={<View style={{gap: 8, marginBottom: 16}}><Text style={{fontSize: 28, fontWeight: "700", color: theme.colors.text}}>Portfolio</Text><Text style={{color: theme.colors.textSecondary}}>Your property investments and ownership.</Text><DemoBadge visible={isDemo} /></View>}
+        ListHeaderComponent={<View style={{gap: 8, marginBottom: 16}}><Text style={{fontSize: 28, fontWeight: "700", color: theme.colors.text}}>Portfolio</Text><Text style={{color: theme.colors.textSecondary}}>Your property investments and ownership.</Text><DemoBadge visible={isDemo} />
+          {data && <AssetAllocation title={isDemo ? 'Portfolio by property · Demo' : 'Portfolio by property'}
+            description="Current combined share values from the API, including pending applications for these holdings."
+            items={investments.map(item => ({ id: item.propertyId, label: item.propertyTitle || item.propertyId, value: item.totalShareValue }))}/>}
+        </View>}
         ListEmptyComponent={
           !isLoading ? (
             <View style={styles.emptyState}>

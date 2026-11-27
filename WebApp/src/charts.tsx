@@ -36,9 +36,55 @@ export function HistoryChart({ title, points, bars = false, description }: { tit
   </section>;
 }
 
-export function AllocationChart({ title, items, description }: { title: string; items: Allocation[]; description?: string }) {
-  const rows = validAllocation(items), total = rows.reduce((sum, row) => sum + row.value, 0);
-  return <section className="panel analytics-card"><h2>{title}</h2>{description && <p>{description}</p>}{!rows.length ? <Empty title="No allocation data yet">No positive values are available to display. The breakdown will appear when the API returns valued assets; this does not imply that your account balance is zero.</Empty> : <><div className="allocation-bar" aria-hidden="true">{rows.map((row, i) => <span key={i} style={{ width: `${row.value / total * 100}%`, background: colors[i % colors.length] }}/>)}</div><ul className="allocation-legend">{rows.map((row, i) => <li key={i}><span className="allocation-label"><i style={{ background: colors[i % colors.length] }}/>{row.label}</span><strong>{money(row.value)} <small>({(row.value / total * 100).toFixed(1)}%)</small></strong></li>)}</ul></>}</section>;
+export function AllocationChart({ title, items, description }: {
+  title: string; items: Allocation[]; description?: string;
+}) {
+  const id = useId();
+  const [selection, setSelection] = useState<number>();
+  const rows = validAllocation(items).sort((a, b) => b.value - a.value || a.label.localeCompare(b.label));
+  const negative = items.filter(item => Number.isFinite(item.value) && item.value < 0);
+  const total = rows.reduce((sum, row) => sum + row.value, 0);
+  const selected = selection === undefined ? undefined : rows[selection];
+  const percent = (value: number) => new Intl.NumberFormat('en-US', {
+    style: 'percent', maximumFractionDigits: 1,
+  }).format(value / total);
+  let offset = 0;
+
+  return <section className="panel analytics-card" aria-labelledby={id}>
+    <h2 id={id}>{title}</h2>
+    {description && <p className="muted">{description}</p>}
+    {rows.length ? <div className="allocation-content">
+      <div className="allocation-visual">
+        <svg viewBox="0 0 120 120" aria-hidden="true">
+          {rows.map((row, i) => {
+            const length = row.value / total * 100;
+            const start = offset;
+            offset += length;
+            return <circle key={i} cx="60" cy="60" r="47" pathLength="100"
+              fill="none" stroke={colors[i % colors.length]} strokeWidth={selection === i ? 22 : 18}
+              strokeDasharray={`${length} ${100 - length}`} strokeDashoffset={-start}
+              transform="rotate(-90 60 60)" onClick={() => setSelection(i)}
+              style={{ cursor: 'pointer' }}/>;
+          })}
+        </svg>
+        <p className="allocation-selection" aria-live="polite">
+          <span>{selected?.label ?? 'Positive total'}</span>
+          <strong>{money(selected?.value ?? total)}</strong>
+          {selected && <span>{percent(selected.value)}</span>}
+        </p>
+      </div>
+      <ul className="allocation-legend">
+        {rows.map((row, i) => <li key={i}><button type="button" aria-pressed={i === selection}
+          onClick={() => setSelection(i)}>
+          <span className="allocation-label"><i aria-hidden="true" style={{ background: colors[i % colors.length] }}/>{row.label}</span>
+          <strong>{money(row.value)} <small>({percent(row.value)})</small></strong>
+        </button></li>)}
+      </ul>
+    </div> : <Empty title="No positive amounts available"/>}
+    {!!negative.length && <div><h3>Negative amounts</h3>
+      <dl className="allocation-negative">{negative.map((row, i) => <div key={i}><dt>{row.label}</dt><dd>{money(row.value)}</dd></div>)}</dl>
+    </div>}
+  </section>;
 }
 
 export function DashboardHistory({ session }: { session: Session }) {
@@ -48,14 +94,27 @@ export function DashboardHistory({ session }: { session: Session }) {
 
 export function AssetStructure({ session }: { session: Session }) {
   const totals = useResource<Totals>(`/users/${encodeURIComponent(session.user.id)}/total-assets`);
-  return <Resource resource={totals}>{data => {
-    const items = [{ label: 'Wallet', value: data.walletBalance }, { label: 'Investments', value: data.investmentValue }, { label: 'Pending applications', value: data.pendingApplicationsValue }, { label: 'Marketplace', value: data.marketValue }];
-    if (items.some(p => p.value == null || !Number.isFinite(p.value) || p.value < 0)) return <section className="panel"><h2>Asset structure</h2><Empty title="Asset breakdown unavailable">The API did not provide a complete, non-negative breakdown.</Empty></section>;
-    return <AllocationChart title="Asset structure" items={items.map(p => ({ label: p.label, value: p.value! }))} description="Current asset values. Rental payouts credited to your wallet are already included and are not added again."/>;
-  }}</Resource>;
+  return <Resource resource={totals}>{data => <AssetStructureChart data={data}/>}</Resource>;
 }
 
-export function PortfolioAllocation({ session }: { session: Session }) {
-  const holdings = useResource<Holding[]>(`/investments/with-aggregated/${encodeURIComponent(session.user.id)}`);
-  return <Resource resource={holdings}>{data => <AllocationChart title="Portfolio by property" items={data.map(p => ({ label: p.propertyTitle || p.propertyId, value: p.totalShareValue }))} description="Aggregated share value per property, including pending shares returned by the API. Independent of the purchase-history filters below."/>}</Resource>;
+export function AssetStructureChart({ data }: { data: Totals }) {
+  const items = [
+    { label: 'Wallet', value: data.walletBalance },
+    { label: 'Investments', value: data.investmentValue },
+    { label: 'Pending applications', value: data.pendingApplicationsValue },
+    { label: 'Marketplace', value: data.marketValue },
+  ];
+  if (items.some(item => item.value == null || !Number.isFinite(item.value))) {
+    return <section className="panel"><h2>Asset structure</h2>
+      <Empty title="Asset breakdown unavailable">Some components are missing from the API response.</Empty>
+    </section>;
+  }
+  return <AllocationChart title="Asset structure" items={items.map(item => ({ label: item.label, value: item.value! }))}
+    description="Current asset values in USD. The wallet already includes credited rental payouts."/>;
+}
+
+export function PortfolioAllocation({ data }: { data: Holding[] }) {
+  const items = data.map(p => ({ label: p.propertyTitle || p.propertyId, value: p.totalShareValue }));
+  return <AllocationChart title="Portfolio by property" items={items}
+    description="Combined share value per property in USD, including pending shares returned by the API."/>;
 }

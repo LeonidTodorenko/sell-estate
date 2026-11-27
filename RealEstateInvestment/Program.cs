@@ -174,6 +174,7 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddTransient<EmailService>();
 builder.Services.AddSingleton<CaptchaService>();
 builder.Services.AddScoped<ISuperUserService, SuperUserService>();
+builder.Services.AddScoped<RentalPayoutService>();
  
 builder.Services.AddHttpClient();
 builder.Services.Configure<PaymentOptions>(builder.Configuration.GetSection("Payments"));
@@ -377,7 +378,7 @@ app.MapGet("/support", () =>
     """, "text/html");
 });
 
-app.MapGet("/health", () => Results.Ok(new { status = "ok", release = "30.8.4",
+app.MapGet("/health", () => Results.Ok(new { status = "ok", release = "30.9.0",
     commit = Environment.GetEnvironmentVariable("RENDER_GIT_COMMIT"),
     backgroundJobsEnabled, schedulerMode = backgroundJobsEnabled ? "due-stage-settlement" : "off",
     passwordCompatibility = "identity-v3-210000-legacy" }));

@@ -56,6 +56,7 @@ internal sealed class FinancialTestHost : IDisposable
                 else o.UseNpgsql(isolatedPostgres);
                 if (interceptor != null) o.AddInterceptors(interceptor);
             });
+            services.AddScoped<RentalPayoutService>();
             services.AddSingleton<ISuperUserService>(new StubSuperUser(Admin));
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(o =>
             {
@@ -82,6 +83,7 @@ internal sealed class FinancialTestHost : IDisposable
             services.AddTransient<KycController>(sp => new KycController(sp.GetRequiredService<AppDbContext>(), null!));
             services.AddTransient<PropertyController>(sp => new PropertyController(
                 sp.GetRequiredService<AppDbContext>(), null!, null!, null!));
+            services.AddSingleton<IFirebaseNotificationService, NoPush>();
             configure?.Invoke(services);
         }).Configure(app =>
         {
@@ -114,6 +116,12 @@ internal sealed class FinancialTestHost : IDisposable
                 LockedInvestedAmount = 20, ExpirationDate = DateTime.UtcNow.AddDays(2) });
             db.SaveChanges();
         });
+    }
+
+    private sealed class NoPush : IFirebaseNotificationService
+    {
+        public Task SendNotificationAsync(string token, string title, string body) =>
+            throw new InvalidOperationException("External push forbidden in QA");
     }
 
     public void Login(Guid? id, bool demo = false, string role = "investor", string? identity = null)

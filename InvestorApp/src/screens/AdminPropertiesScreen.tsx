@@ -317,8 +317,8 @@ const AdminPropertiesScreen = () => {
 
       <Modal isVisible={rentModalVisible} onBackdropPress={() => setRentModalVisible(false)}>
         <View style={{ backgroundColor: 'white', padding: 20, borderRadius: 10 }}>
-          <Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 10 }}>Enter rent amount (optional):</Text>
-          <Text style={{ marginBottom: 5, fontStyle: 'italic' }}>Leave blank to use full monthly rent.</Text>
+          <Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 10 }}>Rent available for distribution</Text>
+          <Text style={{ marginBottom: 5, fontStyle: 'italic' }}>Enter the available amount before the club fee, or leave blank to use the configured monthly rent.</Text>
           <TextInput
             placeholder="Amount in USD"
             keyboardType="numeric"
@@ -331,8 +331,13 @@ const AdminPropertiesScreen = () => {
             title=" Confirm Rent Payment"
             onPress={async () => {
               try {
+                const amount = rentAmount.trim();
+                if (amount && (!/^\d+(\.\d{1,2})?$/.test(amount) || !Number.isFinite(Number(amount)) || Number(amount) <= 0)) {
+                  Alert.alert('Invalid amount', 'Enter a positive amount in dollars and cents.');
+                  return;
+                }
                 await api.post(`/properties/${rentTargetPropertyId}/pay-rent`, {
-                  customAmount: rentAmount ? parseFloat(rentAmount) : null,
+                  customAmount: amount ? Number(amount) : null,
                 });
                 Alert.alert('Success', 'Rent paid to investors');
                 setRentModalVisible(false);

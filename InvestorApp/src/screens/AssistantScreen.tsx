@@ -1,3 +1,5 @@
+import AssetAllocation from '../components/AssetAllocation';
+import { AssistantScenarioCard } from "../components/AssistantScenarioCard";
 import React, { useCallback, useContext, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
@@ -39,7 +41,7 @@ export default function AssistantScreen(props: Props) {
   if (!token) return <View style={styles.page}>
     <Action label="Sign in to use the assistant" press={() => props.navigation.replace('Login')}/>
   </View>;
-  return <Conversation key={token} token={token} navigation={props.navigation}
+  return <Conversation key={token} token={token} navigation={props.navigation} context={props.route?.params}
     signIn={async () => { await signOut(); props.navigation.reset({ index: 0, routes: [{ name: 'Login' }] }); }}/>;
 }
 
@@ -48,9 +50,22 @@ function Action({ label, press, disabled }: { label: string; press: () => void; 
     style={[styles.action, disabled && styles.disabled]}><Text style={styles.actionText}>{label}</Text></Pressable>;
 }
 
-function Conversation({ token, navigation, signIn }: {token: string; navigation: Props['navigation']; signIn: () => Promise<void>}) {
+function Conversation({ token, navigation, context, signIn }: {
+  token: string;
+  navigation: Props['navigation'];
+  context: Props['route']['params'];
+  signIn: () => Promise<void>;
+}) {
   const { messages, send, pending, error, allowExternal, setAllowExternal, copy, sections } = useAssistant(API_BASE_URL, token);
-  const [draft, setDraft] = useState('');
+  const [draft, setDraft] = useState(context?.question ?? '');
+  const [propertyId, setPropertyId] = useState(context?.propertyId);
+  useFocusEffect(useCallback(() => {
+    if (context?.question) {
+      setDraft(context.question);
+      setPropertyId(context.propertyId);
+      navigation.setParams({ question: '', propertyId: undefined });
+    }
+  }, [context?.question, context?.propertyId, navigation]));
   const log = useRef<ScrollView>(null);
   const faqY = useRef(0);
   const stayAtFaq = useRef(false);
@@ -69,10 +84,13 @@ function Conversation({ token, navigation, signIn }: {token: string; navigation:
       <Text accessibilityRole="header" style={styles.heading}>{copy.account}</Text>
       <View style={styles.row}>{sections.map(section => <Action key={section} label={copy[section]} disabled={disabled}
         press={() => ask(copy[section], section)}/>)}</View>
-      {messages.map(({ question, answer, destination, sources, unknown }, index) => <View key={index} style={styles.turn}>
+      {messages.map(({ question, answer, destination, sources, unknown, forecast, allocation }, index) => <View key={index} style={styles.turn}>
         <Text style={styles.question}>{question}</Text>
         {answer && <View style={styles.answer}>
           <Text selectable style={styles.text}>{answer}</Text>
+          {allocation && <AssetAllocation title={allocation.demo ? 'Asset structure · Demo' : 'Asset structure'}
+            description="Estimated values in USD. The wallet includes credited rental payouts." items={allocation.items}/>}
+          {forecast && <AssistantScenarioCard card={forecast}/>}
           {!!sources?.length && <Text selectable style={styles.text}>Sources: {sources.join(", ")}</Text>}
           {destination && <Action label={copy[destination]} press={() => navigation.navigate(destinations[destination])}/>}
           {unknown && <Action label={copy.faq} press={() => {
@@ -95,7 +113,9 @@ function Conversation({ token, navigation, signIn }: {token: string; navigation:
       <TextInput accessibilityLabel={copy.prompt} placeholder={copy.prompt} placeholderTextColor={theme.colors.textSecondary}
         value={draft} onChangeText={setDraft} maxLength={400} style={styles.input}/>
       <Action label={copy.send} disabled={disabled || !draft.trim()} press={() => {
-        ask(draft);
+        stayAtFaq.current = false;
+        void send(draft, undefined, propertyId);
+        setPropertyId(undefined);
         setDraft('');
       }}/>
     </View>

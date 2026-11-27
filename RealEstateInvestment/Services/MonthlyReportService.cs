@@ -1,4 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+using System.Globalization;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
@@ -19,12 +21,14 @@ namespace RealEstateInvestment.Services
         private readonly AppDbContext _db;
         private readonly EmailService _email;
         private readonly ILogger<MonthlyReportService> _logger;
+        private readonly IMemoryCache? _commentaryCache;
 
-        public MonthlyReportService(AppDbContext db, EmailService email, ILogger<MonthlyReportService> logger)
+        public MonthlyReportService(AppDbContext db, EmailService email, ILogger<MonthlyReportService> logger, IMemoryCache? commentaryCache = null)
         {
             _db = db;
             _email = email;
             _logger = logger;
+            _commentaryCache = commentaryCache;
 
             // QuestPDF: Community лицензия
             QuestPDF.Settings.License = LicenseType.Community;
@@ -248,11 +252,19 @@ namespace RealEstateInvestment.Services
 
                 var title = $"Monthly report {periodStart:yyyy-MM}";
 
+                string Commentary() => $"Recorded net account activity for the month: {totalPnl.ToString("0.00", CultureInfo.InvariantCulture)} USD. " +
+                    $"Recorded rental receipts: {totalRentForPeriod.ToString("0.00", CultureInfo.InvariantCulture)} USD.";
+                var commentary = _commentaryCache is null ? Commentary() :
+                    _commentaryCache.GetOrCreate(("monthly-report-commentary-v1", userId, periodStart, totalPnl, totalRentForPeriod), entry =>
+                    {
+                        entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30);
+                        return Commentary();
+                    });
                 await _email.SendEmailWithAttachmentAsync(
                     user.Email,
                     title,
                     $"<p>Hello, {System.Net.WebUtility.HtmlEncode(user.FullName)}!</p>" +
-                    $"<p>We attached your report for period {periodStart:yyyy-MM}.</p>",
+                    $"<p>We attached your report for period {periodStart:yyyy-MM}.</p><p>{commentary}</p>",
                     $"monthly-report-{periodStart:yyyy-MM}.pdf",
                     pdfBytes
                 );

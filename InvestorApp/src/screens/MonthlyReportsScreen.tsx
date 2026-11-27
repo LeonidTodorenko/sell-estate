@@ -1,3 +1,4 @@
+import AssetAllocation from '../components/AssetAllocation';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
@@ -14,6 +15,7 @@ type Report = {
   rentalIncome: number;
   totalCapital: number;
   capitalChange: number;
+  commentary?: string;
 };
 
 const money = (value: number) => `$${Number(value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -25,7 +27,7 @@ export default function MonthlyReportsScreen() {
   const isDemo = session?.isDemo === true || session?.user?.isDemo === true;
   const demoCode = session?.demoCode ?? session?.user?.demoCode ?? null;
   const query = useQuery({
-    queryKey: ['demo-monthly-reports'],
+    queryKey: ['demo-monthly-reports', session?.user?.userId ?? session?.user?.id],
     queryFn: async () => (await api.get<Report[]>('/demo/monthly-reports')).data,
     enabled: sessionLoaded && isDemo,
   });
@@ -39,7 +41,7 @@ export default function MonthlyReportsScreen() {
       <Text style={styles.heading}>Monthly portfolio reports</Text>
       <Text style={styles.subtitle}>A month-by-month snapshot of your virtual capital.</Text>
       {query.isError && <Text style={styles.error}>Unable to load reports. Pull down to retry.</Text>}
-      {query.data?.map(report => {
+      {isDemo && query.data?.map(report => {
         const changeUp = report.capitalChange >= 0;
         return <View key={report.id} style={styles.card}>
           <View style={styles.row}><Text style={styles.month}>{report.reportMonth.slice(0, 7)}</Text><Text style={[styles.change, !changeUp && styles.down]}>{changeUp ? '+' : ''}{money(report.capitalChange)}</Text></View>
@@ -48,6 +50,10 @@ export default function MonthlyReportsScreen() {
           <View style={styles.row}><Text style={styles.label}>Wallet</Text><Text style={styles.value}>{money(report.walletBalance)}</Text></View>
           <View style={styles.row}><Text style={styles.label}>Investments</Text><Text style={styles.value}>{money(report.investmentValue)}</Text></View>
           <View style={styles.row}><Text style={styles.label}>Rental income to date</Text><Text style={styles.value}>{money(report.rentalIncome)}</Text></View>
+          {Number.isFinite(report.walletBalance) && Number.isFinite(report.investmentValue) &&
+            <AssetAllocation title="Demo capital composition" description="Snapshot amounts in USD. The wallet includes credited rent."
+              items={[{ label: 'Wallet', value: report.walletBalance }, { label: 'Investments', value: report.investmentValue }]}/>}
+          {!!report.commentary && <Text style={styles.subtitle}>{report.commentary}</Text>}
         </View>;
       })}
       {!query.isError && query.data?.length === 0 && (

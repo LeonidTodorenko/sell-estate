@@ -100,8 +100,8 @@ android {
         applicationId "com.investorapp"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 11
-        versionName "30.8.5"
+        versionCode 12
+        versionName "30.9.0"
     }
     signingConfigs {
         release {

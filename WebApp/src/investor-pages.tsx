@@ -1,4 +1,4 @@
-import { AssetStructure, HistoryChart } from './charts';
+import { AllocationChart, AssetStructure, HistoryChart } from './charts';
 import { monthlyRent } from './chart-data';
 import { useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
@@ -30,7 +30,10 @@ export function MonthlyReports({ session }: { session: Session }) {
 }
 function DemoReports({ path }: { path: string }) {
   const resource = useResource<MonthlyReport[]>(path);
-  return <><button className="back-link" onClick={resource.retry}>Refresh</button><Resource resource={resource}>{data => data.length ? <div className="report-grid">{[...data].sort((a, b) => Date.parse(b.reportMonth) - Date.parse(a.reportMonth)).map(r => <article className="panel" key={r.id}><h2>{date(r.reportMonth)}</h2><p>Total capital <strong>{money(r.totalCapital)}</strong></p><dl><dt>Capital change</dt><dd>{r.capitalChange > 0 ? '+' : ''}{money(r.capitalChange)}</dd><dt>Wallet</dt><dd>{money(r.walletBalance)}</dd><dt>Investments</dt><dd>{money(r.investmentValue)}</dd><dt>Rental income to date</dt><dd>{money(r.rentalIncome)}</dd></dl></article>)}</div> : <Empty title="Your first demo report is on its way">Monthly snapshots appear after a full demo month has been completed.</Empty>}</Resource></>;
+  return <><button className="back-link" onClick={resource.retry}>Refresh</button><Resource resource={resource}>{data => data.length ? <div className="report-grid">{[...data].sort((a, b) => Date.parse(b.reportMonth) - Date.parse(a.reportMonth)).map(r => <article className="panel" key={r.id}><h2>{date(r.reportMonth)}</h2><p>Total capital <strong>{money(r.totalCapital)}</strong></p><dl><dt>Capital change</dt><dd>{r.capitalChange > 0 ? '+' : ''}{money(r.capitalChange)}</dd><dt>Wallet</dt><dd>{money(r.walletBalance)}</dd><dt>Investments</dt><dd>{money(r.investmentValue)}</dd><dt>Rental income to date</dt><dd>{money(r.rentalIncome)}</dd></dl>{Number.isFinite(r.walletBalance) && Number.isFinite(r.investmentValue) &&
+  <AllocationChart title="Demo capital composition" description="Snapshot amounts in USD. The wallet includes credited rent."
+    items={[{ label: 'Wallet', value: r.walletBalance }, { label: 'Investments', value: r.investmentValue }]}/>}
+    {r.commentary && <details><summary>About this Demo snapshot</summary><p>{r.commentary}</p></details>}</article>)}</div> : <Empty title="Your first demo report is on its way">Monthly snapshots appear after a full demo month has been completed.</Empty>}</Resource></>;
 }
 export function Inbox({ session }: { session: Session }) {
  const resource=useResource<InboxMessage[]>(investorPaths(session).inbox);

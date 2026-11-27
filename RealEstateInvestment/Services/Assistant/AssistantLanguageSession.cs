@@ -10,12 +10,28 @@ public sealed class AssistantLanguageSession : IDisposable
 {
     private readonly MemoryCache conversations = new(new MemoryCacheOptions { SizeLimit = 1024 });
     private readonly object gate = new();
+    private readonly MemoryCache market = new(new MemoryCacheOptions { SizeLimit = 1 });
+
+    internal T CachedMarket<T>(IConfiguration config, DateOnly today, Func<T> read)
+    {
+        lock (gate)
+        {
+            return market.GetOrCreate(today, entry =>
+            {
+                entry.Size = 1;
+                entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(15);
+                entry.AddExpirationToken(config.GetReloadToken());
+                return read();
+            })!;
+        }
+    }
 
     internal sealed class Conversation
     {
         public SemaphoreSlim Slot { get; } = new(1, 1);
         public bool Russian { get; set; }
         public bool LanguageSelected { get; set; }
+        internal ScenarioContext? Scenario { get; set; }
         public string? AccountTopic { get; set; }
         public IReadOnlyList<string> LastSourceSections { get; set; } = [];
         public List<AssistantTurn> Turns { get; } = [];
@@ -47,5 +63,9 @@ public sealed class AssistantLanguageSession : IDisposable
         _ => null
     };
 
-    public void Dispose() => conversations.Dispose();
+    public void Dispose()
+    {
+        conversations.Dispose();
+        market.Dispose();
+    }
 }

@@ -1,10 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  SafeAreaView,
   StatusBar,
   StyleSheet,
-  View,
 } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import {
   QueryClient,
   QueryClientProvider,
@@ -110,8 +109,8 @@ export default function App() {
         <NetworkProvider>
           <LoadingProvider>
             <AuthProvider>
-              <View style={styles.root}>
-                <SafeAreaView style={styles.container}>
+              <SafeAreaProvider style={styles.root}>
+                <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
                   <StatusBar
                     backgroundColor={theme.colors.background}
                     barStyle="dark-content"
@@ -121,7 +120,7 @@ export default function App() {
                 </SafeAreaView>
 
                 <NetworkStatusBanner />
-              </View>
+              </SafeAreaProvider>
             </AuthProvider>
           </LoadingProvider>
         </NetworkProvider>

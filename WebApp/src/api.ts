@@ -33,7 +33,7 @@ export class ApiError extends Error {
   status: number;
   constructor(message: string, status: number) { super(message); this.status = status; }
 }
-async function request<T>(path: string, token?: string, body?: unknown, signal?: AbortSignal, method?: string, extraHeaders?: Record<string, string>): Promise<T> {
+async function request<T>(path: string, token?: string, body?: unknown, signal?: AbortSignal, method?: string, extraHeaders?: Record<string, string>, readOnly = false): Promise<T> {
   const controller = new AbortController();
   const cancel = () => controller.abort();
   if (signal?.aborted) cancel();
@@ -49,7 +49,7 @@ async function request<T>(path: string, token?: string, body?: unknown, signal?:
     let data: unknown;
     try { data = raw ? JSON.parse(raw) : undefined; } catch { data = response.headers.get('content-type')?.includes('text/plain') ? raw : undefined; }
     if (!response.ok) {
-      if (response.status === 401 && token && session?.accessToken === token && body !== undefined) save(null);
+      if (response.status === 401 && token && session?.accessToken === token && body !== undefined && !readOnly) save(null);
       const detail = data && typeof data === 'object' ? data as Record<string, unknown> : {};
       throw new ApiError(typeof detail.message === 'string' ? detail.message : typeof detail.title === 'string' ? detail.title : response.status === 403 ? 'Access is unavailable for this account. Check your account status or sign in again.' : `Request failed (${response.status}). Please try again.`, response.status);
     }
@@ -80,20 +80,32 @@ async function refresh(): Promise<Session | null> {
   })();
   try { return await refreshing; } finally { refreshing = null; }
 }
-export async function api<T>(path: string, signal?: AbortSignal): Promise<T> {
+export function api<T>(path: string, signal?: AbortSignal): Promise<T> {
+  return readApi(path, signal);
+}
+
+export function requestInvestmentForecast(propertyId: string, body: unknown, signal: AbortSignal) {
+  return readApi<unknown>(`/properties/${encodeURIComponent(propertyId)}/investment-forecast`, signal, body);
+}
+
+export function requestAssistantForecast(propertyId: string, body: unknown, signal: AbortSignal) {
+  return readApi<{ text?: unknown; chart?: unknown }>(`/assistant/investment-forecast/${encodeURIComponent(propertyId)}`, signal, body);
+}
+
+async function readApi<T>(path: string, signal?: AbortSignal, body?: unknown): Promise<T> {
   let current = session;
   const requestedUserId = current?.user.id;
   const requestedDemo = current?.isDemo;
   if (current && isExpired(current)) current = await refresh();
   if (!current) throw new ApiError('Your session has expired. Please sign in again.', 401);
   if (current.user.id !== requestedUserId || current.isDemo !== requestedDemo) throw new ApiError('The active account changed. Please reload this page.', 401);
-  try { return await request<T>(path, current.accessToken, undefined, signal); }
+  try { return await request<T>(path, current.accessToken, body, signal, undefined, undefined, true); }
   catch (error) {
     if (!(error instanceof ApiError) || error.status !== 401 || signal?.aborted) throw error;
     // Another concurrent request may already have rotated the token.
     const next = session !== current ? session : await refresh();
     if (!next || next.user.id !== current.user.id || next.isDemo !== current.isDemo) throw error;
-    try { return await request<T>(path, next.accessToken, undefined, signal); }
+    try { return await request<T>(path, next.accessToken, body, signal, undefined, undefined, true); }
     catch (retryError) { if (retryError instanceof ApiError && retryError.status === 401 && session === next) save(null); throw retryError; }
   }
 }
@@ -207,6 +219,18 @@ export async function adminWrite(expected: Session, action: 'role' | 'block' | '
 }
 
 // Property writes use a closed route set and never replay after an uncertain response.
+export async function approveForecastRates(expected: Session, propertyId: string | undefined, body: unknown) {
+  let current = session;
+  const allowed = () => isAdminSession(expected) && isAdminSession(current) && current?.user.id === expected.user.id;
+  if (!allowed()) throw new ApiError('Administrator access is required.', 403);
+  if (current && isExpired(current)) current = await refresh();
+  if (!allowed() || !current) throw new ApiError('Your administrator session changed. Reload this page.', 403);
+  const suffix = propertyId ? `?propertyId=${encodeURIComponent(propertyId)}` : '';
+  await request(`/admin/forecast-rates${suffix}`, current.accessToken, body, undefined, 'PUT');
+  if (session?.user.id !== expected.user.id || !isAdminSession(session))
+    throw new ApiError('Account changed. Verify the saved state before retrying.', 403);
+}
+
 export async function propertyWrite(expected: Session, action: 'update' | 'add-image' | 'delete-image', id: string, body?: unknown) {
   let current = session;
   const allowed = () => isAdminSession(expected) && isAdminSession(current) && current?.user.id === expected.user.id;

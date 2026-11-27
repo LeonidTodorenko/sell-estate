@@ -451,13 +451,120 @@ public sealed class FinancialEndpointTests
         Assert.Equal(HttpStatusCode.OK, (await h.Client.PostAsJsonAsync($"/api/kyc/{id}/delete", new { })).StatusCode);
     }
 
-    [Fact]
-    public async Task Manual_rent_payout_cannot_be_repeated_inside_existing_30_day_window()
+    [Theory]
+    [InlineData("pending", 1000)]
+    [InlineData("rented", 999)]
+    [InlineData("rented", -1)]
+    [InlineData("rented", 0)]
+    public async Task Manual_rent_routes_require_rented_and_a_known_completed_plan(string status, int paid)
     {
-        using var h = new FinancialTestHost(); h.Login(h.Admin, role: "admin");
-        var route = $"/api/properties/{h.PropertyId}/pay-rent";
-        Assert.Equal(HttpStatusCode.OK, (await h.Client.PostAsJsonAsync(route, new { customAmount = 100m })).StatusCode);
-        Assert.Equal(HttpStatusCode.Conflict, (await h.Client.PostAsJsonAsync(route, new { customAmount = 100m })).StatusCode);
-        h.WithDb(db => { Assert.Equal(1010, db.Users.Find(h.Actor)!.WalletBalance); Assert.Single(db.UserTransactions); });
+        using var h = new FinancialTestHost();
+        h.WithDb(db =>
+        {
+            var property = db.Properties.Find(h.PropertyId)!;
+            property.Status = status;
+            property.MonthlyRentalIncome = 100m;
+            var plan = db.PaymentPlans.Single();
+            if (paid == -1) db.PaymentPlans.Remove(plan);
+            else
+            {
+                plan.Paid = paid;
+                if (paid == 0) plan.Total = 0;
+            }
+            db.SaveChanges();
+        });
+        h.Login(h.Admin, role: "admin");
+        Assert.Equal(HttpStatusCode.BadRequest,
+            (await h.Client.PostAsJsonAsync($"/api/properties/{h.PropertyId}/pay-rent", new { })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest,
+            (await h.Client.PostAsync($"/api/rentals/payout/{h.PropertyId}", null)).StatusCode);
+        h.WithDb(db =>
+        {
+            Assert.Equal(1000m, db.Users.Find(h.Actor)!.WalletBalance);
+            Assert.Empty(db.UserTransactions);
+            Assert.Empty(db.RentalIncomes);
+        });
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    public async Task Manual_rent_routes_share_ownership_fees_and_repeat_guard(bool useLegacy, bool expiredReward)
+    {
+        using var h = new FinancialTestHost();
+        h.WithDb(db =>
+        {
+            var property = db.Properties.Find(h.PropertyId)!;
+            property.Status = "rented";
+            property.MonthlyRentalIncome = useLegacy ? 1000m : 2000m;
+            var plan = db.PaymentPlans.Single();
+            plan.Paid = plan.Total;
+            db.Investments.Add(new Investment { PropertyId = h.PropertyId, UserId = h.Admin, Shares = 5 });
+            db.Referrals.Add(new Referral
+            {
+                InviterUserId = h.Other, RefereeUserId = h.Actor, ReferrerRewardPercent = 0.05m,
+                RewardValidUntil = DateTime.UtcNow.AddDays(expiredReward ? -1 : 1)
+            });
+            db.SaveChanges();
+        });
+        var propertyRoute = $"/api/properties/{h.PropertyId}/pay-rent";
+        var rentalRoute = $"/api/rentals/payout/{h.PropertyId}";
+        h.Login(h.Actor);
+        Assert.Equal(HttpStatusCode.Forbidden, (await h.Client.PostAsJsonAsync(propertyRoute, new { })).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await h.Client.PostAsync(rentalRoute, null)).StatusCode);
+        h.Login(h.Admin, role: "admin");
+        var response = useLegacy ? await h.Client.PostAsync(rentalRoute, null)
+            : await h.Client.PostAsJsonAsync(propertyRoute, new { customAmount = 1000m });
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await h.Client.PostAsync(rentalRoute, null)).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await h.Client.PostAsJsonAsync(propertyRoute, new { })).StatusCode);
+
+        h.WithDb(db =>
+        {
+            var reward = expiredReward ? 0m : 0.35m;
+            Assert.Equal(1093m, db.Users.Find(h.Actor)!.WalletBalance);
+            Assert.Equal(1018m + reward, db.Users.Find(h.Other)!.WalletBalance);
+            Assert.Equal(1059m - reward, db.Users.Find(h.Admin)!.WalletBalance);
+            Assert.Equal(170m, db.UserTransactions.ToList().Sum(tx => tx.Amount));
+            Assert.Equal(3, db.RentalIncomes.Count());
+            Assert.Equal(3, db.Messages.Count());
+            Assert.Contains("unallocated 830.00 USD", db.ActionLogs.Single(x => x.Action == "AdminRentPayout").Details);
+        });
+    }
+
+    [Fact]
+    public void Rental_apartment_fixture_clones_an_existing_card_for_two_synthetic_testers()
+    {
+        using var h = new FinancialTestHost();
+        h.WithDb(db =>
+        {
+            var template = db.Properties.Find(h.PropertyId)!;
+            var apartment = new Property
+            {
+                Id = Guid.NewGuid(), Title = "OwnersClub — Rental Apartment", Location = template.Location,
+                About = template.About, ImageBase64 = template.ImageBase64, TotalShares = 100, AvailableShares = 98, Price = 100_000m,
+                Status = "rented", MonthlyRentalIncome = 1000m, LastPayoutDate = DateTime.UtcNow.AddDays(-40)
+            };
+            apartment.PaymentPlans = new List<PaymentPlan>
+            {
+                new() { PropertyId = apartment.Id, Milestone = "Synthetic completed funding",
+                    AmountDue = apartment.Price, Total = apartment.Price, Paid = apartment.Price,
+                    DueDate = DateTime.UtcNow.AddDays(-60) }
+            };
+            db.Properties.Add(apartment);
+            db.Investments.AddRange(new[] { h.Actor, h.Other }.Select(userId => new Investment
+            {
+                PropertyId = apartment.Id, UserId = userId, Shares = 1, InvestedAmount = 1000m
+            }));
+            foreach (var tester in db.Users.Where(u => u.Id == h.Actor || u.Id == h.Other))
+                tester.WalletBalance -= 1000m;
+            db.SaveChanges();
+
+            Assert.NotEqual(template.Id, apartment.Id);
+            Assert.Equal("pending", template.Status);
+            Assert.Equal(1000m, apartment.Price / apartment.TotalShares);
+            Assert.Equal(2, db.Investments.Count(i => i.PropertyId == apartment.Id));
+            Assert.Equal(0m, apartment.PaymentPlans.Single().Outstanding);
+        });
     }
 }

@@ -87,10 +87,21 @@ public sealed class Integration262BTests
         await (Task)method.Invoke(service,new object[]{h.PropertyId})!;
         await (Task)method.Invoke(service,new object[]{h.PropertyId})!;
         h.WithDb(db=>{Assert.Equal("accepted",db.InvestmentApplications.Single(x=>x.UserId==h.Actor&&x.PropertyId==h.PropertyId).Status);Assert.Equal(20,db.PaymentPlans.Single(x=>x.PropertyId==h.PropertyId).Paid);Assert.Equal(12,db.Investments.Where(x=>x.PropertyId==h.PropertyId&&x.UserId==h.Actor).Sum(x=>x.Shares));Assert.Equal(980,db.Users.Find(h.Actor)!.WalletBalance);});
-        h.Login(h.Admin,role:"admin");var route=$"/api/properties/{h.PropertyId}/pay-rent";
-        await Ok(await h.Client.PostAsJsonAsync(route,new {customAmount=100m}));
-        Assert.Equal(HttpStatusCode.Conflict,(await h.Client.PostAsJsonAsync(route,new {customAmount=100m})).StatusCode);
-        h.WithDb(db=>{Assert.Equal(992,db.Users.Find(h.Actor)!.WalletBalance);Assert.Equal(3,db.UserTransactions.Count(x=>x.UserId==h.Actor));Assert.Equal(12,db.UserTransactions.Where(x=>x.UserId==h.Actor&&x.Type==TransactionType.RentIncome).Sum(x=>x.Amount));});
+        h.WithDb(db =>
+        {
+            var property = db.Properties.Find(h.PropertyId)!;
+            property.Status = "rented";
+            property.MonthlyRentalIncome = 100m;
+            db.SaveChanges();
+        });
+        h.Login(h.Admin, role: "admin");
+        var route = $"/api/properties/{h.PropertyId}/pay-rent";
+        var responses = await Task.WhenAll(h.Client.PostAsJsonAsync(route, new { customAmount = 100m }),
+            h.Client.PostAsync($"/api/rentals/payout/{h.PropertyId}", null));
+        Assert.Single(responses, r => r.StatusCode == HttpStatusCode.OK);
+        Assert.Single(responses, r => r.StatusCode == HttpStatusCode.Conflict);
+        Assert.Equal(HttpStatusCode.Conflict, (await h.Client.PostAsJsonAsync(route, new { customAmount = 100m })).StatusCode);
+        h.WithDb(db=>{Assert.Equal(990.80m,db.Users.Find(h.Actor)!.WalletBalance);Assert.Equal(2,db.UserTransactions.Count(x=>x.UserId==h.Actor));Assert.Equal(10.80m,db.UserTransactions.Where(x=>x.UserId==h.Actor&&x.Type==TransactionType.RentIncome).Sum(x=>x.Amount));});
     }
     [Local262BFact]
     public async Task Kyc_and_chat_use_current_actor_and_reject_unrelated_reader()

@@ -2,12 +2,19 @@ using System.Text.RegularExpressions;
 
 namespace RealEstateInvestment.Services.Assistant;
 
+public sealed record AssistantAllocationItem(string Label, decimal Value);
+public sealed record AssistantAllocation(string Currency, bool Demo, IReadOnlyList<AssistantAllocationItem> Items);
+
 public sealed record AssistantAnswer(string Status, string Version, string? Topic, string Answer, IReadOnlyList<string> Sources)
 {
     internal IReadOnlyList<string> SourceSections { get; init; } = [];
     public IReadOnlyList<AssistantSource> SourceLinks { get; init; } = [];
     public string? TraceId { get; init; }
     public Guid? ConversationId { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public AssistantForecastCard? Forecast { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public AssistantAllocation? Allocation { get; init; }
     public string Language { get; init; } = "en";
 }
 

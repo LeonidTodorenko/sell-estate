@@ -26,7 +26,7 @@ export function kycPayload(session: Session, type: DocumentType, base64File: str
 export interface HistoryPoint { date: string; total: number }
 export interface FinanceStats { walletBalance: number; investmentValue: number; totalAssets: number; rentalIncome: number; combinedHistory?: HistoryPoint[]; equityHistory?: HistoryPoint[]; rentIncomeHistory?: HistoryPoint[] }
 export interface RentalEntry { title: string; timestamp: string; amount: number }
-export interface MonthlyReport { id: string; reportMonth: string; walletBalance: number; investmentValue: number; rentalIncome: number; totalCapital: number; capitalChange: number }
+export interface MonthlyReport { id: string; reportMonth: string; walletBalance: number; investmentValue: number; rentalIncome: number; totalCapital: number; capitalChange: number; commentary?: string }
 export interface InboxMessage { id: string; title: string; content: string; createdAt: string; isRead: boolean }
 export function inDateRange(value: string, from: string, to: string) {
   const time = Date.parse(value);

@@ -2,7 +2,7 @@ import { SchedulerConflicts, SchedulerRuns } from './investment-workflow';
 import { ApplicationDecision } from './investment-workflow';
 import { Fragment, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { api, getSession, propertyWrite } from './api';
+import { api, approveForecastRates, getSession, propertyWrite } from './api';
 import { isAdminSession } from './admin-contracts';
 import { date, imageUrl, money } from './format';
 import type { Property, PropertyImage } from './types';
@@ -11,7 +11,7 @@ import { Empty, Heading, Resource, useResource } from './ui';
 export function AdminProperties() {
   const resource = useResource<Property[]>('/properties');
   const [query,setQuery] = useState(''), [status,setStatus] = useState('');
-  return <><Heading title="Properties" description="Review the collection, edit property information and manage gallery images."/><Link to="/admin/applications">Review investment applications →</Link><div className="filters panel"><label>Property or location<input value={query} onChange={e=>setQuery(e.target.value)}/></label><label>Status<select value={status} onChange={e=>setStatus(e.target.value)}><option value="">All statuses</option>{['pending','available','sold','rented','declined'].map(s=><option key={s}>{s}</option>)}</select></label><button onClick={()=>{setQuery('');setStatus('');}}>Clear filters</button></div><Resource resource={resource}>{items=>{const rows=items.filter(p=>(!status||p.status===status)&&`${p.title} ${p.location} ${p.id}`.toLowerCase().includes(query.trim().toLowerCase())); return <><p aria-live="polite">{rows.length} of {items.length} properties</p>{rows.length ? <section className="panel table-wrap"><table><thead><tr><th>Property</th><th>Status</th><th>Price</th><th>Shares available</th><th>Manage</th></tr></thead><tbody>{rows.map(p=><tr key={p.id}><td data-label="Property"><Link to={`/admin/properties/${encodeURIComponent(p.id)}`}>{p.title}</Link><small>{p.location}</small></td><td data-label="Status">{p.status} · {p.listingType}</td><td data-label="Price">{money(p.price)}</td><td data-label="Shares available">{p.availableShares} / {p.totalShares}</td><td data-label="Manage"><Link to={`/admin/applications?property=${encodeURIComponent(p.id)}`}>Applications</Link></td></tr>)}</tbody></table></section>:<Empty title="No matching properties"/>}</>;}}</Resource></>;
+  return <><Heading title="Properties" description="Review the collection, edit property information and manage gallery images."/><Link to="/admin/applications">Review investment applications →</Link><ForecastRatesEditor/><div className="filters panel"><label>Property or location<input value={query} onChange={e=>setQuery(e.target.value)}/></label><label>Status<select value={status} onChange={e=>setStatus(e.target.value)}><option value="">All statuses</option>{['pending','available','sold','rented','declined'].map(s=><option key={s}>{s}</option>)}</select></label><button onClick={()=>{setQuery('');setStatus('');}}>Clear filters</button></div><Resource resource={resource}>{items=>{const rows=items.filter(p=>(!status||p.status===status)&&`${p.title} ${p.location} ${p.id}`.toLowerCase().includes(query.trim().toLowerCase())); return <><p aria-live="polite">{rows.length} of {items.length} properties</p>{rows.length ? <section className="panel table-wrap"><table><thead><tr><th>Property</th><th>Status</th><th>Price</th><th>Shares available</th><th>Manage</th></tr></thead><tbody>{rows.map(p=><tr key={p.id}><td data-label="Property"><Link to={`/admin/properties/${encodeURIComponent(p.id)}`}>{p.title}</Link><small>{p.location}</small></td><td data-label="Status">{p.status} · {p.listingType}</td><td data-label="Price">{money(p.price)}</td><td data-label="Shares available">{p.availableShares} / {p.totalShares}</td><td data-label="Manage"><Link to={`/admin/applications?property=${encodeURIComponent(p.id)}`}>Applications</Link></td></tr>)}</tbody></table></section>:<Empty title="No matching properties"/>}</>;}}</Resource></>;
 }
 
 function PropertyEditor({property:p,reload}:{property:Property;reload:()=>void}) {
@@ -51,7 +51,7 @@ function PropertyEditor({property:p,reload}:{property:Property;reload:()=>void})
   const disabled=busy||locked||!isAdminSession(getSession());
   return <><section className="panel admin-details"><h2>Property overview</h2><dl><dt>Property ID</dt><dd className="identifier">{p.id}</dd><dt>Status / listing</dt><dd>{p.status} / {p.listingType}</dd><dt>Price</dt><dd>{money(p.price)}</dd><dt>Available shares</dt><dd>{p.availableShares} / {p.totalShares}</dd><dt>Completion</dt><dd>{date(p.expectedCompletionDate)}</dd><dt>Planned sale</dt><dd>{date(p.plannedSaleDate)}</dd></dl><Link to={`/admin/applications?property=${encodeURIComponent(p.id)}`}>View applications →</Link></section><form className="panel property-editor" onSubmit={e=>{e.preventDefault();void change('update');}}><h2>Edit property information</h2><fieldset disabled={disabled}><label>Title<input required maxLength={200} value={title} onChange={e=>setTitle(e.target.value)}/></label><label>Location<input required maxLength={500} value={location} onChange={e=>setLocation(e.target.value)}/></label><label>About<textarea maxLength={10000} value={about} onChange={e=>setAbout(e.target.value)}/></label><label>Expected yield text<input maxLength={1000} value={yieldText} onChange={e=>setYield(e.target.value)}/></label><p className="muted">Price, shares, payment terms and status remain visible in the overview. This form edits descriptive information.</p><button className="button" disabled={!title.trim()||!location.trim()||(title===p.title&&location===p.location&&about===(p.about||'')&&yieldText===(p.expectedYieldText||''))}>Review and save</button></fieldset></form><section className="panel"><h2>Gallery images</h2><Resource resource={images}>{items=>items.length?<div className="admin-gallery">{items.map(i=><article key={i.id}>{imageUrl(i.base64Data)?<img src={imageUrl(i.base64Data)} alt={`Property image ${i.id}`}/>:<p>Image preview unavailable</p>}<small className="identifier">{i.id}</small><button disabled={disabled} onClick={()=>change('delete-image',i.id)}>Delete image</button></article>)}</div>:<Empty title="No gallery images"/>}</Resource><label>Add gallery image · PNG, JPEG or WebP, up to 5 MB<input type="file" accept="image/png,image/jpeg,image/webp" disabled={disabled} onChange={e=>void selectFile(e.target.files?.[0])}/></label>{file&&<img className="upload-preview" src={file} alt="New image preview"/>}<button disabled={disabled||!file} onClick={()=>change('add-image')}>Add image</button></section>{busy&&<p role="status">Saving…</p>}{message&&<p role="status">{message}</p>}{error&&<p role="alert" className="error">{error}</p>}<button disabled={busy} onClick={reload}>Reload property</button></>;
 }
-export function AdminProperty(){const {id=''}=useParams();const resource=useResource<Property[]>('/properties');const [revision,setRevision]=useState(0);return <><Link to="/admin/properties">← Back to properties</Link><Heading title="Property management" description="Review current data before confirming each change."/><Resource resource={resource}>{items=>{const p=items.find(i=>i.id===id);return p?<PropertyEditor key={`${p.id}-${revision}`} property={p} reload={()=>{setRevision(r=>r+1);resource.retry();}}/>:<Empty title="Property not found"/>;}}</Resource></>;}
+export function AdminProperty(){const {id=''}=useParams();const resource=useResource<Property[]>('/properties');const [revision,setRevision]=useState(0);return <><Link to="/admin/properties">← Back to properties</Link><Heading title="Property management" description="Review current data before confirming each change."/><Resource resource={resource}>{items=>{const p=items.find(i=>i.id===id);return p?<><ForecastRatesEditor key={p.id} propertyId={p.id}/><PropertyEditor key={`${p.id}-${revision}`} property={p} reload={()=>{setRevision(r=>r+1);resource.retry();}}/></>:<Empty title="Property not found"/>;}}</Resource></>;}
 
 interface Application {id:string;userId:string;propertyId:string;requestedAmount:number;requestedShares:number;approvedAmount:number|null;approvedShares:number|null;status:string|null;isPriority:boolean;stepNumber:number;createdAt:string}
 function ApplicationList({id}:{id:string}) {
@@ -66,4 +66,56 @@ export function InvestmentRecords({items}:{items:import('./admin-contracts').Adm
  const invalid=Boolean(from&&to&&from>to);
  const rows=items.filter(i=>`${i.id} ${i.userId} ${i.propertyId}`.toLowerCase().includes(query.trim().toLowerCase())&&(!minimum||i.investedAmount>=Number(minimum))&&(!from||i.createdAt.slice(0,10)>=from)&&(!to||i.createdAt.slice(0,10)<=to));
  return <><div className="filters panel"><label>Investment, user or property ID<input value={query} onChange={e=>setQuery(e.target.value)}/></label><label>Minimum amount (USD)<input type="number" min="0" value={minimum} onChange={e=>setMinimum(e.target.value)}/></label><label>From<input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label><label>To<input type="date" value={to} onChange={e=>setTo(e.target.value)}/></label><button onClick={()=>{setQuery('');setMinimum('');setFrom('');setTo('');}}>Clear filters</button></div>{invalid?<p role="alert">The end date must be on or after the start date.</p>:<><p aria-live="polite">{rows.length} of {items.length} records</p>{rows.length?<section className="panel table-wrap"><table><thead><tr><th>Investment</th><th>User</th><th>Property</th><th>Shares</th><th>Amount</th><th>Created</th></tr></thead><tbody>{rows.map(i=><tr key={i.id}><td data-label="Investment" className="identifier">{i.id}</td><td data-label="User"><Link className="identifier" to={`/admin/users/${encodeURIComponent(i.userId)}`}>{i.userId}</Link></td><td data-label="Property"><Link className="identifier" to={`/admin/properties/${encodeURIComponent(i.propertyId)}`}>{i.propertyId}</Link></td><td data-label="Shares">{i.shares}</td><td data-label="Amount">{money(i.investedAmount)}</td><td data-label="Created">{date(i.createdAt)}</td></tr>)}</tbody></table></section>:<Empty title="No matching investments"/>}</>}</>;
+}
+
+type RateApproval = { rates: { negative: number; base: number; optimistic: number }; source: string; asOf: string };
+
+function ForecastRatesEditor({ propertyId }: { propertyId?: string }) {
+  const suffix = propertyId ? `?propertyId=${encodeURIComponent(propertyId)}` : '';
+  const resource = useResource<{ approval: RateApproval | null; current: boolean }>(`/admin/forecast-rates${suffix}`);
+  const [message, setMessage] = useState('');
+  const busy = useRef(false);
+  const [saving, setSaving] = useState(false);
+
+  return <details className="panel">
+    <summary>{propertyId ? 'Property forecast rates' : 'Global forecast rates'}</summary>
+    <Resource resource={resource}>{({ approval, current }) => <>
+      {approval && <p>{current ? 'Current' : 'Review overdue'} · {approval.asOf} · {approval.source} ·
+        {approval.rates.negative}% / {approval.rates.base}% / {approval.rates.optimistic}%</p>}
+      <form key={JSON.stringify(approval)} onSubmit={async event => {
+        event.preventDefault();
+        if (busy.current) return;
+        const session = getSession();
+        if (!session || !isAdminSession(session)) return;
+        const form = new FormData(event.currentTarget);
+        busy.current = true;
+        setSaving(true);
+        setMessage('');
+        try {
+          await approveForecastRates(session, propertyId, {
+            rates: { negative: Number(form.get('negative')), base: Number(form.get('base')), optimistic: Number(form.get('optimistic')) },
+            source: form.get('source'), asOf: form.get('asOf'),
+          });
+          setMessage('Rates approved.');
+          resource.retry();
+        } catch (error) {
+          setMessage(error instanceof Error ? error.message : 'Could not approve rates.');
+        } finally {
+          busy.current = false;
+          setSaving(false);
+        }
+      }}>
+        <p>Approve conditional annual rates in ascending order. Review them every month.</p>
+        <div className="forecast-inputs">
+          <label>Stress (%)<input name="negative" type="number" required step="any" min="-100" max="0" defaultValue={approval?.rates.negative}/></label>
+          <label>Base (%)<input name="base" type="number" required step="any" min="-100" max="100" defaultValue={approval?.rates.base}/></label>
+          <label>Optimistic (%)<input name="optimistic" type="number" required step="any" min="-100" max="100" defaultValue={approval?.rates.optimistic}/></label>
+          <label>Source<input name="source" required maxLength={300} defaultValue={approval?.source}/></label>
+          <label>As of<input name="asOf" required type="date" defaultValue={approval?.asOf}/></label>
+        </div>
+        <button disabled={saving}>Approve forecast rates</button>
+      </form>
+    </>}</Resource>
+    {message && <p role="status">{message}</p>}
+  </details>;
 }

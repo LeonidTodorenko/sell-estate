@@ -116,7 +116,16 @@ internal sealed class PersonalFinanceReader(AppDbContext db, ClaimsPrincipal pri
             $"Total assets at reference prices: {totalAssets}. Wallet: {Money(balance)}; investments: {Money(invested)}; pending applications: {Money(pending)}; listed shares: {Money(listed)}. Asset values are estimates at property prices.",
             $"Всего активов по расчётной стоимости: {totalAssets}. Кошелёк: {Money(balance)}; инвестиции: {Money(invested)}; заявки на рассмотрении: {Money(pending)}; выставленные доли: {Money(listed)}. Оценка основана на ценах объектов.")
             + (unknown ? L(" Some positions have no valid share capacity and are excluded from valuation.",
-                " Из оценки исключены позиции без корректного числа долей объекта.") : ""), now, "OwnersClub Total assets");
+                " Из оценки исключены позиции без корректного числа долей объекта.") : ""), now, "OwnersClub Total assets") with
+        {
+            Allocation = unknown ? null : new("USD", demo,
+            [
+                new(L("Wallet", "Кошелёк"), balance),
+                new(L("Investments", "Инвестиции"), invested),
+                new(L("Pending applications", "Заявки на рассмотрении"), pending),
+                new(L("Listed shares", "Выставленные доли"), listed),
+            ])
+        };
     }
 
     private Task<List<Application>> OpenApplicationsAsync(CancellationToken ct) => (demo

@@ -118,11 +118,20 @@ public sealed class PersonalFinanceAssistantTests
         var assets = await Ask(host, "total assets");
         Assert.Contains("1130.00 USD", assets.Answer);
         Assert.Contains("estimates", assets.Answer);
+        var allocation = Assert.IsType<AssistantAllocation>(
+            (await Ask(host, "Show my portfolio breakdown")).Allocation);
+        Assert.Equal("USD", allocation.Currency);
+        Assert.False(allocation.Demo);
+        Assert.Equal(1130m, allocation.Items.Sum(item => item.Value));
+        Assert.Equal(30m, allocation.Items.Single(item => item.Label == "Listed shares").Value);
+        var russian = (await Ask(host, "Покажи структуру моего портфеля")).Allocation;
+        Assert.Contains(russian!.Items, item => item.Label == "Кошелёк");
         Assert.Contains("8.00 USD", (await Ask(host, "projected rental income")).Answer);
         Assert.Contains("Shares listed: 3", (await Ask(host, "shares on market")).Answer);
         host.Login(host.Demo, demo: true);
         Assert.Contains("Shares listed: 0", (await Ask(host, "shares on market")).Answer);
         Assert.Contains("Demo account", (await Ask(host, "available funds")).Answer);
+        Assert.True((await Ask(host, "Show the asset composition")).Allocation!.Demo);
     }
 
     [Local292Fact]

@@ -1,4 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
+import { horizons, isForecast, type Forecast } from './forecast-data';
+
+export type ChatForecast = { property: string; horizon: number; rental: boolean; demo?: boolean; source?: string; ratesAsOf?: string; rateScope?: string; data: Forecast };
+
+export function chatForecast(value: unknown): ChatForecast | undefined {
+  if (!value || typeof value !== 'object') return;
+  const card = value as ChatForecast;
+  if ((card.source != null && typeof card.source !== 'string') ||
+      (card.ratesAsOf != null && typeof card.ratesAsOf !== 'string') ||
+      (card.rateScope != null && typeof card.rateScope !== 'string') ||
+      typeof card.property !== 'string' || card.property.length > 300 ||
+      !Number.isInteger(card.horizon) || card.horizon < 1 || card.horizon > 10 ||
+      typeof card.rental !== 'boolean' || !card.data || typeof card.data.propertyId !== 'string' ||
+      !Number.isSafeInteger(card.data.shares) || card.data.shares < 1) return;
+  const expected = [...new Set([...horizons, card.horizon])].sort((a, b) => a - b);
+  if (isForecast(card.data, card.data.propertyId, card.data.shares, expected)) return card;
+}
 
 const personalPaths = {
   balance: 'me/balance',
@@ -9,8 +26,17 @@ const personalPaths = {
 type Section = keyof typeof personalPaths;
 type Destination = Section | 'properties' | 'market' | 'rental-income';
 type AssistantSource = { title: string; url?: string | null };
-type Message = { question: string; answer?: string; destination?: Destination; unknown?: boolean; sourceLinks?: AssistantSource[] };
-type FaqAnswer = { status: 'answered' | 'unknown' | 'language_changed' | 'consent_required' | 'faq_fallback' | 'retry_later'; topic: string | null; answer: string; conversationId?: string; sourceLinks?: AssistantSource[] };
+type Allocation = { currency: 'USD'; demo: boolean; items: { label: string; value: number }[] };
+
+function readAllocation(value: unknown): Allocation | undefined {
+  if (!value || typeof value !== 'object') return;
+  const card = value as Allocation;
+  if (card.currency === 'USD' && typeof card.demo === 'boolean' && Array.isArray(card.items) &&
+    card.items.length > 0 && card.items.every(item => item && typeof item.label === 'string' && Number.isFinite(item.value))) return card;
+}
+
+type Message = { question: string; answer?: string; destination?: Destination; unknown?: boolean; allocation?: Allocation; forecast?: ChatForecast; sourceLinks?: AssistantSource[] };
+type FaqAnswer = { status: 'answered' | 'unknown' | 'language_changed' | 'consent_required' | 'faq_fallback' | 'retry_later'; topic: string | null; answer: string; conversationId?: string; allocation?: unknown; forecast?: unknown; sourceLinks?: AssistantSource[] };
 type AccountItem = { shares?: number; investedAmount?: number; requestedShares?: number; status?: string | number; walletAmount?: number; walletCurrency?: string; createdAt: string };
 type AccountAnswer = { balance?: number; currency?: string; status?: string; items?: AccountItem[] };
 
@@ -76,7 +102,7 @@ export function useAssistant(baseUrl: string, token: string) {
     active.current = null;
   }, []);
 
-  async function send(text: string, section?: Section) {
+  async function send(text: string, section?: Section, propertyId?: string) {
     const question = text.trim();
     if (!question || question.length > 400 || active.current || error === 'expired') return;
     const controller = new AbortController();
@@ -100,7 +126,7 @@ export function useAssistant(baseUrl: string, token: string) {
           Authorization: `Bearer ${token}`,
           ...(section ? {} : { 'Content-Type': 'application/json' }),
         },
-        body: section ? undefined : JSON.stringify({ text: question, conversationId: conversation.current, allowExternal }),
+        body: section ? undefined : JSON.stringify({ text: question, conversationId: conversation.current, allowExternal, propertyId }),
         signal: controller.signal,
       });
       if (!response.ok) throw new HttpError(response.status);
@@ -110,12 +136,12 @@ export function useAssistant(baseUrl: string, token: string) {
       if (section) {
         result = { question, answer: accountText(section, data), destination: section };
       } else {
-        const { answer, topic, status, conversationId, sourceLinks } = data as FaqAnswer;
+        const { answer, topic, status, conversationId, sourceLinks, forecast, allocation } = data as FaqAnswer;
         if (typeof answer !== 'string') throw new HttpError(502);
         conversation.current = conversationId;
         const destination = topic && ['properties', 'property-images', 'payment-plan', 'purchase-plan'].includes(topic)
           ? 'properties' : topic === 'market' || topic === 'rental-income' ? topic : topic && Object.prototype.hasOwnProperty.call(personalPaths, topic) ? topic as Section : undefined;
-        result = { question, answer, destination, sourceLinks, unknown: status === 'unknown' || status === 'faq_fallback' };
+        result = { question, answer, destination, sourceLinks, allocation: readAllocation(allocation), forecast: chatForecast(forecast), unknown: status === 'unknown' || status === 'faq_fallback' };
       }
       setMessages(previous => [...previous.slice(0, -1), result]);
     } catch (failure) {

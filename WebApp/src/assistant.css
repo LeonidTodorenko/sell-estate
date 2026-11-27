@@ -11,3 +11,12 @@
 .assistant-answer { justify-self: start; background: #f1f6f3; color: #18382c; }
 .assistant-answer p { margin: 0 0 .25rem; white-space: pre-wrap; }
 .assistant-composer input { flex: 1; min-width: 0; }
+
+.assistant-turn { min-width: 0; }
+.assistant-answer-with-chart { width: min(100%, 40rem); max-width: 100%; min-width: 0; box-sizing: border-box; }
+.assistant-scenario { margin-top: .75rem; }
+.assistant-scenario h3 { margin: 0 0 .25rem; }
+
+.assistant-estimate { display: grid; gap: .2rem; margin-block: .5rem; }
+.assistant-estimate strong { font-size: clamp(1.45rem, 4vw, 2.2rem); overflow-wrap: anywhere; }
+.assistant-scenario .forecast-chart { margin-top: .5rem; }

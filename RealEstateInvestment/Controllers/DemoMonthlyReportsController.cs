@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+using System.Globalization;
 using RealEstateInvestment.Data;
 using RealEstateInvestment.Helpers;
 
@@ -16,7 +18,7 @@ public sealed class DemoMonthlyReportsController : ControllerBase
     public DemoMonthlyReportsController(AppDbContext db) => _db = db;
 
     [HttpGet]
-    public async Task<IActionResult> GetHistory(CancellationToken cancellationToken)
+    public async Task<IActionResult> GetHistory([FromServices] IMemoryCache cache, CancellationToken cancellationToken)
     {
         if (!User.IsDemo()) return Forbid();
         var userId = User.GetUserId();
@@ -36,6 +38,26 @@ public sealed class DemoMonthlyReportsController : ControllerBase
                 x.RentalIncome, x.TotalCapital, x.CapitalChange, x.GeneratedAt
             })
             .ToListAsync(cancellationToken);
-        return Ok(reports);
+        return Ok(reports.Select((report, index) =>
+        {
+            var previous = index + 1 < reports.Count ? reports[index + 1] : null;
+            if (previous?.ReportMonth.AddMonths(1) != report.ReportMonth) previous = null;
+            var commentary = cache.GetOrCreate(("demo-report-commentary-v1", userId, report, previous), entry =>
+            {
+                entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30);
+                if (previous is null) return "This snapshot records capital at month end. A prior consecutive snapshot is unavailable.";
+                return $"Compared with the previous month: investment value {Change(report.InvestmentValue - previous.InvestmentValue)}, " +
+                    $"wallet balance {Change(report.WalletBalance - previous.WalletBalance)}, " +
+                    $"cumulative rental income {Change(report.RentalIncome - previous.RentalIncome)}.";
+            });
+            return new
+            {
+                report.Id, report.ReportMonth, report.WalletBalance, report.InvestmentValue, report.RentalIncome,
+                report.TotalCapital, report.CapitalChange, report.GeneratedAt, Commentary = commentary
+            };
+        }).ToArray());
+
+        static string Change(decimal amount) => amount == 0 ? "unchanged" :
+            $"{(amount > 0 ? "increased" : "decreased")} by {Math.Abs(amount).ToString("0.00", CultureInfo.InvariantCulture)} USD";
     }
 }

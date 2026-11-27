@@ -14,6 +14,7 @@ public static class AssistantRegistration
     public static IServiceCollection AddOwnersClubAssistant(this IServiceCollection services,
         SymmetricSecurityKey? signingKey, string issuer, string audience, IConfiguration? configuration = null)
     {
+        services.AddMemoryCache();
         services.AddAuthentication().AddJwtBearer(JwtScheme, options =>
         {
             options.TokenValidationParameters = new TokenValidationParameters

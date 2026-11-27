@@ -435,94 +435,9 @@ namespace RealEstateInvestment.Controllers
 
         [HttpPost("{propertyId}/pay-rent")]
         [FinancialAdmin]
-        public async Task<IActionResult> PayRentalIncome(Guid propertyId, [FromBody] RentPayoutRequest request)
-        {
-            await using var financialTransaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
-
-            var property = await _context.Properties.FindAsync(propertyId);
-            if (property == null) return NotFound(new { message = "Property not found" });
-
-            if (DateTime.UtcNow.Subtract(property.LastPayoutDate).Days < 30)
-                return Conflict("Payments have already been made in the last 30 days");
-
-            var totalShares = property.TotalShares;
-            if (totalShares <= 0)
-                return BadRequest(new { message = "Property has invalid number of shares." });
-
-            decimal amountToDistribute = request.CustomAmount ?? property.MonthlyRentalIncome;
-
-            if (amountToDistribute <= 0)
-                return BadRequest(new { message = "Payout amount must be greater than zero." });
-
-            var investments = await _context.Investments
-                .Where(i => i.PropertyId == propertyId)
-                .ToListAsync();
-
-            if (!investments.Any())
-                return BadRequest(new { message = "No investors found for this property." });
-
-            // Распределение
-            var payoutPerShare = amountToDistribute / totalShares;
-
-            foreach (var inv in investments)
-            {
-                var payout = Math.Round(payoutPerShare * inv.Shares, 2);
-                var user = await _context.Users.FindAsync(inv.UserId);
-                if (user == null) continue;
-
-                user.WalletBalance += payout;
-
-                // log
-                _context.ActionLogs.Add(new ActionLog
-                {
-                    UserId = inv.UserId,
-                    Action = "MonthlyRentPayout",
-                    Details = $"User received {payout} USD rent for property '{property.Title}' ({property.Id})."
-                });
-
-                // сообщение
-                _context.Messages.Add(new Message
-                {
-                    RecipientId = inv.UserId,
-                    Title = $"💸 Rental income received: {payout} USD",
-                    Content = $"You have received rent payout for property \"{property.Title}\".\nAmount: {payout} USD."
-                });
-
-                var tokens = await _context.FcmDeviceTokens
-               .Where(t => t.UserId == inv.UserId)
-               .Select(t => t.Token).ToListAsync();
-                foreach (var token in tokens)
-                {
-                    await _firebaseNotificationService.SendNotificationAsync(token, $"💰 Rent income", $"You received {payout} USD for \"{property.Title}\"");
-                }
-
-                _context.UserTransactions.Add(new UserTransaction
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = inv.UserId,
-                    Type = TransactionType.RentIncome,
-                    Amount = payout,
-                    Timestamp = DateTime.UtcNow,
-                    Notes = $"Rental income for property '{property.Title}'"
-                });
-
-
-            }
-
-
-            property.LastPayoutDate = DateTime.UtcNow;
-
-            _context.ActionLogs.Add(new ActionLog
-            {
-                UserId = User.GetUserId(),
-                Action = "AdminRentPayout",
-                Details = $"Admin distributed {amountToDistribute} USD for property '{property.Title}'"
-            });
-
-            await _context.SaveChangesAsync();
-            await financialTransaction.CommitAsync();
-            return Ok(new { message = "Payout completed" });
-        }
+        public Task<IActionResult> PayRentalIncome(Guid propertyId, [FromBody] RentPayoutRequest request,
+            [FromServices] RentalPayoutService payout) =>
+            payout.PayAsync(propertyId, request.CustomAmount, User.GetUserId());
 
         [HttpGet("{propertyId}/rent-history")]
         [FinancialAdmin]

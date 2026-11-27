@@ -84,7 +84,7 @@ import theme from '../constants/theme';
  //import { useLoading } from '../contexts/LoadingContext';
  
 export type RootStackParamList = {
-  Assistant: undefined;
+  Assistant: { question: string; propertyId?: string } | undefined;
   Login: undefined;
   Register: undefined;
   Profile: undefined;
