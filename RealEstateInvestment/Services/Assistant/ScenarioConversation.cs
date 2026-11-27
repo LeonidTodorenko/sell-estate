@@ -39,7 +39,7 @@ internal static class ScenarioConversation
         var properties = await db.Properties.AsNoTracking().Where(p => p.Status != "declined")
             .Select(p => new { p.Id, p.Title }).ToListAsync(ct);
         var matches = properties.Where(p => !string.IsNullOrWhiteSpace(p.Title) &&
-            Regex.IsMatch(input, $@"(?<![\p{{L}}\p{{N}}]){Regex.Escape(p.Title)}(?![\p{{L}}\p{{N}}])",
+            Regex.IsMatch(input, $@"(?<![\p{{L}}\p{{N}}]){Regex.Escape(p.Title.Trim())}(?![\p{{L}}\p{{N}}])",
                 RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)).ToArray();
         if (!initial && !shares.Success && !years.Success && !rental && !fee.Success && !rates.Success && !(active?.Rental == true && Date.IsMatch(input)) && matches.Length == 0)
             return null;

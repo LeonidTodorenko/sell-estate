@@ -13,7 +13,7 @@ public sealed class AssistantInvestmentIntelligenceTests
     public async Task ChatKeepsScenarioAcrossTurnsAndIsolatesAccounts()
     {
         using var host = new AssistantTestHost();
-        var second = Seed(host);
+        var second = Seed(host, "Marina Residence\n\n");
         host.Login(host.Actor);
         var first = await Ask(host, "Show a forecast for Marina Residence, 2 shares, 3 years, rates -10 6 10");
         Assert.NotNull(first.Forecast);
@@ -93,13 +93,13 @@ public sealed class AssistantInvestmentIntelligenceTests
         Assert.Equal(1, demo.GetProperty("propertyCount").GetInt32());
     }
 
-    private static Guid Seed(AssistantTestHost host)
+    private static Guid Seed(AssistantTestHost host, string firstTitle = "Marina Residence")
     {
         var id = Guid.NewGuid();
         host.WithDb(db =>
         {
             var first = db.Properties.Single();
-            first.Title = "Marina Residence";
+            first.Title = firstTitle;
             first.Price = 100000;
             first.RealPrice = 100000;
             first.MonthlyRentalIncome = 1000;
