@@ -173,7 +173,7 @@ internal sealed class PersonalFinanceReader(AppDbContext db, ClaimsPrincipal pri
         if (!match.Success)
             return Clarify(L("Which property? Use its exact title from Properties.", "Какой объект? Укажите точное название из каталога."));
         var title = match.Groups["title"].Value.Trim(' ', '"', '«', '»', '“', '”');
-        var catalog = await db.Properties.AsNoTracking().Where(p => p.Status != "declined")
+        var catalog = await db.Properties.ExcludeTechnicalFixtures().AsNoTracking().Where(p => p.Status != "declined")
             .Select(p => new { p.Id, p.Title, p.Price, p.TotalShares, p.AvailableShares, p.Status }).ToListAsync(ct);
         var properties = catalog.Where(p => AssistantPropertyNames.Equal(p.Title, title)).Take(2).ToArray();
         if (properties.Length != 1)

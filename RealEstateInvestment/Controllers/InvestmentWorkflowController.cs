@@ -13,21 +13,27 @@ namespace RealEstateInvestment.Controllers;
 
 [ApiController, Authorize, FinancialConcurrency]
 [Route("api/investment-workflow")]
-public sealed class InvestmentWorkflowController(AppDbContext db) : ControllerBase
+public sealed class InvestmentWorkflowController(AppDbContext db, IConfiguration config) : ControllerBase
 {
     [HttpGet("properties/{id:guid}")]
     public async Task<IActionResult> Stages(Guid id)
     {
+        if (PropertyCatalog.IsTechnicalFixture(id) && !await FinancialAdminAttribute.IsCurrentAdminAsync(User, db, config))
+            return NotFound();
+
         var p = await db.Properties.AsNoTracking().Include(x => x.PaymentPlans).SingleOrDefaultAsync(x => x.Id == id);
         if (p == null) return NotFound();
         var plans = InvestmentStages.Ordered(p.PaymentPlans);
         var now = DateTime.UtcNow;
         var active = InvestmentStages.Active(plans, now);
         var accounting = active ?? plans.LastOrDefault();
-        var open = plans.Count > 0 && p.Price > 0 && p.TotalShares > 0 && p.AvailableShares > 0 &&
+        var availableShares = User.IsDemo()
+            ? await InvestmentStages.DemoAvailableSharesAsync(db, p)
+            : p.AvailableShares;
+        var open = plans.Count > 0 && p.Price > 0 && p.TotalShares > 0 && availableShares > 0 &&
             p.Status is not ("sold" or "declined" or "rented") && !(now < plans[0].EventDate);
         var automatic = HttpContext.RequestServices.GetRequiredService<IConfiguration>().GetValue<bool>(BackgroundJobRegistration.EnabledSetting);
-        return Ok(new { propertyId = id, p.AvailableShares, p.TotalShares,
+        return Ok(new { propertyId = id, availableShares, p.TotalShares,
             pricePerShare = p.TotalShares > 0 ? p.Price / p.TotalShares : 0,
             serverTime = now, canApply = open, currentStep = accounting == null ? (int?)null : plans.IndexOf(accounting) + 1,
             mode = active != null && active.Id == plans[0].Id ? "reservation" : "direct",

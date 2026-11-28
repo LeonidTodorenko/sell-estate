@@ -8,6 +8,93 @@ namespace RealEstateInvestment.Tests;
 
 public sealed class FinancialEndpointTests
 {
+    [Theory]
+    [InlineData("/api/properties")]
+    [InlineData("/api/properties/with-stats")]
+    public async Task Catalog_excludes_only_confirmed_fixtures_and_preserves_admin_access(string route)
+    {
+        using var h = new FinancialTestHost();
+        Guid[] fixtures =
+        [
+            new("668a36b8-01f5-4d4f-9d94-971b2b085b8b"),
+            new("9dfe8533-325c-4174-a920-2759674fb92e")
+        ];
+        h.WithDb(db =>
+        {
+            db.Properties.Find(h.PropertyId)!.Status = "declined";
+            foreach (var id in fixtures)
+                db.Properties.Add(new Property
+                {
+                    Id = id, Title = "Confirmed technical fixture", Location = "Test",
+                    Price = 1000, TotalShares = 1, Status = "available", PaymentPlans = []
+                });
+            db.SaveChanges();
+        });
+
+        async Task<Guid[]> ReadIds()
+        {
+            var result = await h.Client.GetFromJsonAsync<System.Text.Json.JsonElement>(route);
+            return result.EnumerateArray().Select(property => property.GetProperty("id").GetGuid()).ToArray();
+        }
+
+        Assert.Equal(new[] { h.PropertyId }, await ReadIds());
+        h.Login(h.Demo, demo: true, role: "admin");
+        Assert.Equal(new[] { h.PropertyId }, await ReadIds());
+        h.Login(h.Admin, role: "admin");
+        Assert.Equal(fixtures.Append(h.PropertyId).Order(), (await ReadIds()).Order());
+
+        if (route == "/api/properties")
+        {
+            foreach (var id in fixtures)
+            {
+                string[] directRoutes =
+                [
+                    $"/api/properties/{id}/images",
+                    $"/api/properties/{id}/media",
+                    $"/api/properties/{id}/presentation",
+                    $"/api/properties/{id}/buyback-price",
+                    $"/api/investment-workflow/properties/{id}"
+                ];
+                foreach (var directRoute in directRoutes)
+                {
+                    h.Login(h.Actor);
+                    Assert.Equal(HttpStatusCode.NotFound, (await h.Client.GetAsync(directRoute)).StatusCode);
+                    h.Login(h.Admin, role: "admin");
+                    Assert.Equal(HttpStatusCode.OK, (await h.Client.GetAsync(directRoute)).StatusCode);
+                }
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Workflow_uses_demo_capacity_and_rejects_rented_property_with_closed_plan()
+    {
+        using var h = new FinancialTestHost();
+        h.WithDb(db =>
+        {
+            db.Properties.Find(h.PropertyId)!.TotalShares = 12;
+            db.PaymentPlans.Single().Paid = db.PaymentPlans.Single().Total;
+            db.SaveChanges();
+        });
+        var route = $"/api/investment-workflow/properties/{h.PropertyId}";
+        h.Login(h.Demo, demo: true);
+        var quote = await h.Client.GetFromJsonAsync<System.Text.Json.JsonElement>(route);
+        Assert.False(quote.GetProperty("canApply").GetBoolean());
+        Assert.Equal(0, quote.GetProperty("availableShares").GetInt32());
+
+        h.Login(h.Actor);
+        quote = await h.Client.GetFromJsonAsync<System.Text.Json.JsonElement>(route);
+        Assert.True(quote.GetProperty("canApply").GetBoolean());
+        h.WithDb(db =>
+        {
+            db.Properties.Find(h.PropertyId)!.Status = "rented";
+            db.SaveChanges();
+        });
+        quote = await h.Client.GetFromJsonAsync<System.Text.Json.JsonElement>(route);
+        Assert.False(quote.GetProperty("canApply").GetBoolean());
+        Assert.Single(quote.GetProperty("stages").EnumerateArray());
+    }
+
     public static IEnumerable<object[]> ProtectedRoutes => new[]
     {
         "/api/investments/apply", "/api/investments/apply_old", "/api/applications/submit",

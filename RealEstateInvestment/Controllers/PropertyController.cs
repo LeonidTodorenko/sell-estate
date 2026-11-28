@@ -42,8 +42,15 @@ namespace RealEstateInvestment.Controllers
         [HttpGet]
         public async Task<IActionResult> GetProperties()
         {
-            var properties = await _context.Properties.ToListAsync();
-            return Ok(properties);
+            var catalog = await CatalogForCallerAsync();
+            return Ok(await catalog.ToListAsync());
+        }
+
+        private async Task<IQueryable<Property>> CatalogForCallerAsync()
+        {
+            return await FinancialAdminAttribute.IsCurrentAdminAsync(User, _context, _config)
+                ? _context.Properties
+                : _context.Properties.ExcludeTechnicalFixtures();
         }
 
         //  Add Property
@@ -205,6 +212,8 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("{propertyId}/images")]
         public async Task<IActionResult> GetPropertyImages(Guid propertyId)
         {
+            if (PropertyCatalog.IsTechnicalFixture(propertyId) && !await FinancialAdminAttribute.IsCurrentAdminAsync(User, _context, _config))
+                return NotFound();
             var images = await _context.PropertyImages
                 .Where(i => i.PropertyId == propertyId)
                 .OrderByDescending(i => i.CreatedAt)
@@ -353,7 +362,8 @@ namespace RealEstateInvestment.Controllers
             var now = DateTime.UtcNow;
             try
             {
-                var properties = await _context.Properties
+                var catalog = await CatalogForCallerAsync();
+                var properties = await catalog
                    .Include(p => p.PaymentPlans).ToListAsync();
 
                 var data = properties.Select(p => new
@@ -416,6 +426,8 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("{id}/buyback-price")]
         public async Task<IActionResult> GetBuybackPrice(Guid id)
         {
+            if (PropertyCatalog.IsTechnicalFixture(id) && !await FinancialAdminAttribute.IsCurrentAdminAsync(User, _context, _config))
+                return NotFound();
             var property = await _context.Properties.FindAsync(id);
             if (property == null) return NotFound();
             return Ok(new { buybackPrice = property.BuybackPricePerShare });
@@ -656,6 +668,8 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("{propertyId}/presentation")]
         public async Task<IActionResult> GetPresentation(Guid propertyId)
         {
+            if (PropertyCatalog.IsTechnicalFixture(propertyId) && !await FinancialAdminAttribute.IsCurrentAdminAsync(User, _context, _config))
+                return NotFound();
             var property = await _context.Properties.FindAsync(propertyId);
             if (property == null)
                 return NotFound(new { message = "Property not found" });
@@ -772,6 +786,8 @@ namespace RealEstateInvestment.Controllers
         [HttpGet("{propertyId}/media")]
         public async Task<IActionResult> GetMedia(Guid propertyId)
         {
+            if (PropertyCatalog.IsTechnicalFixture(propertyId) && !await FinancialAdminAttribute.IsCurrentAdminAsync(User, _context, _config))
+                return NotFound();
             var media = await _context.PropertyMedias
                 .Where(m => m.PropertyId == propertyId)
                 .OrderByDescending(m => m.CreatedAt)

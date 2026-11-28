@@ -244,16 +244,7 @@ namespace RealEstateInvestment.Controllers
             if (now < steps[0].EventDate)
                 return BadRequest(new { message = "The application date in not started yet, please try again later." });
 
-            var allocated = await _context.DemoInvestments.Where(x => x.PropertyId == property.Id).SumAsync(x => (int?)x.Shares) ?? 0;
-            var pending = await _context.DemoInvestmentApplications
-                .Where(x => x.PropertyId == property.Id && x.Status == "pending")
-                .SumAsync(x => (int?)x.RequestedShares) ?? 0;
-            // Active offers are already removed from DemoInvestments when listed, so add them back
-            // to allocated ownership; they must not create artificial free capacity.
-            var locked = await _context.DemoShareOffers
-                .Where(x => x.PropertyId == property.Id && x.IsActive)
-                .SumAsync(x => (int?)x.SharesForSale) ?? 0;
-            var available = Math.Max(0, property.TotalShares - allocated - pending - locked);
+            var available = await InvestmentStages.DemoAvailableSharesAsync(_context, property);
             if (req.RequestedShares > available)
                 return BadRequest(new { message = "Not enough free shares" });
 

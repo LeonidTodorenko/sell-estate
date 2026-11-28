@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using RealEstateInvestment.Data;
+using RealEstateInvestment.Helpers;
 using RealEstateInvestment.Services.Forecast;
 
 namespace RealEstateInvestment.Services.Assistant;
@@ -39,7 +40,7 @@ internal static class ScenarioConversation
         var rental = Rental.IsMatch(input);
         var fee = Fee.Match(input);
         var rates = Rates.Match(input);
-        var properties = await db.Properties.AsNoTracking().Where(p => p.Status != "declined")
+        var properties = await db.Properties.ExcludeTechnicalFixtures().AsNoTracking().Where(p => p.Status != "declined")
             .Select(p => new { p.Id, p.Title }).ToListAsync(ct);
         var matches = AssistantPropertyNames.Match(input, properties, p => p.Title);
         if (!initial && !shares.Success && !years.Success && !rental && !fee.Success && !rates.Success && !(active?.Rental == true && Date.IsMatch(input)) && matches.Length == 0)
@@ -108,7 +109,7 @@ internal static class ScenarioConversation
                 "Актуальных утверждённых ставок нет. Можно ввести условные годовые ставки, например «ставки -10 0 0».")
                 with { Status = "no_data" };
 
-        var property = await db.Properties.AsNoTracking().Include(p => p.PaymentPlans)
+        var property = await db.Properties.ExcludeTechnicalFixtures().AsNoTracking().Include(p => p.PaymentPlans)
             .SingleOrDefaultAsync(p => p.Id == id && p.Status != "declined", ct);
         if (property is null)
             return Reply("This property is unavailable. Choose another property.", "Этот объект недоступен. Выберите другой.");

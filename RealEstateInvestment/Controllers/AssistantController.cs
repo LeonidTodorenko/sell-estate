@@ -36,7 +36,7 @@ public sealed class AssistantController(AppDbContext db, AssistantKnowledge know
         if (await FinancialActor.ValidateAsync(User, db, ct) is { } denied)
             return new ActionResult<InvestmentAnswer>((ActionResult)denied);
 
-        var property = await db.Properties.AsNoTracking().Include(p => p.PaymentPlans)
+        var property = await db.Properties.ExcludeTechnicalFixtures().AsNoTracking().Include(p => p.PaymentPlans)
             .SingleOrDefaultAsync(p => p.Id == propertyId && p.Status != "declined", ct);
         if (property is null) return NotFound();
         if (property.TotalShares > 0 && request.Shares > property.TotalShares)
@@ -53,7 +53,7 @@ public sealed class AssistantController(AppDbContext db, AssistantKnowledge know
     public async Task<IActionResult> PropertyInsights(Guid propertyId, CancellationToken ct)
     {
         if (await FinancialActor.ValidateAsync(User, db, ct) is { } denied) return denied;
-        if (!await db.Properties.AnyAsync(p => p.Id == propertyId && p.Status != "declined", ct)) return NotFound();
+        if (!await db.Properties.ExcludeTechnicalFixtures().AnyAsync(p => p.Id == propertyId && p.Status != "declined", ct)) return NotFound();
         var conversation = new AssistantLanguageSession.Conversation();
         return Ok(await ScenarioConversation.ReadAsync(db, "Show forecast", conversation, ct, User.IsDemo(), propertyId));
     }

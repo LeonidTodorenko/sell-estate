@@ -17,6 +17,8 @@ export type Property = {
   media?: PropertyMedia[];
   priorityInvestorId?: string;
   hasPaymentPlan?: boolean;
+  canApply?: boolean;
+  status?: string;
   expectedCompletionDate?: string | null;
   videoUrl?: string | null;
   about?: string | null;
@@ -28,19 +30,39 @@ presentationPdfName?: string | null;
 
 type ApiMedia = { id: string; type: number; url?: string | null; base64Data?: string | null };
 
-export async function fetchPropertiesWithExtras(limitExtras = 8, silentLoading = false): Promise<Property[]> {
+export async function fetchPropertiesWithExtras(
+  limitExtras = 8,
+  silentLoading = false,
+  includeInvestmentAvailability = false,
+): Promise<Property[]> {
   const res = await api.get('/properties', {silentLoading} as any);
-  const list: Property[] = Array.isArray(res.data) ? res.data : [];
+  const list: Property[] = Array.isArray(res.data)
+    ? res.data.map((property: Property) => ({
+        ...property,
+        title: property.title?.trim() || 'Property',
+        location: property.location?.trim() || '',
+      }))
+    : [];
 
   const first = list.slice(0, limitExtras);
   const rest = list.slice(limitExtras);
 
   const withExtras = await Promise.all(
     first.map(async (p) => {
-      const [imgRes, mediaRes, planRes] = await Promise.all([
+      const plan = () => api.get<unknown[]>(`/properties/${p.id}/payment-plans`, {silentLoading} as any)
+        .then(result => ({ hasPaymentPlan: Array.isArray(result.data) && result.data.length > 0, canApply: false }));
+      const availability = includeInvestmentAvailability
+        ? api.get<{ canApply: boolean; stages: unknown[] }>(`/investment-workflow/properties/${p.id}`, {silentLoading} as any)
+          .then(result => ({
+            hasPaymentPlan: Array.isArray(result.data?.stages) && result.data.stages.length > 0,
+            canApply: result.data?.canApply === true,
+          }))
+          .catch(plan)
+        : plan();
+      const [imgRes, mediaRes, purchase] = await Promise.all([
         api.get(`/properties/${p.id}/images`, {silentLoading} as any),
         api.get(`/properties/${p.id}/media`, {silentLoading} as any),
-        api.get(`/properties/${p.id}/payment-plans`, {silentLoading} as any),
+        availability,
       ]);
 
       const rawMedia = Array.isArray(mediaRes.data) ? mediaRes.data : [];
@@ -67,7 +89,7 @@ export async function fetchPropertiesWithExtras(limitExtras = 8, silentLoading =
         ...p,
         images: Array.isArray(imgRes.data) ? imgRes.data : [],
         media: normalizedMedia,
-        hasPaymentPlan: (planRes.data ?? []).length > 0,
+        ...purchase,
       };
     })
   );

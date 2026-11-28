@@ -167,30 +167,34 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
     maximumFractionDigits: 2,
   })}`;
 
-  const propertyStatusLabel = item.listingType === 'sale' ? 'For Sale' : 'For Rent';
-  const statusDotColor = item.listingType === 'sale' ? '#10B981' : '#5B8DEF';
+  const propertyStatusLabel = item.status === 'rented' ? 'Rented'
+    : item.status === 'sold' ? 'Sold'
+    : item.status === 'declined' ? 'Declined'
+    : item.listingType === 'sale' ? 'For Sale' : 'For Rent';
+  const statusDotColor = item.listingType === 'sale' && item.status !== 'rented' ? '#10B981' : '#5B8DEF';
+  const canApply = !isGuest && item.canApply === true;
 
  const commissioningText = item.expectedCompletionDate
   ? new Date(item.expectedCompletionDate).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
     })
-  : 'Q2 2026';
+  : 'Date not provided';
 
 const plannedSaleText = item.plannedSaleDate
   ? new Date(item.plannedSaleDate).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
     })
-  : 'Q4 2027';
+  : 'Date not provided';
 
   const yieldText =
-  item.expectedYieldText?.trim() || '12-15% per annum (est.)';
+  item.expectedYieldText?.trim() || 'Expected yield not provided';
 
 
   const aboutText =
   item.about?.trim() ||
-  'Modern residential complex in a premium Dubai location. Spacious layouts, convenient transport access, and strong investment potential. A more detailed property description will be added later.';
+  'A description has not been provided yet.';
 
   
   const presentationPdfUrl = item.presentationPdfUrl?.trim() || null;
@@ -461,31 +465,21 @@ const presentationPdfName = item.presentationPdfName?.trim() || 'Object Presenta
 
       <View style={{ height: 14 }} />
 
-<BlueButton
-  title={item.hasPaymentPlan ? 'Invest' : 'Object not active'}
-  onPress={() => {
-    if (isGuest) {
-      Alert.alert(
-        'Account required',
-        'Please create an account or log in to invest in this property.'
-      );
-      return;
-    }
-
-    navigation.navigate('BuyShares', {
-      propertyId: item.id,
-      propertyName: item.title,
-    });
-  }}
-  disabled={!item.hasPaymentPlan}
-  width="full"
-  showArrow={false}
-  bgColor={item.hasPaymentPlan ? '#10B981' : '#D1D5DB'}
-  textColor={item.hasPaymentPlan ? '#FFFFFF' : '#6B7280'}
-  borderColor={item.hasPaymentPlan ? '#10B981' : '#D1D5DB'}
-  paddingVertical={12}
-  style={styles.investButtonLikeHome}
-/>
+      <BlueButton
+        title={canApply ? 'Invest' : isGuest ? 'Sign in for investment availability' : 'Investment unavailable'}
+        onPress={() => navigation.navigate('BuyShares', {
+          propertyId: item.id,
+          propertyName: item.title,
+        })}
+        disabled={!canApply}
+        width="full"
+        showArrow={false}
+        bgColor={canApply ? '#10B981' : '#D1D5DB'}
+        textColor={canApply ? '#FFFFFF' : '#6B7280'}
+        borderColor={canApply ? '#10B981' : '#D1D5DB'}
+        paddingVertical={12}
+        style={styles.investButtonLikeHome}
+      />
 
       <View style={{ height: 8 }} />
     </View>
@@ -502,7 +496,7 @@ const PropertyListScreen = () => {
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
   const [galleryIndex, setGalleryIndex] = useState(0);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { isGuest } = useContext(AuthContext);
+  const { isGuest, session } = useContext(AuthContext);
   const [videoModalVisible, setVideoModalVisible] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [expandedPropertyId, setExpandedPropertyId] = useState<string | null>(null);
@@ -514,8 +508,8 @@ const PropertyListScreen = () => {
   isError,
   refetch,
 } = useQuery({
-  queryKey: ['properties', 'withExtras'],
-  queryFn: () => fetchPropertiesWithExtras(20),
+  queryKey: ['properties', 'withExtras', 'explore', session?.user?.id, session?.isDemo],
+  queryFn: () => fetchPropertiesWithExtras(20, true, !isGuest && !!session),
   staleTime: 60_000,
   gcTime: 10 * 60_000,
 });

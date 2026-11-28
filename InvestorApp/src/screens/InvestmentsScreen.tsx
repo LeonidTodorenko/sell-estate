@@ -190,12 +190,16 @@ const InvestmentCard: React.FC<InvestmentCardProps> = ({
     [slides],
   );
 
-  const location = property?.location || "Dubai Hills Estate / Dubai, UAE";
+  const location = property?.location || "Location not provided";
   const profit = investment.totalShareValue - investment.totalInvested;
   const yieldText =
-    property?.expectedYieldText?.trim() || "12-15% per annum (est.)";
+    property?.expectedYieldText?.trim() || "Expected yield not provided";
   const listingType =
-    property?.listingType === "rent" ? "For Rent" : "For Sale";
+    property?.status === "rented" ? "Rented"
+      : property?.status === "sold" ? "Sold"
+      : property?.status === "declined" ? "Declined"
+      : property?.listingType === "rent" ? "For Rent" : "For Sale";
+  const canApply = property?.canApply === true;
   const statusDotColor =
     property?.listingType === "rent" ? "#5B8DEF" : "#098653";
 
@@ -204,21 +208,18 @@ const InvestmentCard: React.FC<InvestmentCardProps> = ({
         year: "numeric",
         month: "short",
       })
-    : "Q2 2026";
+    : "Date not provided";
 
   const plannedSaleText = property?.plannedSaleDate
     ? new Date(property.plannedSaleDate).toLocaleDateString("en-US", {
         year: "numeric",
         month: "short",
       })
-    : "Q4 2027";
+    : "Date not provided";
 
   const aboutText =
     property?.about?.trim() ||
-    `Modern residential complex in the heart of Dubai Hills Estate. Golf course
-view. Amenities: pool, fitness, parks, schools, restaurants.
-To city center: 15 minutes
-To airport: 25 minutes`;
+    "A description has not been provided yet.";
 
   const preview = getPropertyPreview(property);
 
@@ -505,7 +506,8 @@ To airport: 25 minutes`;
         />
 
         <BlueButton
-          title="Invest"
+          title={canApply ? "Invest" : "Investment unavailable"}
+          disabled={!canApply}
           onPress={() =>
             navigation.navigate("BuyShares", {
               propertyId: investment.propertyId,
@@ -547,7 +549,7 @@ async function fetchInvestmentsScreenData(
     api.get<Investment[]>(`/investments/with-aggregated/${userId}`, {
       silentLoading: true,
     } as any),
-    fetchPropertiesWithExtras(50).catch((error) => {
+    fetchPropertiesWithExtras(50, true, true).catch((error) => {
       console.warn("Failed to load property extras", error);
       return [];
     }),

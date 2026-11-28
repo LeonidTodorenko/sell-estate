@@ -23,7 +23,7 @@ internal static class InvestmentChoices
             compare ? "investment-comparison" : "investment-recommendation", value, []);
         conversation.Turns.Clear();
         conversation.AccountTopic = null;
-        var properties = await db.Properties.AsNoTracking().Where(p => p.Status != "declined")
+        var properties = await db.Properties.ExcludeTechnicalFixtures().AsNoTracking().Where(p => p.Status != "declined")
             .Select(p => new { p.Id, p.Title, p.Price, p.RealPrice, p.TotalShares, p.AvailableShares, p.Status }).ToListAsync(ct);
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         var global = await ForecastRateJournal.ReadAsync(db, null, ct);
