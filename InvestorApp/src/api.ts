@@ -3,20 +3,14 @@ import axios from 'axios';
 import { parseJwt } from './services/auth';
 import { jwtOwner } from './services/purchaseIntentCore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform } from 'react-native';
+import { apiBaseUrl as API_BASE_URL } from './buildEnvironment';
 import { saveSession, loadSession, clearSession } from './services/sessionStorage';
 import { handleApiError } from './utils/apiError'; 
 import { resetToLogin } from './navigation/navigationRef'; 
 import { showGlobalLoading, hideGlobalLoading } from './contexts/LoadingContext';
 
 
-export  const API_BASE_URL =
-  Platform.OS === 'android'
-    
-     ? 
-    //  'http://10.0.2.2:7019/api'
-       'https://sell-estate.onrender.com/api'
-    : 'https://sell-estate.onrender.com/api';
+export { apiBaseUrl as API_BASE_URL } from './buildEnvironment';
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -307,7 +301,6 @@ export default api;
 // import axios from 'axios';
 // import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// //const API_BASE_URL = 'http://10.0.2.2:7019/api'; //   Android emulator
 //  const API_BASE_URL = 'https://sell-estate.onrender.com/api'; //   deploy test
 
 // const api = axios.create({

@@ -98,6 +98,7 @@ const LoginScreen = ({ navigation }: Props) => {
   const { setLoading } = useLoading();
   const { continueAsGuest, setSession: setAuthSession } = React.useContext(AuthContext);
   //  const { signIn } = React.useContext(AuthContext);
+  // Normal and Admin share these inputs. Enter an authorized test account manually.
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false); // блокируем повторные тапы
@@ -122,7 +123,7 @@ const LoginScreen = ({ navigation }: Props) => {
   const isLastSlide = currentSlide === slides.length - 1;
   const isAndroid = Platform.OS === 'android';
 const isAndroidKeyboardLogin = isAndroid && showLoginPanel && kbShown;
-  
+
 
   useEffect(() => {
     const showSub = Keyboard.addListener(
@@ -203,7 +204,7 @@ const isAndroidKeyboardLogin = isAndroid && showLoginPanel && kbShown;
     };
   }, [currentSlide, showLoginPanel, progressAnim]);
 
- 
+
   const handleNextSlide = () => {
     progressAnim.stopAnimation();
 
@@ -270,10 +271,9 @@ const isAndroidKeyboardLogin = isAndroid && showLoginPanel && kbShown;
   //   }
   // };
 
-  // ----- единая функция логина, которой пользуются и обычная кнопка, и «быстрые» ссылки -----
+  // Normal and Admin both authenticate through the standard login endpoint.
   const loginCore = async (
     creds: { email: string; password: string },
-    goto?: keyof RootStackParamList,
   ) => {
     if (busy) return; // защита от двойного нажатия
     setBusy(true);
@@ -289,9 +289,10 @@ const isAndroidKeyboardLogin = isAndroid && showLoginPanel && kbShown;
       if (emailContainsNul || passwordContainsNul) {
         throw new Error('Email or password contains an unsupported hidden character. Clear both fields and enter them again.');
       }
-      loginStage = 'POST /auth/login';
+      const loginPath = '/auth/login';
+      loginStage = `POST ${loginPath}`;
       // КЛЮЧЕВОЕ: идём напрямую, минуя интерсепторы api-инстанса
-      const { data } = await axios.post(`${API_BASE_URL}/auth/login`, creds, {
+      const { data } = await axios.post(`${API_BASE_URL}${loginPath}`, creds, {
         headers: { 'Content-Type': 'application/json' },
         timeout: 15000,
       });
@@ -331,7 +332,7 @@ const isAndroidKeyboardLogin = isAndroid && showLoginPanel && kbShown;
 
       const role = getRoleFromUserAndToken(user, accessToken);
       const target: keyof RootStackParamList =
-        goto ?? (role === 'admin' ? 'AdminDashboards' : 'Home');
+        role === 'admin' ? 'AdminDashboards' : 'Home';
       navigation.reset({ index: 0, routes: [{ name: target }] });
 
       //       (async () => {
@@ -378,6 +379,10 @@ const isAndroidKeyboardLogin = isAndroid && showLoginPanel && kbShown;
       if (error.response?.data?.message) {
         //if (error.response && error.response.data && error.response.data.message) {
         message = error.response.data.message;
+      } else if (axios.isAxiosError(error) && !error.response) {
+        message = error.code === 'ECONNABORTED'
+          ? 'The HTTPS request timed out. Check your connection and try again.'
+          : 'Could not reach the OwnersClub server over HTTPS. Check your connection and try again.';
       } else if (error.message) {
         message = error.message;
       }
@@ -454,14 +459,14 @@ const isAndroidKeyboardLogin = isAndroid && showLoginPanel && kbShown;
   <Animated.View
     style={[
       styles.heroWrap,
-      heroAnimatedStyle, 
+      heroAnimatedStyle,
     ]}
   >
        <ImageBackground
   source={slide.image ?? loginBackground}
   resizeMode="cover"
   style={[
-    styles.heroImage, 
+    styles.heroImage,
   ]}
 >
           <View style={styles.heroOverlay} />
@@ -604,6 +609,8 @@ const isAndroidKeyboardLogin = isAndroid && showLoginPanel && kbShown;
                 </View>
               )}
 
+
+
               <StyledInput
                 style={styles.input}
                 placeholder="E-mail"
@@ -685,11 +692,54 @@ const isAndroidKeyboardLogin = isAndroid && showLoginPanel && kbShown;
     </Text>
   </Text>
 
+       <View style={styles.quickLoginWrap}>
+        <Text
+          onPress={() =>
+            loginCore(
+              { email: 'android-test@example.invalid', password: 'local-test-only' },
+              'AdminDashboards',
+            )
+          }
+          style={styles.adminLink}
+        >
+          ➤ Enter Admin Panel
+        </Text>
 
-              
+
+
+        <Text
+          onPress={() =>
+            loginCore({ email: 'android-test@example.invalid', password: 'local-test-only' }, 'Home')
+          }
+          style={styles.userLink}
+        >
+          ➤ Login as Test User
+        </Text>
+
+
+        <Text
+          onPress={() =>
+            loginCore({ email: 'android-test@example.invalid', password: 'local-test-only' }, 'Home')
+          }
+          style={styles.userLink2}
+        >
+          ➤ Login as Test User2
+        </Text>
+
+        <Text
+          onPress={() =>
+            loginCore({ email: 'android-test@example.invalid', password: 'local-test-only' }, 'Home')
+          }
+          style={styles.userLink3}
+        >
+          ➤ Login as Test User3
+        </Text>
+
+      </View>
+
             </View>
 
-           
+
 
             {/* нижний небольшой отступ, чтобы кнопки не прилипали */}
             <View style={{ height: 24 }} />
@@ -750,11 +800,11 @@ demoNoticeText: {
   color: '#047857',
   fontSize: 13,
 },
- 
+
 loginScroll: {
   flex: 1,
 },
- 
+
 loginPanelWrapAndroid: {
   position: 'relative',
   flex: 1,

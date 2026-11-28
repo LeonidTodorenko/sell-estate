@@ -29,3 +29,5 @@ React Native 0.82, React 19, TypeScript, React Navigation, Axios, Keychain. [ses
 React 19, React Router 7, TypeScript и Vite 7. В `WebApp` с Node ≥ 22.12 доступны `npm ci`, `npm run dev`, `npm run typecheck`, `npm test`, `npm run build` и `npm run preview`. Сборка выполняет проверку типов и создаёт `dist/`. `VITE_API_BASE_URL` задаётся с суффиксом `/api`. Смотри [README веб-клиента](../WebApp/README.md) и [.env.example](../WebApp/.env.example).
 
 Для Cloudflare Workers Static Assets README описывает подготовленный `dist` и SPA fallback `single-page-application`. Не добавляй `_redirects` в этот пакет из-за описанного цикла перенаправлений. Проверь состав артефакта, заголовки из [public/_headers](../WebApp/public/_headers), CORS и прямой вход на вложенный маршрут. Это процедура из репозитория. Факт публикации и действующие настройки Cloudflare проверяются отдельно.
+
+Android 30.9.2: проверять [Android-приёмку](ANDROID-RELEASE-ACCEPTANCE.md). Без согласования не менять сборку, подпись, авторизацию и инфраструктуру. Не создавать временные копии репозитория. Перед объявлением блокера сверять актуальную базу знаний.
