@@ -22,11 +22,13 @@ public class MonthlyReports3093Tests
             wallet = db.Users.Find(h.Actor)!.WalletBalance;
             transactions = db.UserTransactions.Count();
         });
-        for (var run = 0; run < 2; run++)
+        async Task Capture()
         {
             using var scope = h.Services.CreateScope();
             await new InvestorMonthlySnapshotService(scope.ServiceProvider.GetRequiredService<AppDbContext>()).CaptureAsync(h.Actor);
         }
+        await Task.WhenAll(Capture(), Capture());
+        await Capture();
         h.WithDb(db => {
             var report = Assert.Single(db.InvestorMonthlyReports.Where(x => x.UserId == h.Actor));
             Assert.Equal(wallet, db.Users.Find(h.Actor)!.WalletBalance);

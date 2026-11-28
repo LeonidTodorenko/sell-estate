@@ -35,7 +35,7 @@ export default function MonthlyReportsScreen() {
   const investments = label('Investments', 'Инвестиции');
   const query = useQuery({
     queryKey: ['monthly-reports', path, userId],
-    queryFn: async () => (await api.get<Report[]>(path!)).data,
+    queryFn: async () => (await api.get<Report[]>(path!, { headers: { 'Accept-Language': locale } })).data,
     enabled: !!userId && !!path,
   });
 
