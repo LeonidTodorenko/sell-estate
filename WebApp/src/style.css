@@ -126,3 +126,7 @@ input,select,textarea{background:#fff;color:#172c26}
 .property-card .card-stats{padding-bottom:14px}
 .property-gallery>.property-photo{height:auto;aspect-ratio:16/10;border-radius:14px}
 .property-gallery>.property-photo img{object-fit:contain}
+
+.report-grid .allocation-content{grid-template-columns:minmax(0,1fr);gap:.5rem}
+.report-grid .allocation-label{flex:1 0 auto;overflow-wrap:normal}
+.report-grid .allocation-legend strong{margin:0}

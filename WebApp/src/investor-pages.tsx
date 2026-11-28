@@ -26,14 +26,54 @@ export function RentalIncome({ session }: { session: Session }) {
 }
 export function MonthlyReports({ session }: { session: Session }) {
   const path = investorPaths(session).reports;
-  return <><Heading title="Monthly Reports" description="Month-by-month snapshots of your virtual capital."/>{path ? <DemoReports path={path}/> : <Empty title="Monthly reports are available in demo mode">Account reports are not yet available in the web client.</Empty>}</>;
+  const russian = navigator.language.toLowerCase().startsWith('ru');
+  const label = (en: string, ru: string) => russian ? ru : en;
+  return <>
+    <Heading title={label('Monthly Reports', 'Месячные отчёты')} description={session.isDemo
+      ? label('Month-by-month snapshots of your virtual capital.', 'Ежемесячные снимки виртуального капитала.')
+      : label('Month-by-month snapshots of your capital.', 'Ежемесячные снимки вашего капитала.')}/>
+    {path ? <ReportHistory path={path} isDemo={session.isDemo} russian={russian}/> :
+      <Empty title={label('No monthly snapshots yet', 'Месячных снимков пока нет')}/>}
+  </>;
 }
-function DemoReports({ path }: { path: string }) {
+
+function ReportHistory({ path, isDemo, russian }: { path: string; isDemo: boolean; russian: boolean }) {
   const resource = useResource<MonthlyReport[]>(path);
-  return <><button className="back-link" onClick={resource.retry}>Refresh</button><Resource resource={resource}>{data => data.length ? <div className="report-grid">{[...data].sort((a, b) => Date.parse(b.reportMonth) - Date.parse(a.reportMonth)).map(r => <article className="panel" key={r.id}><h2>{date(r.reportMonth)}</h2><p>Total capital <strong>{money(r.totalCapital)}</strong></p><dl><dt>Capital change</dt><dd>{r.capitalChange > 0 ? '+' : ''}{money(r.capitalChange)}</dd><dt>Wallet</dt><dd>{money(r.walletBalance)}</dd><dt>Investments</dt><dd>{money(r.investmentValue)}</dd><dt>Rental income to date</dt><dd>{money(r.rentalIncome)}</dd></dl>{Number.isFinite(r.walletBalance) && Number.isFinite(r.investmentValue) &&
-  <AllocationChart title="Demo capital composition" description="Snapshot amounts in USD. The wallet includes credited rent."
-    items={[{ label: 'Wallet', value: r.walletBalance }, { label: 'Investments', value: r.investmentValue }]}/>}
-    {r.commentary && <details><summary>About this Demo snapshot</summary><p>{r.commentary}</p></details>}</article>)}</div> : <Empty title="Your first demo report is on its way">Monthly snapshots appear after a full demo month has been completed.</Empty>}</Resource></>;
+  const label = (en: string, ru: string) => russian ? ru : en;
+  const amount = new Intl.NumberFormat(russian ? 'ru-RU' : 'en-US', { style: 'currency', currency: 'USD' });
+  const snapshotDate = new Intl.DateTimeFormat(russian ? 'ru-RU' : 'en-US', { dateStyle: 'medium', timeZone: 'UTC' });
+  const wallet = label('Wallet', 'Кошелёк');
+  const investments = label('Investments', 'Инвестиции');
+
+  return <>
+    <button className="back-link" onClick={resource.retry}>{label('Refresh', 'Обновить')}</button>
+    {resource.error ? <div className="state error" role="alert">{label('Unable to load reports.', 'Не удалось загрузить отчёты.')}<p>{resource.error}</p><button onClick={resource.retry}>{label('Try again', 'Повторить')}</button></div>
+      : resource.data === undefined ? <div className="state" role="status"><span className="loading-dot"/> {label('Loading…', 'Загрузка…')}</div>
+      : resource.data.length === 0 ? <Empty title={isDemo
+        ? label('Your first demo report is on its way', 'Первый отчёт Demo ещё не готов')
+        : label('No monthly snapshots yet', 'Месячных снимков пока нет')}>{isDemo &&
+        label('Monthly snapshots appear after a full demo month has been completed.', 'Снимки появляются после завершения полного месяца в Demo.')}</Empty>
+      : <div className="report-grid">
+        {[...resource.data].sort((a, b) => Date.parse(b.reportMonth) - Date.parse(a.reportMonth)).map(report =>
+          <article className="panel" key={report.id}>
+            <h2>{snapshotDate.format(new Date(report.reportMonth.slice(0, 10)))}</h2>
+            <p>{label('Total capital', 'Общий капитал')} <strong>{amount.format(report.totalCapital)}</strong></p>
+            <dl>
+              <dt>{label('Capital change', 'Изменение капитала')}</dt>
+              <dd>{report.capitalChange > 0 ? '+' : ''}{amount.format(report.capitalChange)}</dd>
+              <dt>{wallet}</dt><dd>{amount.format(report.walletBalance)}</dd>
+              <dt>{investments}</dt><dd>{amount.format(report.investmentValue)}</dd>
+              <dt>{label('Rental income to date', 'Накопленный арендный доход')}</dt>
+              <dd>{amount.format(report.rentalIncome)}</dd>
+            </dl>
+            <AllocationChart russian={russian}
+              title={isDemo ? label('Demo capital composition', 'Структура капитала Demo') : label('Capital composition', 'Структура капитала')}
+              description={label('Snapshot amounts in USD. The wallet includes credited rent.', 'Суммы на дату снимка в долларах США. Кошелёк включает зачисленную аренду.')}
+              items={[{ label: wallet, value: report.walletBalance }, { label: investments, value: report.investmentValue }]}/>
+            {report.commentary && <details><summary>{isDemo ? label('About this Demo snapshot', 'О снимке Demo') : label('About this snapshot', 'О снимке')}</summary><p>{report.commentary}</p></details>}
+          </article>)}
+      </div>}
+  </>;
 }
 export function Inbox({ session }: { session: Session }) {
  const resource=useResource<InboxMessage[]>(investorPaths(session).inbox);

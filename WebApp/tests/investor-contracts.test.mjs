@@ -4,7 +4,7 @@ import { investorPaths, kycPayload, kycStatus, inDateRange } from '../src/invest
 import { normalizeSession } from '../src/session.ts';
 const session = (demo) => normalizeSession({ accessToken: `header.${Buffer.from(JSON.stringify({ sub: demo ? 'demo-owner' : 'real-owner', isDemo: String(demo), exp: 9999999999 })).toString('base64url')}.test` });
 test('production paths match mobile; no guessed reports endpoint', () => {
-  assert.deepEqual(investorPaths(session(false)), { kyc: '/kyc/user/real-owner', finance: '/users/real-owner/assets-summary', rental: '/users/me/rent-income-history', inbox: '/messages/inbox/real-owner', reports: null });
+  assert.deepEqual(investorPaths(session(false)), { kyc: '/kyc/user/real-owner', finance: '/users/real-owner/assets-summary', rental: '/users/me/rent-income-history', inbox: '/messages/inbox/real-owner', reports: '/monthly-reports' });
 });
 test('demo paths preserve JWT owner and use JWT-scoped report and rental endpoints', () => {
   assert.deepEqual(investorPaths(session(true)), { kyc: '/kyc/user/demo-owner', finance: '/users/demo-owner/assets-summary', rental: '/users/me/rent-income-history', inbox: '/messages/inbox/demo-owner', reports: '/demo/monthly-reports' });

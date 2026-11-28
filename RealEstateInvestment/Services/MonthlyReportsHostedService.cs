@@ -42,14 +42,15 @@ namespace RealEstateInvestment.Services
 
                         // выбираем только нужных юзеров
                         var users = await db.Users
-                            .Where(u => u.IsEmailConfirmed && !u.IsBlocked && u.Role == "investor")
+                            .Where(u => !u.IsBlocked && u.Role == "investor")
                             .ToListAsync(stoppingToken);
 
                         foreach (var u in users)
                         {
                             try
                             {
-                                await svc.GenerateAndSendMonthlyReportAsync(u.Id, periodStart);
+                                await new InvestorMonthlySnapshotService(db).CaptureAsync(u.Id, stoppingToken);
+                                if (u.IsEmailConfirmed) await svc.GenerateAndSendMonthlyReportAsync(u.Id, periodStart);
                             }
                             catch (Exception exUser)
                             {

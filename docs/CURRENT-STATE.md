@@ -73,3 +73,16 @@ Android AI Insights расположен ниже карточки Total Assets.
 Серверный прогон: 443 пройдено, 57 пропущено. Целевой прогон с изолированным PostgreSQL: 116 пройдено, 1 пропущен (живой Gemini). WebApp собрался, 56 тестов прошли. Android TypeScript и 48 Jest прошли. Самостоятельные ARM64 APK Normal и Quick Login INTERNAL TEST собраны с versionCode 12 и установлены поверх предыдущих тестовых сборок на эмуляторе. Действующая production-подпись требует отдельной сверки. Quick Login использует локальный QA-мост на порту 7019.
 
 GitHub main на `3a9ae500893c35cafc864c64a40948f7558fc8cd`. Рабочий API сообщил версию 30.8.4. Кандидат остаётся локальным до подтверждения резервной копии рабочей БД, точек отката и проверок на целевых сервисах. Зашифрованный архив проверен отдельно. Продажа целого объекта и новая автоматизация аренды остаются в backlog.
+
+
+## Monthly Reports 30.9.3 · 28 November 2026
+
+Real investors now use GET /api/monthly-reports, scoped to the JWT owner. Demo continues through GET /api/demo/monthly-reports. Both clients reuse the existing report cards and allocation charts. The WebApp menu entry is between Identity Verification and Inbox. Android reuses its existing MonthlyReports route. Report text supports RU/EN using the device/browser locale.
+
+InvestorMonthlyReports stores one immutable snapshot per investor and UTC calendar month. GeneratedAt is the actual capture date shown in clients. The first snapshot has zero change with an explicit missing-previous commentary. Later changes compare the previous available snapshot. Capital is wallet plus current share value using the existing price/total-shares rule. Credited rental receipts are separately disclosed and already included in the wallet. Demo retains its existing missing-price fallback. No reliable historical property valuations were found, so historical capital is not reconstructed.
+
+The existing MonthlyReportsHostedService captures snapshots on its monthly run. No new scheduler. Initial rollout captures actual current state through the same service, without sending email. A unique database index and transaction lock protect retries/concurrency. The additive migration is 20261128142940_InvestorMonthlySnapshots3093. Snapshot creation does not change financial records. Existing email uses the saved snapshot and shared deterministic commentary alongside its original ledger-period PDF. Delivery remains unconfirmed.
+
+Local verification: backend builds, three isolated PostgreSQL tests passed (capture/idempotence/ownership/Demo isolation and existing no-delivery email/Demo monthly scenarios), additive migration and initial seeding passed locally. WebApp build and 56 tests passed. Investor smoke passed normal/Demo at 320/390/760/1024/1440 px with loading/error/retry/empty paths. Android typecheck reports errors in the existing local LoginScreen.tsx. Four existing targeted RN checks passed. APK build is left to the user.
+
+Production: read-only preflight verified the expected database, TLS and baseline PaymentEvidence306. A protected pre-rollout pg_dump was saved under C:/App/work/monthly3093. The authorized additive migration and initial capture completed, reporting 10 real investor snapshots. Backend/WebApp publication and authenticated production UI verification are pending at this entry.

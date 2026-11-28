@@ -7,7 +7,7 @@ export function investorPaths(session: Session) {
   return {
     kyc: `/kyc/user/${id}`, finance: `/users/${id}/assets-summary`,
     rental: '/users/me/rent-income-history', inbox: `/messages/inbox/${id}`,
-    reports: session.isDemo ? '/demo/monthly-reports' : null,
+    reports: session.isDemo ? '/demo/monthly-reports' : '/monthly-reports',
   };
 }
 export interface KycDocument { id: string; type: string; base64File: string; status: string; uploadedAt: string }

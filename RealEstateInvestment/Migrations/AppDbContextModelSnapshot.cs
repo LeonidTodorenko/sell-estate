@@ -725,6 +725,44 @@ namespace RealEstateInvestment.Migrations
                     b.ToTable("InvestmentApplications");
                 });
 
+            modelBuilder.Entity("RealEstateInvestment.Models.InvestorMonthlyReport", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("CapitalChange")
+                        .HasColumnType("numeric");
+
+                    b.Property<DateTime>("GeneratedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("InvestmentValue")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("RentalIncome")
+                        .HasColumnType("numeric");
+
+                    b.Property<DateTime>("ReportMonth")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("TotalCapital")
+                        .HasColumnType("numeric");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("WalletBalance")
+                        .HasColumnType("numeric");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "ReportMonth")
+                        .IsUnique();
+
+                    b.ToTable("InvestorMonthlyReports");
+                });
+
             modelBuilder.Entity("RealEstateInvestment.Models.KycDocument", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1853,6 +1891,15 @@ namespace RealEstateInvestment.Migrations
                     b.Navigation("Property");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("RealEstateInvestment.Models.InvestorMonthlyReport", b =>
+                {
+                    b.HasOne("RealEstateInvestment.Models.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("RealEstateInvestment.Models.PaymentEvidence", b =>

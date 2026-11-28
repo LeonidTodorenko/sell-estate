@@ -250,6 +250,11 @@ namespace RealEstateInvestment.Services
                         netCashflow
                 );
 
+                var snapshot = await _db.InvestorMonthlyReports.AsNoTracking()
+                    .Where(x => x.UserId == userId).OrderByDescending(x => x.GeneratedAt).FirstOrDefaultAsync();
+                var snapshotNote = snapshot is null ? "" :
+                    $"<p>Snapshot {snapshot.GeneratedAt:yyyy-MM-dd HH:mm} UTC: capital {snapshot.TotalCapital:0.00} USD, wallet {snapshot.WalletBalance:0.00} USD, investments {snapshot.InvestmentValue:0.00} USD.</p><p>" +
+                    CapitalSnapshotMath.Commentary(await _db.InvestorMonthlyReports.AnyAsync(x => x.UserId == userId && x.GeneratedAt < snapshot.GeneratedAt), false) + "</p>";
                 var title = $"Monthly report {periodStart:yyyy-MM}";
 
                 string Commentary() => $"Recorded net account activity for the month: {totalPnl.ToString("0.00", CultureInfo.InvariantCulture)} USD. " +
@@ -264,7 +269,7 @@ namespace RealEstateInvestment.Services
                     user.Email,
                     title,
                     $"<p>Hello, {System.Net.WebUtility.HtmlEncode(user.FullName)}!</p>" +
-                    $"<p>We attached your report for period {periodStart:yyyy-MM}.</p><p>{commentary}</p>",
+                    $"<p>We attached your report for period {periodStart:yyyy-MM}.</p><p>{commentary}</p>{snapshotNote}",
                     $"monthly-report-{periodStart:yyyy-MM}.pdf",
                     pdfBytes
                 );

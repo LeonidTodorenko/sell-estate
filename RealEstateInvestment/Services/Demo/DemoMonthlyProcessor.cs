@@ -213,13 +213,11 @@ public sealed class DemoMonthlyProcessor : IDemoMonthlyProcessor
             from investment in _db.DemoInvestments.AsNoTracking()
             join property in _db.Properties.AsNoTracking() on investment.PropertyId equals property.Id
             where investment.DemoUserId == userId && investment.Shares > 0
-            select property.TotalShares > 0
-                ? property.Price / property.TotalShares * investment.Shares
-                : investment.InvestedAmount).SumAsync(cancellationToken);
+            select new CapitalPosition { Price = property.Price, TotalShares = property.TotalShares, Shares = investment.Shares, MissingPriceValue = investment.InvestedAmount }).SumAsync(CapitalSnapshotMath.Value, cancellationToken);
         var rentalIncome = await _db.DemoRentalIncomes.AsNoTracking()
             .Where(x => x.DemoInvestorId == userId)
             .SumAsync(x => x.Amount, cancellationToken) + userTotal;
-        var totalCapital = user.WalletBalance + investmentValue;
+        var totalCapital = CapitalSnapshotMath.Total(user.WalletBalance, investmentValue);
         var report = await _db.DemoMonthlyReports.SingleOrDefaultAsync(
             x => x.DemoUserId == userId && x.ReportMonth == payoutMonth, cancellationToken);
         var previousCapital = await _db.DemoMonthlyReports.AsNoTracking()

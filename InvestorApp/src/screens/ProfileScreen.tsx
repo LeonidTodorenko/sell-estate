@@ -543,11 +543,11 @@ const ProfileScreen = ({ navigation }: Props) => {
           onPress={() => navigation.navigate('MyRentIncome')}
         />
 
-        {storedUser.isDemo && <MenuItem
+        <MenuItem
           iconSource={chartIcon}
-          title="Monthly Reports"
+          title={Intl.DateTimeFormat().resolvedOptions().locale.startsWith('ru') ? 'Месячные отчёты' : 'Monthly Reports'}
           onPress={() => navigation.navigate('MonthlyReports')}
-        />}
+        />
 
         <MenuItem
           iconSource={logoutIcon}

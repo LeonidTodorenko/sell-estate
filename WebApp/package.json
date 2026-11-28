@@ -1,7 +1,7 @@
 {
   "name": "ownersclub-webapp",
   "private": true,
-  "version": "30.9.2",
+  "version": "30.9.3",
   "type": "module",
   "engines": {
     "node": ">=22.12.0"

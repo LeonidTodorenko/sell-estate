@@ -96,6 +96,7 @@ namespace RealEstateInvestment.Data
 
         public DbSet<DemoActionLog> DemoActionLogs { get; set; }
 
+        public DbSet<InvestorMonthlyReport> InvestorMonthlyReports { get; set; }
         public DbSet<DemoMonthlyReport> DemoMonthlyReports { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -493,6 +494,13 @@ namespace RealEstateInvestment.Data
                     .WithMany()
                     .HasForeignKey(x => x.DemoUserId)
                     .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<InvestorMonthlyReport>(b =>
+            {
+                b.HasKey(x => x.Id);
+                b.HasIndex(x => new { x.UserId, x.ReportMonth }).IsUnique();
+                b.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             });
 
             modelBuilder.Entity<DemoMonthlyReport>(b =>

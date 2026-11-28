@@ -29,3 +29,8 @@ Assistant chat investment paths: [AssistantController](../RealEstateInvestment/C
 - [Demo reports](../RealEstateInvestment/Controllers/DemoMonthlyReportsController.cs) describe changes between consecutive saved snapshots. The regular [email report](../RealEstateInvestment/Services/MonthlyReportService.cs) describes the reported ledger activity and recorded rental receipts. Both use local deterministic commentary.
 
 Portfolio and asset allocation: [AssistantController](../RealEstateInvestment/Controllers/AssistantController.cs) → [PersonalFinanceReader](../RealEstateInvestment/Services/Assistant/PersonalFinanceReader.cs) → [WebApp chart](../WebApp/src/charts.tsx) or [Android chart](../InvestorApp/src/components/AssetAllocation.tsx). The assistant supplies a typed USD breakdown under the existing authorized account scope. The clients calculate percentages of positive components and display negative amounts separately.
+
+
+## Monthly Reports 30.9.3
+
+Real history: RealEstateInvestment/Controllers/MonthlyReportsController.cs -> Services/InvestorMonthlySnapshotService.cs -> Models/InvestorMonthlyReport.cs. Shared valuation: Services/CapitalSnapshotMath.cs, reused by Services/Demo/DemoMonthlyProcessor.cs. Existing MonthlyReportsHostedService captures real snapshots before the existing email path. WebApp /monthly-reports uses investor-pages.tsx and investor-contracts.ts. Android MonthlyReportsScreen.tsx is accessible through ProfileScreen.tsx and the existing AppNavigator route.

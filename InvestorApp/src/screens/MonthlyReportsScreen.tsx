@@ -4,7 +4,7 @@ import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View }
 import { useQuery } from '@tanstack/react-query';
 import api from '../api';
 import DemoModeBanner from '../components/DemoModeBanner';
-import { loadSession } from '../services/sessionStorage';
+import { loadSession, type Session } from '../services/sessionStorage';
 import theme from '../constants/theme';
 
 type Report = {
@@ -18,50 +18,70 @@ type Report = {
   commentary?: string;
 };
 
-const money = (value: number) => `$${Number(value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
 export default function MonthlyReportsScreen() {
-  const [session, setSession] = useState<any>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [sessionLoaded, setSessionLoaded] = useState(false);
   useEffect(() => { loadSession().then(setSession).finally(() => setSessionLoaded(true)); }, []);
   const isDemo = session?.isDemo === true || session?.user?.isDemo === true;
   const demoCode = session?.demoCode ?? session?.user?.demoCode ?? null;
+  const userId = session?.user?.userId ?? session?.user?.id;
+  const path = isDemo ? '/demo/monthly-reports' : '/monthly-reports';
+  const russian = Intl.DateTimeFormat().resolvedOptions().locale.startsWith('ru');
+  const label = (en: string, ru: string) => russian ? ru : en;
+  const locale = russian ? 'ru-RU' : 'en-US';
+  const money = new Intl.NumberFormat(locale, { style: 'currency', currency: 'USD' });
+  const snapshotDate = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeZone: 'UTC' });
+  const wallet = label('Wallet', 'Кошелёк');
+  const investments = label('Investments', 'Инвестиции');
   const query = useQuery({
-    queryKey: ['demo-monthly-reports', session?.user?.userId ?? session?.user?.id],
-    queryFn: async () => (await api.get<Report[]>('/demo/monthly-reports')).data,
-    enabled: sessionLoaded && isDemo,
+    queryKey: ['monthly-reports', path, userId],
+    queryFn: async () => (await api.get<Report[]>(path!)).data,
+    enabled: !!userId && !!path,
   });
 
-  if (query.isLoading) return <View style={styles.center}><ActivityIndicator color={theme.colors.primary} /></View>;
+  if (!sessionLoaded || query.isLoading) return <View style={styles.center}><ActivityIndicator
+    accessibilityLabel={label('Loading…', 'Загрузка…')} color={theme.colors.primary} /></View>;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}
-      refreshControl={<RefreshControl refreshing={query.isFetching} onRefresh={query.refetch} />}>
+      refreshControl={path && userId ? <RefreshControl refreshing={query.isFetching} onRefresh={query.refetch} /> : undefined}>
       <DemoModeBanner isDemo={isDemo} demoCode={demoCode} />
-      <Text style={styles.heading}>Monthly portfolio reports</Text>
-      <Text style={styles.subtitle}>A month-by-month snapshot of your virtual capital.</Text>
-      {query.isError && <Text style={styles.error}>Unable to load reports. Pull down to retry.</Text>}
-      {isDemo && query.data?.map(report => {
-        const changeUp = report.capitalChange >= 0;
-        return <View key={report.id} style={styles.card}>
-          <View style={styles.row}><Text style={styles.month}>{report.reportMonth.slice(0, 7)}</Text><Text style={[styles.change, !changeUp && styles.down]}>{changeUp ? '+' : ''}{money(report.capitalChange)}</Text></View>
-          <Text style={styles.total}>{money(report.totalCapital)}</Text>
-          <View style={styles.divider} />
-          <View style={styles.row}><Text style={styles.label}>Wallet</Text><Text style={styles.value}>{money(report.walletBalance)}</Text></View>
-          <View style={styles.row}><Text style={styles.label}>Investments</Text><Text style={styles.value}>{money(report.investmentValue)}</Text></View>
-          <View style={styles.row}><Text style={styles.label}>Rental income to date</Text><Text style={styles.value}>{money(report.rentalIncome)}</Text></View>
-          {Number.isFinite(report.walletBalance) && Number.isFinite(report.investmentValue) &&
-            <AssetAllocation title="Demo capital composition" description="Snapshot amounts in USD. The wallet includes credited rent."
-              items={[{ label: 'Wallet', value: report.walletBalance }, { label: 'Investments', value: report.investmentValue }]}/>}
-          {!!report.commentary && <Text style={styles.subtitle}>{report.commentary}</Text>}
-        </View>;
-      })}
-      {!query.isError && query.data?.length === 0 && (
-        <View style={styles.emptyCard}>
-          <Text style={styles.emptyTitle}>Your first demo report is on its way</Text>
-          <Text style={styles.empty}>Monthly snapshots appear after a full demo month has been completed.</Text>
+      <Text style={styles.heading}>{label('Monthly Reports', 'Месячные отчёты')}</Text>
+      <Text style={styles.subtitle}>{isDemo
+        ? label('Month-by-month snapshots of your virtual capital.', 'Ежемесячные снимки виртуального капитала.')
+        : label('Month-by-month snapshots of your capital.', 'Ежемесячные снимки вашего капитала.')}</Text>
+      {query.isError && <Text style={styles.error}>{label('Unable to load reports. Pull down to retry.', 'Не удалось загрузить отчёты. Потяните вниз, чтобы повторить.')}</Text>}
+      {query.data?.map(report => <View key={report.id} style={styles.card}>
+        <Text style={styles.month}>{snapshotDate.format(new Date(report.reportMonth.slice(0, 10)))}</Text>
+        <Text style={styles.label}>{label('Total capital', 'Общий капитал')}</Text>
+        <Text style={styles.total}>{money.format(report.totalCapital)}</Text>
+        <View style={styles.divider} />
+        <View style={styles.row}>
+          <Text style={styles.label}>{label('Capital change', 'Изменение капитала')}</Text>
+          <Text style={[styles.change, report.capitalChange < 0 && styles.down]}>
+            {report.capitalChange > 0 ? '+' : ''}{money.format(report.capitalChange)}
+          </Text>
         </View>
-      )}
+        <View style={styles.row}><Text style={styles.label}>{wallet}</Text><Text style={styles.value}>{money.format(report.walletBalance)}</Text></View>
+        <View style={styles.row}><Text style={styles.label}>{investments}</Text><Text style={styles.value}>{money.format(report.investmentValue)}</Text></View>
+        <View style={styles.row}>
+          <Text style={styles.label}>{label('Rental income to date', 'Накопленный арендный доход')}</Text>
+          <Text style={styles.value}>{money.format(report.rentalIncome)}</Text>
+        </View>
+        <AssetAllocation russian={russian}
+          title={isDemo ? label('Demo capital composition', 'Структура капитала Demo') : label('Capital composition', 'Структура капитала')}
+          description={label('Snapshot amounts in USD. The wallet includes credited rent.', 'Суммы на дату снимка в долларах США. Кошелёк включает зачисленную аренду.')}
+          items={[{ label: wallet, value: report.walletBalance }, { label: investments, value: report.investmentValue }]}/>
+        {!!report.commentary && <Text style={styles.subtitle}>{report.commentary}</Text>}
+      </View>)}
+      {!session || !path || query.data?.length === 0 ? (
+        <View style={styles.emptyCard}>
+          <Text style={styles.emptyTitle}>{!session ? label('Sign in to view reports', 'Войдите, чтобы увидеть отчёты') : isDemo
+            ? label('Your first demo report is on its way', 'Первый отчёт Demo ещё не готов')
+            : label('No monthly snapshots yet', 'Месячных снимков пока нет')}</Text>
+          {session && isDemo && <Text style={styles.empty}>{label('Monthly snapshots appear after a full demo month has been completed.', 'Снимки появляются после завершения полного месяца в Demo.')}</Text>}
+        </View>
+      ) : null}
     </ScrollView>
   );
 }
@@ -73,7 +93,7 @@ const styles = StyleSheet.create({
   heading: { color: theme.colors.text, fontSize: 24, fontWeight: '700', marginTop: 18 },
   subtitle: { color: '#8B93A7', marginTop: 6, marginBottom: 18 },
   card: { backgroundColor: '#151A26', borderRadius: 16, padding: 18, marginBottom: 14 },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 4 },
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 4, marginVertical: 4 },
   month: { color: '#B8C0D4', fontSize: 15, fontWeight: '600' },
   total: { color: '#FFFFFF', fontSize: 28, fontWeight: '800', marginTop: 8 },
   change: { color: '#43C59E', fontWeight: '700' },

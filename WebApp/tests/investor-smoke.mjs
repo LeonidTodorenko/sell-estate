@@ -6,7 +6,7 @@ const base = process.env.SMOKE_BASE_URL || 'http://127.0.0.1:4175';
 const key = 'ownersclub.web.session.v1';
 const auth = (demo = false, expired = false) => ({ accessToken: `header.${Buffer.from(JSON.stringify({ sub: demo ? 'demo-owner' : 'real-owner', isDemo: String(demo), exp: expired ? 1 : 9999999999 })).toString('base64url')}.test`, refreshToken: demo ? null : 'refresh', user: { id: demo ? 'demo-owner' : 'real-owner' }, isDemo: demo });
 const browser = await chromium.launch({ channel: 'msedge', headless: true });
-const context = await browser.newContext();
+const context = await browser.newContext({ locale: 'en-US' });
 const page = await context.newPage();
 const errors = [], calls = []; page.on('pageerror', e => errors.push(e.message));
 let mode = 'normal', demo = false, uploads = 0, refreshes = 0, docs = [];
@@ -42,6 +42,7 @@ await context.route('https://sell-estate.onrender.com/api/**', async route => {
     return send({ walletBalance: 100, investmentValue: 200, totalAssets: 300, rentalIncome: 120, combinedHistory: history, equityHistory: history, rentIncomeHistory: history });
   }
   if (path === '/users/me/rent-income-history') return send(empty ? [] : [{ title: 'Marina residence with a long property name '.repeat(3), timestamp: '2026-09-01T12:00:00Z', amount: 120 }]);
+  if (path === '/monthly-reports') { assert.ok(!demo); return send([]); }
   if (path === '/demo/monthly-reports') { assert.ok(demo); return send(empty ? [] : [{ id:'r1', reportMonth:'2026-09-01', totalCapital: 300, capitalChange: -20, walletBalance:100, investmentValue:200, rentalIncome:120 }]); }
   if (path === `/messages/inbox/${id}`) return send(empty ? [] : [{ id:'m1', title:'Portfolio update', content:'Text-only message <script>throw new Error()</script>', isRead:false, createdAt:'2026-09-01' }]);
   if (/^\/users\/[^/]+$/.test(path) && path !== '/users/admin-id') return send({id:path.split('/').pop(),avatarBase64:null});
@@ -65,7 +66,8 @@ try {
     }
     check(`${demo ? 'demo' : 'production'}: five routes at five widths`);
     await page.goto(base + '/monthly-reports');
-    assert.equal(await page.getByRole('navigation', { name:'Main navigation' }).getByRole('link',{name:'Monthly Reports'}).count(), demo ? 1 : 0);
+    await page.getByRole('navigation', { name:'Main navigation' }).getByRole('link',{name:'Monthly Reports'}).waitFor();
+    await visible(demo ? 'Demo capital composition' : 'No monthly snapshots yet');
     await page.goto(base + '/kyc'); await visible('No documents submitted');
     await page.getByLabel('Document image', { exact:true }).setInputFiles({ name:'document.png', mimeType:'image/png', buffer:png });
     await page.getByLabel('Selfie with document',{exact:true}).setInputFiles({name:'selfie.png',mimeType:'image/png',buffer:png});
