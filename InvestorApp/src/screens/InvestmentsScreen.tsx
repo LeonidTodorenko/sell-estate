@@ -505,23 +505,24 @@ const InvestmentCard: React.FC<InvestmentCardProps> = ({
           style={styles.cardButtonHalf}
         />
 
-        <BlueButton
-          title={canApply ? "Invest" : "Investment unavailable"}
-          disabled={!canApply}
-          onPress={() =>
-            navigation.navigate("BuyShares", {
-              propertyId: investment.propertyId,
-              propertyName: investment.propertyTitle,
-            })
-          }
-          width="full"
-          showArrow={false}
-          bgColor="#098653"
-          textColor="#FFFFFF"
-          borderColor="#098653"
-          paddingVertical={12}
-          style={styles.cardButtonHalf}
-        />
+        {canApply && (
+          <BlueButton
+            title="Invest"
+            onPress={() =>
+              navigation.navigate("BuyShares", {
+                propertyId: investment.propertyId,
+                propertyName: investment.propertyTitle,
+              })
+            }
+            width="full"
+            showArrow={false}
+            bgColor="#098653"
+            textColor="#FFFFFF"
+            borderColor="#098653"
+            paddingVertical={12}
+            style={styles.cardButtonHalf}
+          />
+        )}
       </View>
 
       <TouchableOpacity

@@ -4,7 +4,7 @@
 
 The client catalog filters the two retired QA3041 records by their exact IDs. The administrative catalog continues to expose those records to current financial administrators. The filter applies to server-side Assistant comparisons, forecasts and recommendations. Financial statements, payment applications, payment plans and audit history continue to use their existing records.
 
-Android Explore and Portfolio use the existing investment workflow response to determine whether to enable Invest. A closed payment plan can remain visible without enabling purchase. The read endpoint uses the same Demo capacity calculation as Demo submission, including reserved applications and active listings. Rented cards show Rented. Unavailable fields have explicit empty states.
+Android Explore and Portfolio show Invest only when the existing investment workflow response returns `canApply: true`. A closed payment plan can remain visible while Invest is hidden. The read endpoint uses the same Demo capacity calculation as Demo submission, including reserved applications and active listings. Rented cards show Rented. Unavailable fields have explicit empty states.
 
 For presentation materials, confirm the provenance of existing gallery images and their association with each property. The eight files returned for the four remaining properties contained three distinct assets. The Downtown and Damac galleries are identical and one file appears under all four properties. Use the prepared English copy only after the property owner confirms missing factual fields.
 

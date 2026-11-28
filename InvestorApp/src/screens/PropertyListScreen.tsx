@@ -463,23 +463,26 @@ const presentationPdfName = item.presentationPdfName?.trim() || 'Object Presenta
         </View>
       )}
 
-      <View style={{ height: 14 }} />
+      {canApply && (
+        <>
+          <View style={{ height: 14 }} />
 
-      <BlueButton
-        title={canApply ? 'Invest' : isGuest ? 'Sign in for investment availability' : 'Investment unavailable'}
-        onPress={() => navigation.navigate('BuyShares', {
-          propertyId: item.id,
-          propertyName: item.title,
-        })}
-        disabled={!canApply}
-        width="full"
-        showArrow={false}
-        bgColor={canApply ? '#10B981' : '#D1D5DB'}
-        textColor={canApply ? '#FFFFFF' : '#6B7280'}
-        borderColor={canApply ? '#10B981' : '#D1D5DB'}
-        paddingVertical={12}
-        style={styles.investButtonLikeHome}
-      />
+          <BlueButton
+            title="Invest"
+            onPress={() => navigation.navigate('BuyShares', {
+              propertyId: item.id,
+              propertyName: item.title,
+            })}
+            width="full"
+            showArrow={false}
+            bgColor="#10B981"
+            textColor="#FFFFFF"
+            borderColor="#10B981"
+            paddingVertical={12}
+            style={styles.investButtonLikeHome}
+          />
+        </>
+      )}
 
       <View style={{ height: 8 }} />
     </View>
