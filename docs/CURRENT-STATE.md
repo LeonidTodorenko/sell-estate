@@ -97,3 +97,10 @@ Authenticated production acceptance passed in the ordinary investor workspace at
 Initial production seeding completed with 10 reports after the protected backup. Migration baseline was verified before application. Historical snapshots remain unavailable because past property valuation observations are absent. The local concurrency/retry test passed using two simultaneous capture requests plus another retry. Android MonthlyReports tests passed for real/Demo API selection, owner cache, localized request headers and empty state. The latest Android typecheck has nine errors, all in the pre-existing local LoginScreen.tsx. APK/device acceptance remains with the user.
 
 Cloudflare publication recovery: Wrangler deployment returned “No access to the specified resource”. The authenticated dashboard was used for the existing Worker, uploading C:/App/WebApp/dist and explicitly selecting SPA fallback. The uploader accepted a Windows backslash path. Verify the Ready version and the bundle served by wamsoc.com after publication. No credentials were added to documentation.
+
+
+### Monthly Reports 30.9.3 localization correction
+
+Monthly Reports follows the existing English account interface in WebApp and Android. Browser/device language and Accept-Language no longer switch the report page or normal report commentary to Russian. The menu label is Monthly Reports. Dates use en-US with the snapshot calendar date preserved in UTC, and USD amounts use English currency formatting. Demo commentary already uses English. Financial calculations, stored snapshots and schema are unchanged.
+
+Localization acceptance passed for Normal and Demo in browsers configured with en-US and ru-RU, checking the menu, page text, expanded commentary, Nov 28, 2026 and $1,200.50. A targeted backend test confirms both report endpoints return English commentary with Russian Accept-Language. Two Android MonthlyReports tests passed with English empty-state text and en-US request headers. This correction keeps release 30.9.3.

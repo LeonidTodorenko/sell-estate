@@ -545,7 +545,7 @@ const ProfileScreen = ({ navigation }: Props) => {
 
         <MenuItem
           iconSource={chartIcon}
-          title={Intl.DateTimeFormat().resolvedOptions().locale.startsWith('ru') ? 'Месячные отчёты' : 'Monthly Reports'}
+          title="Monthly Reports"
           onPress={() => navigation.navigate('MonthlyReports')}
         />
 

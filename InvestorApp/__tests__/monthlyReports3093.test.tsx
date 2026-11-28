@@ -22,7 +22,7 @@ test.each([false, true])('monthly report uses the correct owner cache and API, D
   expect(options.enabled).toBe(true);
   (api.get as jest.Mock).mockResolvedValue({ data: [] });
   await options.queryFn();
-  expect(api.get).toHaveBeenLastCalledWith(isDemo ? '/demo/monthly-reports' : '/monthly-reports', { headers: { 'Accept-Language': expect.stringMatching(/^(ru-RU|en-US)$/) } });
-  expect(tree.root.findAllByType(Text).map(node => node.props.children).join(' ')).toMatch(isDemo ? /demo report|отчёт Demo/ : /No monthly snapshots|Месячных снимков/);
+  expect(api.get).toHaveBeenLastCalledWith(isDemo ? '/demo/monthly-reports' : '/monthly-reports', { headers: { 'Accept-Language': 'en-US' } });
+  expect(tree.root.findAllByType(Text).map(node => node.props.children).join(' ')).toMatch(isDemo ? /demo report/ : /No monthly snapshots/);
   await act(async () => tree.unmount());
 });
