@@ -4,10 +4,6 @@ const defaults = getDefaultConfig(__dirname);
 // Native build outputs are not Metro inputs. Exclude them to keep CMake/Gradle
 // writes from invalidating the JS graph during an ordinary Android dev build.
 const config = {
-  cacheVersion: 'ownersclub-safe-login-' + (process.env.OWNERSCLUB_ADMIN_QA === '1' ? 'admin' : 'normal'),
-  transformer: {
-    babelTransformerPath: require.resolve('./safeLoginTransformer'),
-  },
   resolver: {
     blockList: [
       defaults.resolver.blockList,

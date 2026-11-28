@@ -1,31 +1,21 @@
-# Android Normal и Admin · 30.9.2
+# Android internalQa · 30.9.2
 
-Собирать из C:\App\InvestorApp\android. Существующий versionCode 15 сохранён. Версию самостоятельно не повышать.
+Из C:\App\InvestorApp\android выполнить одну команду:
 
-Normal:
 ```powershell
-$env:OWNERSCLUB_ADMIN_QA='0'
 .\gradlew.bat :app:assembleInternalQa -PreactNativeArchitectures=arm64-v8a
 ```
 
-Admin с безопасными тестовыми значениями:
-```powershell
-$env:OWNERSCLUB_ADMIN_QA='1'
-.\gradlew.bat :app:assembleAdminQa -PreactNativeArchitectures=arm64-v8a
-```
+APK — C:\App\InvestorApp\android\app\build\outputs\apk\internalQa\app-arm64-v8a-internalQa.apk.
 
-Результаты — app/build/outputs/apk/internalQa/app-arm64-v8a-internalQa.apk и app/build/outputs/apk/adminQa/app-arm64-v8a-adminQa.apk. Обе используют прежний debug.keystore. Коммерческая Release требует четыре OWNERSCLUB_RELEASE_* и постоянную подпись.
+Единственный внутренний вариант internalQa наследует release, использует прежний android/app/debug.keystore, Hermes, встроенный assets/index.android.bundle, R8/minifyEnabled, shrinkResources и useLegacyPackaging=true. Команда ограничивает ABI значением arm64-v8a. Версия 30.9.2, существующий versionCode 15 сохранён.
 
-Исторический блок находится в src/screens/LoginScreen.tsx, quickLoginWrap. Локальный исходник пользователя сохраняется. safeLoginTransformer.js исключает блок из Normal и заменяет реквизиты Admin безопасными нерабочими значениями. Для авторизованной проверки пользователь вводит свои данные вручную. Не переносить локальные пароли в Git, документацию, карты исходников или APK.
+API — https://sell-estate.onrender.com/api. В main/debug манифестах cleartext запрещён, используется системная проверка HTTPS. Metro, QA-сервер и adb reverse для запуска APK не требуются.
 
-API — https://sell-estate.onrender.com/api, системный HTTPS. Основной и debug манифесты запрещают cleartext. Quick Login fixture, отдельный вариант, localhost:7019 и его Metro-подмена удалены. adb reverse не требуется.
+LoginScreen.tsx собирается в текущем локальном виде. Исторический блок быстрого входа находится в InvestorApp/src/screens/LoginScreen.tsx, quickLoginWrap. Пользователь самостоятельно управляет его наличием и реквизитами перед сборкой. Автоматической подмены значений и отдельного варианта Admin нет. Локальные пароли не добавлять в Git, инструкции или журналы. APK содержит значения из локального исходника, поэтому распространять его с учётом включённых реквизитов.
 
-Hermes, minifyEnabled, shrinkResources и useLegacyPackaging=true соответствуют прежним внутренним сборкам. Внутренние варианты включают JS и работают автономно. Проверенный старый debug APK не содержит assets/index.android.bundle и требует Metro. Это объясняет непригодность debug APK для автономной выдачи. Причина конкретного вылета на физическом телефоне остаётся неподтверждённой до logcat.
+Официальный release сохранён отдельно. Он требует OWNERSCLUB_RELEASE_STORE_FILE, OWNERSCLUB_RELEASE_STORE_PASSWORD, OWNERSCLUB_RELEASE_KEY_ALIAS, OWNERSCLUB_RELEASE_KEY_PASSWORD и постоянную коммерческую подпись. Перед коммерческой сборкой пользователь должен подготовить LoginScreen.tsx без тестовых реквизитов и блока быстрого входа.
 
-Перед выдачей проверить apksigner verify --print-certs, ARM64 и assets/index.android.bundle в ZIP, размер, холодный запуск без Metro и QA-сервера. Не удалять данные приложения. Авторизованная проверка выполняется пользователем без изменения production данных.
+Ранее debug APK на эмуляторе воспроизводил Unable to load script из-за отсутствующего JS bundle. Предыдущие внутренние сборки прошли автономный холодный запуск, экран входа, гостевой каталог, проверку Hermes/ARM64 и прежней подписи. Пользователь подтвердил работу приложения на физическом телефоне. После текущего упрощения APK по указанию пользователя не пересобиралась.
 
-Проверка 28.11.2026: обе сборки ARM64 содержат Hermes JS, только arm64-v8a, исходные локальные пароли отсутствуют. Normal — 21489409 байт, Admin — 21490021 байт. SHA-256 сертификата обеих и прежней тестовой APK: fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c. На x86_64 эмуляторе обе прошли холодный запуск и открыли форму входа, Admin показал исторические кнопки с безопасными значениями. Metro и порт 7019 отсутствовали, adb reverse отсутствовал. Публичный API properties вернул HTTP 200. Вход пользователя не выполнялся.
-
-Вылет установленной debug-сборки воспроизведён на эмуляторе: ReactHost/ReactNoCrashSoftException, Unable to load script. Встроенного JS в debug APK нет. Внутренние сборки устраняют этот воспроизведённый сбой. Проверка конкретного телефона отложена пользователем. Карты исходников внутренних сборок удаляются после упаковки, поскольку содержат локальный исходник.
-
-C:\App\q9 и C:\App\m30 уже отсутствовали. Удалены только две устаревшие записи worktree, прочие рабочие каталоги сохранены.
+Для следующей проверки — apksigner verify --print-certs, ABI arm64-v8a, assets/index.android.bundle, фактический размер и холодный запуск без Metro. Не удалять данные приложения. Не менять подпись, сборку, авторизацию и инфраструктуру без согласования. Не создавать временные копии репозитория.

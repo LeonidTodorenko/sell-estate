@@ -136,11 +136,7 @@ android {
             initWith release
             signingConfig signingConfigs.debug
             matchingFallbacks = ['release']
-            versionNameSuffix '-normal'
-        }
-        adminQa {
-            initWith internalQa
-            versionNameSuffix '-admin'
+            versionNameSuffix '-internal'
         }
 
     }
@@ -174,14 +170,3 @@ dependencies {
 apply plugin: 'com.google.gms.google-services'
 
 apply from: "../../node_modules/react-native-vector-icons/fonts.gradle"
-
-// Switching the local Admin selector must invalidate the bundled JS task.
-tasks.withType(com.facebook.react.tasks.BundleHermesCTask).configureEach {
-    inputs.property("ownersclubAdminQa", System.getenv("OWNERSCLUB_ADMIN_QA") ?: "0")
-    // Metro source maps contain the untouched local source. Internal APK delivery
-    // does not require them, so discard only this task's generated maps.
-    doLast {
-        delete fileTree(jsIntermediateSourceMapsDir.get().asFile) { include "*.map" }
-        delete fileTree(jsSourceMapsDir.get().asFile) { include "*.map" }
-    }
-}
