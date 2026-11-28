@@ -77,6 +77,32 @@ public sealed class AuthorizationExposureTests
         Assert.Contains(b.ToString(), await GetJson(h, $"/api/applications/user/{h.Other}"));
     }
 
+    [Fact]
+    public async Task Technical_applications_are_hidden_from_clients_and_remain_visible_to_admin()
+    {
+        using var h = Host();
+        var propertyId = new Guid("668a36b8-01f5-4d4f-9d94-971b2b085b8b");
+        var applicationId = Guid.NewGuid();
+        var demoApplicationId = Guid.NewGuid();
+        h.WithDb(db =>
+        {
+            db.Properties.Add(new Property
+                { Id = propertyId, Title = "QA3041", Location = "QA", About = "Technical fixture" });
+            db.InvestmentApplications.Add(new InvestmentApplication
+                { Id = applicationId, UserId = h.Actor, PropertyId = propertyId });
+            db.DemoInvestmentApplications.Add(new DemoInvestmentApplication
+                { Id = demoApplicationId, DemoUserId = h.Demo, PropertyId = propertyId });
+            db.SaveChanges();
+        });
+
+        h.Login(h.Actor);
+        Assert.DoesNotContain(applicationId.ToString(), await GetJson(h, $"/api/applications/user/{h.Actor}"));
+        h.Login(h.Demo, demo: true);
+        Assert.DoesNotContain(demoApplicationId.ToString(), await GetJson(h, $"/api/applications/user/{h.Demo}"));
+        h.Login(h.Admin, role: "admin");
+        Assert.Contains(applicationId.ToString(), await GetJson(h, $"/api/applications/user/{h.Actor}"));
+    }
+
     [Theory]
     [InlineData("/api/users/{0}")]
     [InlineData("/api/auth/me")]

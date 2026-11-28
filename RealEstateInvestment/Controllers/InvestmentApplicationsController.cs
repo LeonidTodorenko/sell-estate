@@ -42,14 +42,19 @@ namespace RealEstateInvestment.Controllers
         [Authorize]
         public async Task<IActionResult> GetUserApplications(Guid userId)
         {
-            if (await PrivateDataAccess.RequireOwnerAsync(User, _context, userId, HttpContext.RequestServices.GetRequiredService<IConfiguration>(), allowAdmin: true) is { } accessError) return accessError;
+            var config = HttpContext.RequestServices.GetRequiredService<IConfiguration>();
+            if (await PrivateDataAccess.RequireOwnerAsync(User, _context, userId, config, allowAdmin: true) is { } accessError) return accessError;
+
+            var properties = await FinancialAdminAttribute.IsCurrentAdminAsync(User, _context, config)
+                ? _context.Properties.AsNoTracking()
+                : _context.Properties.AsNoTracking().ExcludeTechnicalFixtures();
 
             if (User.IsDemo())
             {
                 var demoUserId = User.GetUserId();
                 var demoApps = await (
                     from app in _context.DemoInvestmentApplications.AsNoTracking()
-                    join p in _context.Properties.AsNoTracking() on app.PropertyId equals p.Id
+                    join p in properties on app.PropertyId equals p.Id
                     where app.DemoUserId == demoUserId
                     orderby app.CreatedAt descending
                     select new
@@ -63,7 +68,7 @@ namespace RealEstateInvestment.Controllers
 
             var apps = await (
                 from app in _context.InvestmentApplications
-                join p in _context.Properties on app.PropertyId equals p.Id
+                join p in properties on app.PropertyId equals p.Id
                 where app.UserId == userId
                 orderby app.CreatedAt descending
                 select new
