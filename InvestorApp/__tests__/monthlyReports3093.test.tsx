@@ -26,3 +26,22 @@ test.each([false, true])('monthly report uses the correct owner cache and API, D
   expect(tree.root.findAllByType(Text).map(node => node.props.children).join(' ')).toMatch(isDemo ? /demo report/ : /No monthly snapshots/);
   await act(async () => tree.unmount());
 });
+
+test.each([false, true])('snapshot text, UTC date and USD amounts follow the English interface, Demo %s', async isDemo => {
+  (loadSession as jest.Mock).mockResolvedValue({ isDemo, user: { id: 'owner' } });
+  (useQuery as jest.Mock).mockReturnValue({
+    data: [{ id: 'snapshot', reportMonth: '2026-11-28T12:00:00Z', walletBalance: 1200.50,
+      investmentValue: 200, totalCapital: 1400.50, capitalChange: 0, rentalIncome: 20,
+      commentary: 'Initial snapshot at the actual capture date. A previous snapshot is unavailable.' }],
+    isLoading: false, isFetching: false, refetch: jest.fn()
+  });
+  let tree!: ReactTestRenderer;
+  await act(async () => { tree = create(<MonthlyReportsScreen/>); });
+  const text = tree.root.findAllByType(Text).map(node => node.props.children).join(' ');
+  expect(text).not.toMatch(/[А-Яа-яЁё]/);
+  expect(text).toContain('Monthly Reports');
+  expect(text).toContain('Nov 28, 2026');
+  expect(text).toContain('$1,200.50');
+  expect(text).toContain('Initial snapshot');
+  await act(async () => tree.unmount());
+});
